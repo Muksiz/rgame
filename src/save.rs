@@ -1,0 +1,54 @@
+use std::collections::BTreeMap;
+use std::path::Path;
+
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
+
+pub const SAVE_PATH: &str = "save.json";
+
+#[derive(Serialize, Deserialize, Default, Debug, PartialEq)]
+pub struct SaveData {
+    pub completed: Vec<u8>,
+    pub accepted: Vec<u8>,
+    pub hints: BTreeMap<u8, usize>,
+    pub zone: usize,
+    pub pos: (i32, i32),
+    pub play_ticks: u64,
+}
+
+pub fn exists() -> bool {
+    Path::new(SAVE_PATH).exists()
+}
+
+pub fn save(data: &SaveData) -> Result<()> {
+    let json = serde_json::to_string_pretty(data)?;
+    std::fs::write(SAVE_PATH, json)?;
+    Ok(())
+}
+
+pub fn load() -> Option<SaveData> {
+    let text = std::fs::read_to_string(SAVE_PATH).ok()?;
+    serde_json::from_str(&text).ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn save_data_round_trips_through_json() {
+        let mut hints = BTreeMap::new();
+        hints.insert(3u8, 2usize);
+        let data = SaveData {
+            completed: vec![1, 2, 3],
+            accepted: vec![1, 2, 3, 4],
+            hints,
+            zone: 1,
+            pos: (42, 17),
+            play_ticks: 9001,
+        };
+        let json = serde_json::to_string(&data).unwrap();
+        let back: SaveData = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, data);
+    }
+}
