@@ -47,6 +47,16 @@ pub const SHEEP: u16 = 48;
 pub const FROG: u16 = 49;
 pub const MOTH: u16 = 50;
 pub const FERRIS: u16 = 51;
+pub const MUSHROOM: u16 = 52;
+pub const MUSHROOM_TALL: u16 = 53;
+pub const STUMP: u16 = 54;
+pub const PEBBLE: u16 = 55;
+pub const FLOWER_SMALL_A: u16 = 56;
+pub const FLOWER_SMALL_B: u16 = 57;
+pub const BUTTERFLY_A: u16 = 58;
+pub const BUTTERFLY_B: u16 = 59;
+pub const BIRD_A: u16 = 60;
+pub const BIRD_B: u16 = 61;
 
 static ATLAS_PNG: &[u8] = include_bytes!("../../assets/atlas.png");
 

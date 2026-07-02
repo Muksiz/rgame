@@ -60,7 +60,8 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
             let (wx, wy) = (ox + col, oy + row);
             let tile = zone.tile(wx, wy);
             let (px, py) = (col * TILE as i32, row * TILE as i32);
-            let (base, overlay) = tile_sprites(tile, wx, wy, app.tick, zone.seed, lantern_lit);
+            let (base, overlay) =
+                tile_sprites(tile, wx, wy, app.tick, zone.seed, zone.id, lantern_lit);
             fb.sprite(atlas, base, px, py, dl);
             // A few darker specks so long runs of road/sand don't look flat.
             if matches!(tile, Tile::Path | Tile::Sand) {
@@ -79,7 +80,27 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
                     );
                 }
             }
+            match tile {
+                Tile::Water => shoreline(fb, zone, wx, wy, px, py, dl, app.tick),
+                Tile::Path => path_rim(fb, zone, wx, wy, px, py, dl),
+                Tile::Roof => roof_detail(fb, zone, wx, wy, px, py, dl),
+                Tile::Floor => floor_rim(fb, zone, wx, wy, px, py, dl),
+                _ => {}
+            }
             if let Some(id) = overlay {
+                // Tall greenery casts a little pool of shade.
+                if matches!(
+                    id,
+                    atlas::TREE_GREEN
+                        | atlas::TREE_ORANGE
+                        | atlas::PINE
+                        | atlas::BUSH
+                        | atlas::BERRY_BUSH
+                        | atlas::STUMP
+                        | atlas::SIGN
+                ) {
+                    blob_shadow(fb, px + 2, py + 12, 12, 3);
+                }
                 fb.sprite(atlas, id, px, py, dl);
             }
         }
@@ -100,6 +121,7 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
                 CritterKind::Frog => atlas::FROG,
                 CritterKind::Moth => atlas::MOTH,
             };
+            blob_shadow(fb, px + 4, py + 13, 8, 2);
             fb.sprite(atlas, id, px, py, ent_light);
         }
     }
@@ -109,6 +131,7 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
         let Some((px, py)) = to_screen(npc.pos.0, npc.pos.1) else {
             continue;
         };
+        blob_shadow(fb, px + 3, py + 13, 10, 2);
         fb.sprite(atlas, npc_sprite(npc.quest), px, py, ent_light);
         if npc.quest == active {
             let accepted = active.map(|id| app.accepted.contains(&id)).unwrap_or(false);
@@ -126,9 +149,11 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
     }
 
     if let Some((px, py)) = to_screen(app.player.0, app.player.1) {
+        blob_shadow(fb, px + 3, py + 13, 10, 2);
         fb.sprite(atlas, atlas::PLAYER, px, py, ent_light);
     }
 
+    ambient_life(fb, atlas, app, ox, oy, dl);
     weather(fb, zone.weather, app.tick, dl);
     top_bar(fb, app, dl);
     bottom_bar(fb, app);
@@ -142,6 +167,7 @@ fn tile_sprites(
     y: i32,
     tick: u64,
     seed: u32,
+    zone_id: usize,
     lantern_lit: bool,
 ) -> (u16, Option<u16>) {
     let h = hash2(x, y, seed);
@@ -152,7 +178,7 @@ fn tile_sprites(
             } else {
                 atlas::GRASS
             },
-            None,
+            grass_decor(h, zone_id),
         ),
         Tile::TallGrass => {
             let sway = (((tick / 12) as i32) + x) % 2 == 0;
@@ -246,6 +272,235 @@ fn tile_sprites(
         }
         Tile::Gate => (atlas::PATH, Some(atlas::GATE)),
         Tile::Sign => (atlas::GRASS, Some(atlas::SIGN)),
+    }
+}
+
+/// Sprinkle non-blocking décor over plain grass — each zone grows its own mix
+/// (flowers near the village, mushrooms in the woods, pebbles by the spire).
+fn grass_decor(h: u32, zone_id: usize) -> Option<u16> {
+    if h % 5 != 3 {
+        return None;
+    }
+    const MIXES: [[u16; 5]; 4] = [
+        [
+            atlas::SPROUT_ALT,
+            atlas::FLOWER_SMALL_A,
+            atlas::FLOWER_SMALL_B,
+            atlas::PEBBLE,
+            atlas::SPROUT,
+        ],
+        [
+            atlas::MUSHROOM,
+            atlas::SPROUT,
+            atlas::STUMP,
+            atlas::MUSHROOM_TALL,
+            atlas::SPROUT_ALT,
+        ],
+        [
+            atlas::SPROUT,
+            atlas::FLOWER_SMALL_A,
+            atlas::PEBBLE,
+            atlas::SPROUT_ALT,
+            atlas::FLOWER_SMALL_B,
+        ],
+        [
+            atlas::PEBBLE,
+            atlas::MUSHROOM_TALL,
+            atlas::SPROUT_ALT,
+            atlas::PEBBLE,
+            atlas::SPROUT,
+        ],
+    ];
+    Some(MIXES[zone_id.min(3)][(h / 16) as usize % 5])
+}
+
+/// A soft pool of shade under anything that stands up out of the grass.
+fn blob_shadow(fb: &mut Frame, x: i32, y: i32, w: i32, h: i32) {
+    for dy in 0..h {
+        let inset = if h > 1 && (dy == 0 || dy == h - 1) {
+            2
+        } else {
+            0
+        };
+        for dx in inset..w - inset {
+            fb.blend(x + dx, y + dy, (12, 20, 10), 60);
+        }
+    }
+}
+
+/// Tiles that read as water surface (no shoreline drawn between them).
+fn is_wet(t: Tile) -> bool {
+    matches!(t, Tile::Water | Tile::Bridge)
+}
+
+/// Lighter shallows along every water edge that touches land, plus the
+/// occasional sun glint out in the open water.
+#[allow(clippy::too_many_arguments)]
+fn shoreline(
+    fb: &mut Frame,
+    zone: &crate::world::map::Zone,
+    wx: i32,
+    wy: i32,
+    px: i32,
+    py: i32,
+    dl: f32,
+    tick: u64,
+) {
+    let t = TILE as i32;
+    let shallow = shade((150, 202, 226), dl);
+    if !is_wet(zone.tile(wx, wy - 1)) {
+        fb.fill_a(px, py, t, 2, shallow, 150);
+    }
+    if !is_wet(zone.tile(wx, wy + 1)) {
+        fb.fill_a(px, py + t - 2, t, 2, shallow, 150);
+    }
+    if !is_wet(zone.tile(wx - 1, wy)) {
+        fb.fill_a(px, py, 2, t, shallow, 150);
+    }
+    if !is_wet(zone.tile(wx + 1, wy)) {
+        fb.fill_a(px + t - 2, py, 2, t, shallow, 150);
+    }
+    let g = hash2(wx, wy, 0x611);
+    if (g % 23) as u64 == (tick / 6) % 23 {
+        let (gx, gy) = (px + 3 + (g % 10) as i32, py + 3 + ((g >> 5) % 10) as i32);
+        let c = shade((214, 238, 250), dl);
+        for (dx, dy) in [(0, 0), (-1, 0), (1, 0), (0, -1), (0, 1)] {
+            fb.set(gx + dx, gy + dy, c);
+        }
+    }
+}
+
+/// A one-pixel darker rim where the road meets greenery, so paths read as
+/// worn into the grass instead of painted on top.
+fn path_rim(
+    fb: &mut Frame,
+    zone: &crate::world::map::Zone,
+    wx: i32,
+    wy: i32,
+    px: i32,
+    py: i32,
+    dl: f32,
+) {
+    let t = TILE as i32;
+    let grassy = |tile: Tile| {
+        matches!(
+            tile,
+            Tile::Grass | Tile::TallGrass | Tile::Flower | Tile::Tree | Tile::Bush
+        )
+    };
+    let rim = shade((104, 84, 56), dl);
+    if grassy(zone.tile(wx, wy - 1)) {
+        fb.fill(px, py, t, 1, rim);
+    }
+    if grassy(zone.tile(wx, wy + 1)) {
+        fb.fill(px, py + t - 1, t, 1, rim);
+    }
+    if grassy(zone.tile(wx - 1, wy)) {
+        fb.fill(px, py, 1, t, rim);
+    }
+    if grassy(zone.tile(wx + 1, wy)) {
+        fb.fill(px + t - 1, py, 1, t, rim);
+    }
+}
+
+/// Interior floors darken where they meet their walls, so rooms feel enclosed
+/// even in the top-down cutaway view.
+fn floor_rim(
+    fb: &mut Frame,
+    zone: &crate::world::map::Zone,
+    wx: i32,
+    wy: i32,
+    px: i32,
+    py: i32,
+    dl: f32,
+) {
+    let t = TILE as i32;
+    let walled = |tile: Tile| matches!(tile, Tile::Wall | Tile::Roof);
+    let rim = shade((52, 38, 26), dl);
+    if walled(zone.tile(wx, wy - 1)) {
+        fb.fill_a(px, py, t, 3, rim, 150);
+    }
+    if walled(zone.tile(wx, wy + 1)) {
+        fb.fill_a(px, py + t - 2, t, 2, rim, 150);
+    }
+    if walled(zone.tile(wx - 1, wy)) {
+        fb.fill_a(px, py, 2, t, rim, 150);
+    }
+    if walled(zone.tile(wx + 1, wy)) {
+        fb.fill_a(px + t - 2, py, 2, t, rim, 150);
+    }
+}
+
+/// Shingle lines across roof tiles, and a darker eave along the roof's edge,
+/// so houses read as buildings instead of orange slabs.
+fn roof_detail(
+    fb: &mut Frame,
+    zone: &crate::world::map::Zone,
+    wx: i32,
+    wy: i32,
+    px: i32,
+    py: i32,
+    dl: f32,
+) {
+    let t = TILE as i32;
+    for row in [3, 7, 11, 15] {
+        fb.fill_a(px, py + row, t, 1, shade((150, 84, 58), dl), 110);
+    }
+    let eave = shade((118, 62, 42), dl);
+    if zone.tile(wx, wy - 1) != Tile::Roof {
+        fb.fill(px, py, t, 1, eave);
+    }
+    if zone.tile(wx, wy + 1) != Tile::Roof {
+        fb.fill(px, py + t - 1, t, 1, eave);
+    }
+    if zone.tile(wx - 1, wy) != Tile::Roof {
+        fb.fill(px, py, 1, t, eave);
+    }
+    if zone.tile(wx + 1, wy) != Tile::Roof {
+        fb.fill(px + t - 1, py, 1, t, eave);
+    }
+}
+
+/// Butterflies bob around fixed spots in the world by day, and now and then a
+/// bird crosses the sky. Small lives, big difference.
+fn ambient_life(fb: &mut Frame, atlas: &Atlas, app: &App, ox: i32, oy: i32, dl: f32) {
+    use crate::world::map::{MAP_H, MAP_W};
+    if dl <= 0.45 {
+        return; // butterflies and birds are day folk; fireflies own the night
+    }
+    let t = app.tick as f32;
+    for i in 0..120i32 {
+        let ax = (hash2(i, 11, 0xB77F) % (MAP_W as u32 * TILE as u32)) as i32;
+        let ay = (hash2(i, 12, 0xB77F) % (MAP_H as u32 * TILE as u32)) as i32;
+        let x = ax + ((t / 9.0 + i as f32).sin() * 14.0) as i32 - ox * TILE as i32;
+        let y = ay + ((t / 6.0 + i as f32 * 2.0).cos() * 8.0) as i32 - oy * TILE as i32;
+        if x < -(TILE as i32) || y < -(TILE as i32) || x >= FB_W as i32 || y >= FB_H as i32 {
+            continue;
+        }
+        let id = if (app.tick / 4 + i as u64).is_multiple_of(2) {
+            atlas::BUTTERFLY_A
+        } else {
+            atlas::BUTTERFLY_B
+        };
+        fb.sprite(atlas, id, x, y, dl);
+    }
+
+    let phase = app.tick % 900;
+    if phase < 300 {
+        let lane = hash2((app.tick / 900) as i32, 13, 0xB1D);
+        let p = phase as i32 * 2;
+        let x = if lane.is_multiple_of(2) {
+            p - TILE as i32
+        } else {
+            FB_W as i32 - p
+        };
+        let y = 24 + (lane % 70) as i32 + ((phase as f32 / 9.0).sin() * 4.0) as i32;
+        let id = if (app.tick / 3).is_multiple_of(2) {
+            atlas::BIRD_A
+        } else {
+            atlas::BIRD_B
+        };
+        fb.sprite(atlas, id, x, y, dl);
     }
 }
 
