@@ -4,7 +4,7 @@
 //!
 //! ```sh
 //! cargo run --example gfx_snapshot -- world 0 --tick 600 --out shot.png
-//! cargo run --example gfx_snapshot -- <title|world|dialogue|journal|casting|pass|fizzle|paused|epilogue|toast>
+//! cargo run --example gfx_snapshot -- <title|world|dialogue|journal|casting|pass|fizzle|paused|epilogue|toast|encounter|caught|grimoire>
 //! ```
 //!
 //! `world` takes an optional zone (0-3 overworld, 4+ interiors) and
@@ -13,7 +13,7 @@
 
 use std::io::BufWriter;
 
-use rgame::app::{App, Dialogue, DialogueKind, Screen};
+use rgame::app::{App, Dialogue, DialogueKind, EncounterPhase, Screen};
 use rgame::checker::Outcome;
 use rgame::content::quests::QUESTS;
 use rgame::gfx::{self, Atlas, FB_H, FB_W, Frame};
@@ -87,6 +87,25 @@ fn main() {
         }
         "paused" => app.screen = Screen::Paused { selected: 0 },
         "epilogue" => app.screen = Screen::Epilogue { page: 1 },
+        "encounter" => {
+            app.screen = Screen::Encounter {
+                rune: 11, // the legendary Turbofish
+                selected: 1,
+                phase: EncounterPhase::Asking,
+            }
+        }
+        "caught" => {
+            app.grimoire.insert(11);
+            app.screen = Screen::Encounter {
+                rune: 11,
+                selected: 1,
+                phase: EncounterPhase::Caught,
+            }
+        }
+        "grimoire" => {
+            app.grimoire.extend([1, 2, 5, 11]);
+            app.screen = Screen::Grimoire;
+        }
         other => {
             eprintln!("unknown scene: {other}");
             std::process::exit(2);

@@ -5,7 +5,7 @@
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
 
-use rgame::app::{App, Dialogue, DialogueKind, Screen};
+use rgame::app::{App, Dialogue, DialogueKind, EncounterPhase, Screen};
 use rgame::checker::Outcome;
 use rgame::ui;
 use rgame::world::map::{MAP_H, MAP_W};
@@ -69,6 +69,24 @@ fn every_screen_renders_at_every_size() {
     app.accepted.insert(1);
     app.hints.insert(1, 2);
     app.screen = Screen::Journal;
+    render_all_sizes(&app);
+
+    for phase in [
+        EncounterPhase::Asking,
+        EncounterPhase::Caught,
+        EncounterPhase::Fizzled,
+    ] {
+        app.screen = Screen::Encounter {
+            rune: 11,
+            selected: 1,
+            phase,
+        };
+        render_all_sizes(&app);
+    }
+
+    app.grimoire.extend([1, 5, 11]);
+    app.fish = 3;
+    app.screen = Screen::Grimoire;
     render_all_sizes(&app);
 
     app.screen = Screen::Casting { quest: 1 };

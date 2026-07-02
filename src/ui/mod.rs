@@ -5,6 +5,7 @@ pub mod effects;
 pub mod journal;
 pub mod overworld;
 pub mod title;
+pub mod wilds;
 
 use ratatui::Frame;
 use ratatui::buffer::Buffer;
@@ -86,6 +87,12 @@ pub fn draw(frame: &mut Frame, app: &App) {
             match &app.screen {
                 Screen::Dialogue(d) => dialogue::draw(frame, app, d),
                 Screen::Journal => journal::draw(frame, app),
+                Screen::Encounter {
+                    rune,
+                    selected,
+                    phase,
+                } => wilds::draw_encounter(frame, *rune, *selected, *phase),
+                Screen::Grimoire => wilds::draw_grimoire(frame, app),
                 Screen::Casting { .. } => cast::draw_casting(frame, app),
                 Screen::CastResult {
                     quest,

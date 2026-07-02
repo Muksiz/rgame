@@ -55,7 +55,7 @@ pub fn portrait(name: &str) -> &'static str {
    ~19.6m!~
 "#
         }
-        "Fern" => {
+        "Wren" => {
             r#"
      \|/
     (leaf)

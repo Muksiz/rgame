@@ -1,9 +1,10 @@
 //! Draws every game screen onto the framebuffer. This is `ui/` re-imagined in
 //! sprites: same state, same tone, 16×16 pixels per tile instead of one glyph.
 
-use crate::app::{App, Dialogue, EPILOGUE, Screen};
+use crate::app::{App, Dialogue, EPILOGUE, EncounterPhase, Screen};
 use crate::checker::{self, Outcome};
 use crate::content::quests::{self, FIZZLE_LINES, PASS_LINES, QUESTS};
+use crate::content::{items, wilds};
 use crate::gfx::atlas::{self, Atlas, TILE};
 use crate::gfx::font::{self, GLYPH};
 use crate::gfx::frame::{FB_H, FB_W, Frame};
@@ -33,6 +34,12 @@ pub fn render(fb: &mut Frame, atlas: &Atlas, app: &App) {
             match &app.screen {
                 Screen::Dialogue(d) => dialogue(fb, atlas, app, d),
                 Screen::Journal => journal(fb, app),
+                Screen::Encounter {
+                    rune,
+                    selected,
+                    phase,
+                } => encounter(fb, *rune, *selected, *phase),
+                Screen::Grimoire => grimoire(fb, app),
                 Screen::Casting { .. } => casting(fb, app),
                 Screen::CastResult {
                     quest,
@@ -622,7 +629,9 @@ fn bottom_bar(fb: &mut Frame, app: &App) {
                     "e talk to {} . c cast . q journal . f hint . esc rest",
                     npc.name
                 ),
-                None => "arrows move . e talk . c cast . q journal . f hint . esc".into(),
+                None => {
+                    "arrows move . e talk . c cast . q journal . g grimoire . f hint . esc".into()
+                }
             };
             (font::wrap(&hint, 58), DIM)
         }
@@ -938,13 +947,126 @@ fn journal(fb: &mut Frame, app: &App) {
         }
     }
 
+    let satchel = items::satchel(&app.completed);
+    if !satchel.is_empty() {
+        lines.push((String::new(), DIM));
+        let mut owned: Vec<&str> = satchel.iter().map(|i| i.name()).collect();
+        let fish_line;
+        if app.fish > 0 {
+            fish_line = format!("{} fish met", app.fish);
+            owned.push(&fish_line);
+        }
+        push(&format!("Satchel: {}", owned.join(" . ")), WARM, &mut lines);
+    }
+
     lines.push((String::new(), DIM));
     lines.push((
-        format!("Runes mastered: {}/12    esc close", app.completed.len()),
+        format!(
+            "Runes mastered: {}/12 . grimoire {}/{} (g) . esc close",
+            app.completed.len(),
+            app.grimoire.len(),
+            wilds::WILDS.len()
+        ),
         DIM,
     ));
     let max = 20usize;
     draw_lines(fb, ix + 4, iy + 2, &lines[..lines.len().min(max)]);
+}
+
+// ── wild runes: encounters & the grimoire ──────────────────────────────────
+
+fn encounter(fb: &mut Frame, rune_id: u8, selected: usize, phase: EncounterPhase) {
+    let rune = wilds::wild(rune_id);
+    let (ix, iy, iw, ih) = centered_panel(fb, 420, 180, "Something stirs in the grass");
+    let cols = (iw / GLYPH - 1) as usize;
+
+    let mut lines: Vec<(String, (u8, u8, u8))> = Vec::new();
+    for l in font::wrap(rune.stir, cols) {
+        lines.push((l, BODY));
+    }
+    lines.push((String::new(), DIM));
+    lines.push((format!("~ {} ~", rune.name), GOLD));
+    lines.push((String::new(), DIM));
+
+    match phase {
+        EncounterPhase::Asking => {
+            for l in font::wrap(rune.prompt, cols) {
+                lines.push((l, WARM));
+            }
+            lines.push((String::new(), DIM));
+            for (i, option) in rune.options.iter().enumerate() {
+                let (marker, color) = if i == selected {
+                    ("> ", GOLD)
+                } else {
+                    ("  ", DIM)
+                };
+                for (j, l) in font::wrap(option, cols - 2).into_iter().enumerate() {
+                    let lead = if j == 0 { marker } else { "  " };
+                    lines.push((format!("{lead}{l}"), color));
+                }
+            }
+        }
+        EncounterPhase::Caught => {
+            lines.push((
+                "The rune settles happily into your grimoire!".into(),
+                (160, 210, 140),
+            ));
+            lines.push((String::new(), DIM));
+            for l in font::wrap(rune.lore, cols) {
+                lines.push((l, BODY));
+            }
+        }
+        EncounterPhase::Fizzled => {
+            lines.push((
+                "fzzt — not quite! The rune giggles and skitters off.".into(),
+                (230, 170, 120),
+            ));
+            lines.push((String::new(), DIM));
+            lines.push(("No harm done. It'll rustle around here again.".into(), DIM));
+        }
+    }
+    draw_lines(fb, ix + 4, iy + 2, &lines[..lines.len().min(16)]);
+
+    let footer = match phase {
+        EncounterPhase::Asking => "up/down choose . enter answer . esc slip away",
+        _ => "enter . back to the grass",
+    };
+    let w = font::text_width(footer, 1);
+    font::text(fb, ix + iw - w - 2, iy + ih - 8, footer, DIM, 1);
+}
+
+fn grimoire(fb: &mut Frame, app: &App) {
+    let (ix, iy, iw, ih) = centered_panel(fb, 440, 220, "Grimoire - wild runes of the road");
+    // Names only, two columns per zone — the lore is read at catch time (and
+    // in the TUI's roomier grimoire); this keeps all four zones on one page.
+    let mut y = iy + 2;
+    for zone in 0..=3 {
+        font::text(fb, ix + 4, y, app.zones[zone].name, WARM, 1);
+        y += 10;
+        let runes = wilds::in_zone(zone);
+        for (i, rune) in runes.iter().enumerate() {
+            let x = ix + 10 + (i as i32 % 2) * (iw / 2);
+            if app.grimoire.contains(&rune.id) {
+                font::text(fb, x, y, &format!("* {}", rune.name), BODY, 1);
+            } else {
+                font::text(fb, x, y, ". ???", (110, 102, 88), 1);
+            }
+            if i % 2 == 1 {
+                y += 9;
+            }
+        }
+        if runes.len() % 2 == 1 {
+            y += 9;
+        }
+        y += 5;
+    }
+    let footer = format!(
+        "{}/{} inscribed . wild runes live in tall grass . esc",
+        app.grimoire.len(),
+        wilds::WILDS.len()
+    );
+    let w = font::text_width(&footer, 1);
+    font::text(fb, ix + iw - w - 2, iy + ih - 8, &footer, DIM, 1);
 }
 
 // ── casting & results ──────────────────────────────────────────────────────

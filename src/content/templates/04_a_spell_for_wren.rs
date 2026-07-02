@@ -1,8 +1,8 @@
 // ══════════════════════════════════════════════════════════════════
-//   Quest 4: A Spell for Fern                  ~ Whispering Woods ~
+//   Quest 4: A Spell for Wren                  ~ Whispering Woods ~
 // ══════════════════════════════════════════════════════════════════
 //
-//   Fern: "A spell that makes every step count DOUBLE! Twice the
+//   Wren: "A spell that makes every step count DOUBLE! Twice the
 //   walking with the same feet! Grandmother says a function is a
 //   little machine with a door in and a door out."
 //
@@ -14,7 +14,7 @@
 //           // the last expression (no semicolon) is returned
 //       }
 //
-//   Fern's spell is called `double_step`. It takes the paces as
+//   Wren's spell is called `double_step`. It takes the paces as
 //   an `i32` and returns them doubled, also as an `i32`.
 //
 //   Build it below, then press `c` in the game.
@@ -26,7 +26,7 @@ fn main() {
     println!("Seven paces become {}!", double_step(7));
 }
 
-// ─── Fern's hop-test (leave this part alone) ──────────────────────
+// ─── Wren's hop-test (leave this part alone) ──────────────────────
 #[test]
 fn small_hops() {
     assert_eq!(double_step(3), 6);

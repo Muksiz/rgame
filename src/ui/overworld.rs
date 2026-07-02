@@ -186,7 +186,7 @@ fn draw_bottom_bar(buf: &mut Buffer, area: Rect, app: &App) {
         .find(|n| (n.pos.0 - app.player.0).abs() <= 1 && (n.pos.1 - app.player.1).abs() <= 1);
     let hint = match near_npc {
         Some(npc) => format!(" e talk to {}  ·  c cast  ·  q journal  ·  f hint  ·  esc rest", npc.name),
-        None => " move: ←↓↑→ / wasd / hjkl  ·  e talk  ·  c cast rune  ·  q journal  ·  f Ferris hint  ·  esc rest".to_string(),
+        None => " move: ←↓↑→ / wasd / hjkl  ·  e talk  ·  c cast rune  ·  q journal  ·  g grimoire  ·  f hint  ·  esc rest".to_string(),
     };
     put_str(
         buf,

@@ -4,7 +4,9 @@ use std::sync::mpsc::Receiver;
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
 
 use crate::checker::{self, Outcome};
+use crate::content::items::{self, Item};
 use crate::content::quests::{self, QUESTS, Quest};
+use crate::content::wilds;
 use crate::save::{self, SaveData};
 use crate::world::map::hash2;
 use crate::world::map::{MAP_H, MAP_W, Tile, Zone};
@@ -54,6 +56,16 @@ impl Dialogue {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum EncounterPhase {
+    /// The rune has posed its question and awaits an answer.
+    Asking,
+    /// Answered true — inscribed in the grimoire.
+    Caught,
+    /// Answered wrong — the rune skitters off, no harm done.
+    Fizzled,
+}
+
 pub enum Screen {
     Title {
         selected: usize,
@@ -61,6 +73,14 @@ pub enum Screen {
     World,
     Dialogue(Dialogue),
     Journal,
+    /// A wild rune met in the tall grass.
+    Encounter {
+        rune: u8,
+        selected: usize,
+        phase: EncounterPhase,
+    },
+    /// The collection of wild runes inscribed so far.
+    Grimoire,
     Casting {
         quest: u8,
     },
@@ -87,6 +107,12 @@ pub struct App {
     pub completed: BTreeSet<u8>,
     pub accepted: BTreeSet<u8>,
     pub hints: BTreeMap<u8, usize>,
+    /// Wild runes inscribed from tall-grass encounters.
+    pub grimoire: BTreeSet<u8>,
+    /// Fish met (and released) with Juniper's spare rod.
+    pub fish: u32,
+    /// Steps taken through tall grass; part of the deterministic encounter roll.
+    pub grass_steps: u32,
     pub toast: Option<(String, u64)>,
     pub cast_rx: Option<Receiver<Outcome>>,
     pub has_save: bool,
@@ -107,6 +133,9 @@ impl App {
             completed: BTreeSet::new(),
             accepted: BTreeSet::new(),
             hints: BTreeMap::new(),
+            grimoire: BTreeSet::new(),
+            fish: 0,
+            grass_steps: 0,
             toast: None,
             cast_rx: None,
             has_save: save::exists(),
@@ -122,6 +151,14 @@ impl App {
     /// morning in Emberwick, dusk in the woods, lamplight indoors.
     pub fn daylight(&self) -> f32 {
         self.zone().daylight
+    }
+
+    /// Keepsakes are earned, never lost: owning one is derived from the
+    /// quests completed, so old saves get their items for free.
+    pub fn has_item(&self, item: Item) -> bool {
+        self.completed
+            .iter()
+            .any(|&id| items::reward(id) == Some(item))
     }
 
     /// The next quest on the road: the first one not yet completed.
@@ -220,6 +257,8 @@ impl App {
             Screen::World => self.world_key(key.code),
             Screen::Dialogue(_) => self.dialogue_key(key.code),
             Screen::Journal => self.journal_key(key.code),
+            Screen::Encounter { .. } => self.encounter_key(key.code),
+            Screen::Grimoire => self.grimoire_key(key.code),
             Screen::Casting { .. } => {} // the runes are busy
             Screen::CastResult { .. } => self.cast_result_key(key.code),
             Screen::Paused { .. } => self.paused_key(key.code),
@@ -259,6 +298,9 @@ impl App {
         self.completed.clear();
         self.accepted.clear();
         self.hints.clear();
+        self.grimoire.clear();
+        self.fish = 0;
+        self.grass_steps = 0;
         self.play_ticks = 0;
         self.screen = Screen::World;
         self.toast("A quiet morning in Emberwick. Someone near the festival square could use a hand. (Arrows/WASD to walk, e to talk.)");
@@ -279,6 +321,8 @@ impl App {
         self.completed = data.completed.into_iter().collect();
         self.accepted = data.accepted.into_iter().collect();
         self.hints = data.hints;
+        self.grimoire = data.grimoire.into_iter().collect();
+        self.fish = data.fish;
         self.zone_idx = data.zone.min(self.zones.len() - 1);
         self.play_ticks = data.play_ticks;
         let (x, y) = data.pos;
@@ -294,6 +338,8 @@ impl App {
             completed: self.completed.iter().copied().collect(),
             accepted: self.accepted.iter().copied().collect(),
             hints: self.hints.clone(),
+            grimoire: self.grimoire.iter().copied().collect(),
+            fish: self.fish,
             zone: self.zone_idx,
             pos: self.player,
             play_ticks: self.play_ticks,
@@ -313,8 +359,60 @@ impl App {
             KeyCode::Enter | KeyCode::Char('e') => self.interact(),
             KeyCode::Char('c') => self.start_cast(),
             KeyCode::Char('q') => self.screen = Screen::Journal,
+            KeyCode::Char('g') => self.screen = Screen::Grimoire,
             KeyCode::Char('f') => self.ferris_hint(),
             KeyCode::Esc => self.screen = Screen::Paused { selected: 0 },
+            _ => {}
+        }
+    }
+
+    fn encounter_key(&mut self, code: KeyCode) {
+        let Screen::Encounter {
+            rune,
+            selected,
+            phase,
+        } = &mut self.screen
+        else {
+            return;
+        };
+        let rune_id = *rune;
+        match *phase {
+            EncounterPhase::Asking => match code {
+                KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('w') => {
+                    *selected = (*selected + 2) % 3;
+                }
+                KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('s') => {
+                    *selected = (*selected + 1) % 3;
+                }
+                KeyCode::Enter | KeyCode::Char(' ') => {
+                    if *selected == wilds::wild(rune_id).answer {
+                        *phase = EncounterPhase::Caught;
+                        self.grimoire.insert(rune_id);
+                    } else {
+                        *phase = EncounterPhase::Fizzled;
+                    }
+                }
+                KeyCode::Esc => {
+                    // Fleeing is always free.
+                    self.screen = Screen::World;
+                    self.toast("You back away slowly. The grass settles. No harm done.");
+                }
+                _ => {}
+            },
+            _ => match code {
+                KeyCode::Enter | KeyCode::Char(' ') | KeyCode::Esc => {
+                    self.screen = Screen::World;
+                }
+                _ => {}
+            },
+        }
+    }
+
+    fn grimoire_key(&mut self, code: KeyCode) {
+        match code {
+            KeyCode::Esc | KeyCode::Char('g') | KeyCode::Char('q') | KeyCode::Enter => {
+                self.screen = Screen::World;
+            }
             _ => {}
         }
     }
@@ -343,9 +441,19 @@ impl App {
 
         // Doorways: step through, and the world changes around you.
         if let Some(warp) = self.zone().warp_at(target.0, target.1) {
+            // The Echo Cave is pitch dark; only a steady light gets you in.
+            if warp.to_zone == zones::ECHO_CAVE {
+                if !self.has_item(Item::StormLantern) {
+                    self.toast(
+                        "The dark inside is absolute. Something with a steady light would help.",
+                    );
+                    return;
+                }
+                self.toast("You raise Bram's storm-lantern and step into the dark.");
+            }
             self.zone_idx = warp.to_zone;
             self.player = warp.to_pos;
-            if self.zone().interior {
+            if self.zone().interior && self.zone_idx != zones::ECHO_CAVE {
                 let name = self.zone().name;
                 self.toast(format!("You step inside — {name}."));
             }
@@ -361,7 +469,27 @@ impl App {
             || self.zone().critters.iter().any(|c| c.pos == target);
         if tile.walkable() && !occupied {
             self.player = target;
+            if tile == Tile::TallGrass && !self.zone().interior {
+                self.rustle_grass();
+            }
         }
+    }
+
+    /// Each step through tall grass rolls (deterministically — same walk,
+    /// same runes) for a wild rune encounter from this zone's grass.
+    fn rustle_grass(&mut self) {
+        self.grass_steps = self.grass_steps.wrapping_add(1);
+        let h = hash2(self.player.0, self.player.1, 0xB1AD ^ self.grass_steps);
+        if !h.is_multiple_of(8) {
+            return;
+        }
+        let pool = wilds::in_zone(self.zone().id);
+        let rune = pool[(h / 8) as usize % pool.len()];
+        self.screen = Screen::Encounter {
+            rune: rune.id,
+            selected: 0,
+            phase: EncounterPhase::Asking,
+        };
     }
 
     fn try_gate(&mut self) {
@@ -408,7 +536,28 @@ impl App {
                 vec![text.to_string()],
                 DialogueKind::Flavor,
             ));
+            return;
         }
+        // Water within reach and a rod in the satchel: that's fishing.
+        let water = spots
+            .iter()
+            .any(|&(x, y)| matches!(self.zone().tile(x, y), Tile::Water | Tile::Reed));
+        if water && self.has_item(Item::FishingRod) {
+            self.go_fishing();
+        }
+    }
+
+    /// Catch-and-release, strictly. The river keeps its residents; you keep
+    /// the count and the stories.
+    fn go_fishing(&mut self) {
+        self.fish += 1;
+        let (px, py) = self.player;
+        let h = hash2(px, py, 0xF15 ^ self.fish);
+        let catch = items::CATCHES[h as usize % items::CATCHES.len()];
+        self.toast(format!(
+            "You cast Juniper's rod... {catch} (fish met: {})",
+            self.fish
+        ));
     }
 
     fn npc_dialogue(&self, x: i32, y: i32) -> Dialogue {
@@ -556,7 +705,15 @@ impl App {
                 let quest_id = *quest;
                 if matches!(outcome, Outcome::Pass { .. }) {
                     let q = quests::quest(quest_id);
-                    let pages = q.success.iter().map(|p| p.to_string()).collect();
+                    let mut pages: Vec<String> = q.success.iter().map(|p| p.to_string()).collect();
+                    if let Some(item) = items::reward(quest_id) {
+                        pages.push(format!(
+                            "({} tucks {} into your satchel. {})",
+                            q.npc,
+                            item.name(),
+                            item.blurb()
+                        ));
+                    }
                     self.screen = Screen::Dialogue(Dialogue::new(
                         q.npc,
                         pages,
@@ -668,6 +825,116 @@ mod tests {
         app.player = (x, y);
         app.try_move(1, 0);
         assert_eq!(app.player, (x, y), "trees are for hugging, not phasing");
+    }
+
+    #[test]
+    fn tall_grass_hides_wild_runes() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        // Find two adjacent tall-grass tiles and shuffle between them.
+        let mut spot = None;
+        'outer: for y in 1..MAP_H - 1 {
+            for x in 1..MAP_W - 1 {
+                if app.zones[0].tile(x, y) == Tile::TallGrass
+                    && app.zones[0].tile(x + 1, y) == Tile::TallGrass
+                {
+                    spot = Some((x, y));
+                    break 'outer;
+                }
+            }
+        }
+        app.player = spot.expect("Emberwick grows tall grass in pairs");
+        for _ in 0..300 {
+            if matches!(app.screen, Screen::Encounter { .. }) {
+                break;
+            }
+            app.try_move(1, 0);
+            if matches!(app.screen, Screen::Encounter { .. }) {
+                break;
+            }
+            app.try_move(-1, 0);
+        }
+        let Screen::Encounter { rune, .. } = app.screen else {
+            panic!("600 steps of tall grass and not a single rustle");
+        };
+
+        // Answer correctly, purely through keystrokes.
+        for _ in 0..wilds::wild(rune).answer {
+            app.on_key(KeyEvent::from(KeyCode::Down));
+        }
+        app.on_key(KeyEvent::from(KeyCode::Enter));
+        assert!(matches!(
+            app.screen,
+            Screen::Encounter {
+                phase: EncounterPhase::Caught,
+                ..
+            }
+        ));
+        assert!(app.grimoire.contains(&rune), "caught rune not inscribed");
+        app.on_key(KeyEvent::from(KeyCode::Enter));
+        assert!(matches!(app.screen, Screen::World));
+    }
+
+    #[test]
+    fn fleeing_an_encounter_is_always_free() {
+        let mut app = App::new();
+        app.screen = Screen::Encounter {
+            rune: 1,
+            selected: 0,
+            phase: EncounterPhase::Asking,
+        };
+        app.on_key(KeyEvent::from(KeyCode::Esc));
+        assert!(matches!(app.screen, Screen::World));
+        assert!(app.grimoire.is_empty());
+    }
+
+    #[test]
+    fn the_echo_cave_needs_a_light() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        app.zone_idx = zones::WHISPERING_WOODS;
+        let mouth = app.zones[zones::WHISPERING_WOODS].warps[0].at;
+        app.player = (mouth.0, mouth.1 + 1);
+        app.try_move(0, -1);
+        assert_eq!(
+            app.zone_idx,
+            zones::WHISPERING_WOODS,
+            "walked into pitch darkness without a lantern"
+        );
+        app.completed.insert(3); // Bram hands over the storm-lantern
+        app.try_move(0, -1);
+        assert_eq!(app.zone_idx, zones::ECHO_CAVE);
+    }
+
+    #[test]
+    fn fishing_needs_the_rod() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        app.zone_idx = zones::SILVERFORD;
+        // A standable spot by the water, with no NPC or sign to steal the interaction.
+        let zone = &app.zones[zones::SILVERFORD];
+        let mut spot = None;
+        'outer: for y in 1..MAP_H - 1 {
+            for x in 1..MAP_W - 1 {
+                let clear = (-1..=1).all(|dy| {
+                    (-1..=1).all(|dx| {
+                        zone.npc_at(x + dx, y + dy).is_none()
+                            && zone.tile(x + dx, y + dy) != Tile::Sign
+                    })
+                });
+                if zone.tile(x, y).walkable() && zone.tile(x + 1, y) == Tile::Water && clear {
+                    spot = Some((x, y));
+                    break 'outer;
+                }
+            }
+        }
+        app.player = spot.expect("Silverford has a quiet riverbank somewhere");
+        app.on_key(KeyEvent::from(KeyCode::Char('e')));
+        assert_eq!(app.fish, 0, "fished without a rod");
+        app.completed.insert(8); // Juniper's spare rod
+        app.on_key(KeyEvent::from(KeyCode::Char('e')));
+        assert_eq!(app.fish, 1);
+        assert!(app.toast.is_some(), "the catch deserves a mention");
     }
 
     #[test]

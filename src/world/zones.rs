@@ -357,7 +357,7 @@ fn whispering_woods() -> Zone {
         (239, 32),
     ]);
 
-    // Fern's stump clearing.
+    // Wren's stump clearing.
     b.clearing(49, 18, 4);
     b.set(51, 16, Tile::Rock);
     b.scatter(Tile::Flower, 140, (45, 14, 9, 9));
@@ -405,7 +405,7 @@ fn whispering_woods() -> Zone {
         warps: vec![enter(CAVE_MOUTH, ECHO_CAVE, CAVE_ROOM_EXIT)],
         npcs: vec![
             Npc {
-                name: "Fern",
+                name: "Wren",
                 glyph: 'F',
                 color: (152, 214, 122),
                 pos: (49, 20),

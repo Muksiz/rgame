@@ -110,11 +110,11 @@ pub static QUESTS: [Quest; 12] = [
     Quest {
         id: 4,
         zone: 1,
-        title: "A Spell for Fern",
-        npc: "Fern",
-        file_name: "04_a_spell_for_fern.rs",
+        title: "A Spell for Wren",
+        npc: "Wren",
+        file_name: "04_a_spell_for_wren.rs",
         lesson: "writing functions",
-        template: include_str!("templates/04_a_spell_for_fern.rs"),
+        template: include_str!("templates/04_a_spell_for_wren.rs"),
         intro: &[
             "Hi!! Are you a real rune-smith? I'm going to be one too. I already know the BEST spell idea: a spell that makes every step count double. Twice the walking with the same feet!",
             "I tried to write it but... okay I don't actually know how to write a function yet. It needs a name, and it takes the paces in, and gives the doubled paces back out.",
@@ -122,7 +122,7 @@ pub static QUESTS: [Quest; 12] = [
         ],
         reminder: "Did you build my spell yet?? It's called double_step! Paces go in, DOUBLE paces come out! (Grandmother says the arrow `->` shows what comes out.)",
         success: &[
-            "Fern hops in a circle, counting: \"two, four, six, EIGHT — it works, it works!\" A nearby tree rustles, presumably applauding.",
+            "Wren hops in a circle, counting: \"two, four, six, EIGHT — it works, it works!\" A nearby tree rustles, presumably applauding.",
             "\"When I'm big I'll write functions with a HUNDRED doors. Maren's in the mushroom hollow south of here — she likes people who are careful with rules!\"",
         ],
         hints: &[

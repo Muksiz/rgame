@@ -6,6 +6,7 @@ use ratatui::widgets::{Paragraph, Wrap};
 
 use crate::app::App;
 use crate::checker;
+use crate::content::{items, wilds};
 use crate::ui::{centered, panel};
 
 pub fn draw(frame: &mut Frame, app: &App) {
@@ -89,9 +90,30 @@ pub fn draw(frame: &mut Frame, app: &App) {
         }
     }
 
+    let satchel = items::satchel(&app.completed);
+    if !satchel.is_empty() {
+        lines.push(Line::from(""));
+        let mut spans = vec![Span::styled("Satchel: ", warm)];
+        for (i, item) in satchel.iter().enumerate() {
+            if i > 0 {
+                spans.push(Span::styled("  ·  ", dim));
+            }
+            spans.push(Span::styled(item.name(), body));
+        }
+        if app.fish > 0 {
+            spans.push(Span::styled(format!("  ·  {} fish met", app.fish), dim));
+        }
+        lines.push(Line::from(spans));
+    }
+
     lines.push(Line::from(""));
     lines.push(Line::from(Span::styled(
-        format!("Runes mastered: {}∕12    esc close", app.completed.len()),
+        format!(
+            "Runes mastered: {}∕12   ·   grimoire {}∕{} (g)   ·   esc close",
+            app.completed.len(),
+            app.grimoire.len(),
+            wilds::WILDS.len()
+        ),
         dim,
     )));
 

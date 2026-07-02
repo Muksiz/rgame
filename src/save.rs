@@ -11,6 +11,12 @@ pub struct SaveData {
     pub completed: Vec<u8>,
     pub accepted: Vec<u8>,
     pub hints: BTreeMap<u8, usize>,
+    /// Wild runes inscribed in the grimoire. `default` keeps old save
+    /// scrolls readable — they simply start with empty pages.
+    #[serde(default)]
+    pub grimoire: Vec<u8>,
+    #[serde(default)]
+    pub fish: u32,
     pub zone: usize,
     pub pos: (i32, i32),
     pub play_ticks: u64,
@@ -43,6 +49,8 @@ mod tests {
             completed: vec![1, 2, 3],
             accepted: vec![1, 2, 3, 4],
             hints,
+            grimoire: vec![1, 11],
+            fish: 3,
             zone: 1,
             pos: (42, 17),
             play_ticks: 9001,
@@ -50,5 +58,13 @@ mod tests {
         let json = serde_json::to_string(&data).unwrap();
         let back: SaveData = serde_json::from_str(&json).unwrap();
         assert_eq!(back, data);
+    }
+
+    #[test]
+    fn old_save_scrolls_without_grimoire_still_load() {
+        let old = r#"{"completed":[1],"accepted":[1,2],"hints":{},"zone":0,"pos":[6,38],"play_ticks":100}"#;
+        let back: SaveData = serde_json::from_str(old).unwrap();
+        assert!(back.grimoire.is_empty());
+        assert_eq!(back.fish, 0);
     }
 }

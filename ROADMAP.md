@@ -30,32 +30,37 @@ reachable from the destination zone's spawn; every way in has a way back.
 Possible garnish later: a fade-to-black on transit (trivial in
 `gfx/frame.rs`, `ui::shade`-to-black in the TUI).
 
-## 2. Items, inventory, and ability gates
+## 2. Items, inventory, and ability gates ✅
 
-The quests already name objects that exist only in prose — the festival
-lantern, the ferry token, the borrowed rod. Make them real:
+*Done.* Keepsakes are real now (`content/items.rs`): Bram's storm-lantern
+(quest 3) and Juniper's spare rod (quest 8), handed over in the success
+dialogue and listed in the journal's satchel. Owning one is *derived* from
+completed quests — no extra save state, and old saves get their items for
+free. Two gates use them: the Echo Cave's mouth refuses entry without the
+storm-lantern, and any reedy bank becomes a fishing spot (press `e`) once
+the rod is in the satchel — strictly catch-and-release, with a running
+count of fish met.
 
-- An `Item` enum and `inventory: BTreeSet<Item>` on `App` (and in
-  `SaveData`), plus a journal tab or `Screen::Inventory`.
-- **Zelda-style traversal gating**: the lantern lets you enter dark caves
-  (render undiscovered tiles dimmed until then), the rod enables fishing
-  spots, the ferry token crosses the big water. Each Rust concept learned =
-  a traversal ability earned; backtracking becomes rewarding.
-- NPCs hand the item over in their `DialogueKind::Success` ending — the
-  side-effect channel already exists.
+Still open for later passes: more gates on *optional* content (the main
+road is linear, so meaningful gating wants side content from step 4), and
+dimming undiscovered dark places until the lantern is owned.
 
-## 3. Tall-grass encounters — the Pokémon battle analog
+## 3. Tall-grass encounters — wild runes and the Grimoire ✅
 
-`Tile::TallGrass` is everywhere and does nothing. Walking through it should
-(deterministically, via `hash2`, so playthroughs stay testable) trigger a
-**wild rune encounter**: a small battle screen whose "moves" are quick Rust
-questions or a three-line fix — a featherweight cousin of `checker::cast`.
+*Done.* Stepping through `Tile::TallGrass` rolls (deterministically, via
+`hash2` over a step counter — same walk, same runes) for a **wild rune
+encounter**: a little spirit poses a three-option Rust question themed on
+its zone's lessons (`content/wilds.rs`, 16 runes — the Silverford grass
+hides the legendary Turbofish). Answer true and the rune is inscribed in
+your **Grimoire** (`g`), a collection screen that doubles as spaced
+repetition for the curriculum. Cozy, no-fail: fleeing is always free, a
+wrong answer just fizzles and the rune skitters off to ask again another
+day. Both screens are `Screen` variants reachable through
+`on_key`/`on_tick`, so the black-box tests can play them.
 
-- Cozy, no-fail: fleeing is always free, a wrong answer just fizzles.
-- Caught runes go in a **runedex** — a collection screen is half of
-  Pokémon's pull, and it doubles as spaced repetition for the curriculum.
-- Keep it a `Screen` variant reachable through `on_key`/`on_tick` so
-  `tests/journey.rs` can play through encounters.
+Still open for later passes: more runes per zone, encounter art in the gfx
+build (a proper grass-rustle transition), and rare runes that only stir at
+particular spots.
 
 ## 4. Side quests, secrets, and collectibles
 
