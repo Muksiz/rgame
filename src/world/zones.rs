@@ -816,7 +816,9 @@ fn great_library() -> Zone {
             color: (188, 168, 138),
             pos: at(13, 8),
             quest: None,
-            idle: &["Shhh — not for quiet. The books are napping. They dream in fine print."],
+            idle: &[
+                "Shhh — not for quiet. The books are napping. Nudge any shelf (e) and one will happily read itself to you.",
+            ],
         }],
         vec![Critter::new(CritterKind::Cat, at(20, 4))],
         vec![],

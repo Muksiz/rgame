@@ -75,6 +75,9 @@ always had optional stuff off the critical path:
   a bush that hides a passage once you've learned the right rune.
 - The interiors are ready-made stages for this — a note on a table, a
   cellar door in the storehouse.
+- *First piece in place:* the Great Library's shelves are readable
+  (`content/books.rs`) — sixteen real books on Rust's features, guides,
+  and history, one per shelf tile, browsed in walking order with `e`.
 
 ## 5. NPC life and dialogue depth
 

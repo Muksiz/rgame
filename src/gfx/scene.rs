@@ -1,7 +1,7 @@
 //! Draws every game screen onto the framebuffer. This is `ui/` re-imagined in
 //! sprites: same state, same tone, 16×16 pixels per tile instead of one glyph.
 
-use crate::app::{App, Dialogue, EPILOGUE, EncounterPhase, Screen};
+use crate::app::{App, Dialogue, DialogueKind, EPILOGUE, EncounterPhase, Screen};
 use crate::checker::{self, Outcome};
 use crate::content::quests::{self, FIZZLE_LINES, PASS_LINES, QUESTS};
 use crate::content::{items, wilds};
@@ -825,7 +825,9 @@ fn dialogue(fb: &mut Frame, atlas: &Atlas, app: &App, d: &Dialogue) {
     let (ix, iy, iw, ih) = panel(fb, x, y, w, h, &d.speaker);
 
     // Portrait: the speaker's sprite, nice and big.
-    let portrait = if d.speaker == "Signpost" {
+    let portrait = if matches!(d.kind, DialogueKind::Book) {
+        Some(atlas::BOOKSHELF)
+    } else if d.speaker == "Signpost" {
         Some(atlas::SIGN)
     } else {
         app.zone()

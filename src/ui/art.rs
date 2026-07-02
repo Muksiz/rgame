@@ -19,6 +19,17 @@ pub const FERRIS: &str = r#"
     ▀▀▀▀▀
 "#;
 
+/// An open book, for when a Library shelf does the talking.
+pub const BOOK: &str = r#"
+   ______ ______
+  /      Y      \
+ |  ~~~~ | ~~~~  |
+ |  ~~~  |  ~~~  |
+ |  ~~~~ | ~~~~  |
+  \______|______/
+     ~ open ~
+"#;
+
 /// A little ASCII portrait for the dialogue box, keyed by speaker name.
 pub fn portrait(name: &str) -> &'static str {
     match name {

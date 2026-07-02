@@ -3,7 +3,7 @@ use ratatui::layout::Rect;
 use ratatui::style::{Color, Style};
 use ratatui::widgets::{Paragraph, Wrap};
 
-use crate::app::{App, Dialogue};
+use crate::app::{App, Dialogue, DialogueKind};
 use crate::ui::{art, centered, panel, put_str};
 
 pub fn draw(frame: &mut Frame, app: &App, d: &Dialogue) {
@@ -23,7 +23,11 @@ pub fn draw(frame: &mut Frame, app: &App, d: &Dialogue) {
     let inner = panel(frame, area, &d.speaker);
 
     // Portrait on the left.
-    let portrait = art::portrait(&d.speaker);
+    let portrait = if matches!(d.kind, DialogueKind::Book) {
+        art::BOOK
+    } else {
+        art::portrait(&d.speaker)
+    };
     let portrait_lines: Vec<&str> = portrait.lines().skip_while(|l| l.is_empty()).collect();
     let portrait_w: u16 = 16;
     let buf = frame.buffer_mut();

@@ -106,6 +106,16 @@ fn main() {
             app.grimoire.extend([1, 2, 5, 11]);
             app.screen = Screen::Grimoire;
         }
+        "book" => {
+            let book = &rgame::content::books::BOOKS[1];
+            app.screen = Screen::Dialogue(Dialogue {
+                speaker: book.title.to_string(),
+                pages: book.pages.iter().map(|p| p.to_string()).collect(),
+                page: 0,
+                revealed: 500,
+                kind: DialogueKind::Book,
+            });
+        }
         other => {
             eprintln!("unknown scene: {other}");
             std::process::exit(2);

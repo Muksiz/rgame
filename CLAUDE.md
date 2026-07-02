@@ -24,7 +24,7 @@ cargo run --example gfx_snapshot -- <scene> [zone] [--pos x,y] [--tick n] [--out
 The `snapshot` example is the way to "see" map edits without launching the game;
 `gfx_snapshot` is the same idea for the graphical frontend (scenes: title, world,
 dialogue, journal, casting, pass, fizzle, paused, epilogue, toast, encounter,
-caught, grimoire).
+caught, grimoire, book).
 
 ## Architecture
 
@@ -40,7 +40,7 @@ Lib + thin bin split (`src/lib.rs` + `src/main.rs`) exists so integration tests 
 
 **Quest ordering is strictly linear**: `App::active_quest()` = first id not in `completed`; quest `id` 1–12 maps to zone `(id-1)/3` (checked by a test). NPCs only offer their quest when it's the active one; zone gates open when the zone's three quests are done.
 
-**Items & wild runes** (the optional layer): `content/items.rs` — keepsakes granted by quest success; *owning one is derived from `completed`*, never stored, so old saves stay valid. They gate things: the Echo Cave needs the storm-lantern (quest 3), reedy banks become fishing spots with the rod (quest 8). `content/wilds.rs` — 16 wild runes living in `Tile::TallGrass`; each step rolls `hash2(pos, seed ^ grass_steps)` for an encounter (`Screen::Encounter`, a 3-option Rust question; fleeing is always free, wrong answers just fizzle). Caught runes fill the grimoire (`Screen::Grimoire`, key `g`, persisted in `save.json` behind `#[serde(default)]`).
+**Items & wild runes** (the optional layer): `content/items.rs` — keepsakes granted by quest success; *owning one is derived from `completed`*, never stored, so old saves stay valid. They gate things: the Echo Cave needs the storm-lantern (quest 3), reedy banks become fishing spots with the rod (quest 8). `content/wilds.rs` — 16 wild runes living in `Tile::TallGrass`; each step rolls `hash2(pos, seed ^ grass_steps)` for an encounter (`Screen::Encounter`, a 3-option Rust question; fleeing is always free, wrong answers just fizzle). Caught runes fill the grimoire (`Screen::Grimoire`, key `g`, persisted in `save.json` behind `#[serde(default)]`). The Great Library's shelves are readable: `content/books.rs` holds real books about Rust (guides, features, history); pressing `e` at a `Tile::Bookshelf` opens the book assigned to that shelf in row-major shelf order (`DialogueKind::Book`) — keep facts in them accurate.
 
 **World generation** (`world/map.rs` + `world/zones.rs`): maps are 240×70, built procedurally at startup by `MapBuilder` (scatter/road/river/stamp/clearing) — no map literals to edit; everything derives from the deterministic `hash2(x, y, seed)`, including animation phases and out-of-bounds scenery. Zone gates use `barrier()` (a full-height tree/cliff line with Gate tiles in the road) so they can't be walked around. If you move an NPC/sign/gate or reshape terrain, the BFS reachability tests in `world/zones.rs` and the spawn/standability tests in `app.rs` will catch dead ends — run `cargo test` after any map change.
 

@@ -6,7 +6,7 @@ use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use crate::checker::{self, Outcome};
 use crate::content::items::{self, Item};
 use crate::content::quests::{self, QUESTS, Quest};
-use crate::content::wilds;
+use crate::content::{books, wilds};
 use crate::save::{self, SaveData};
 use crate::world::map::hash2;
 use crate::world::map::{MAP_H, MAP_W, Tile, Zone};
@@ -33,6 +33,8 @@ pub enum DialogueKind {
     Success(u8),
     /// Idle chatter, signposts.
     Flavor,
+    /// A book taken down from a Library shelf.
+    Book,
 }
 
 pub struct Dialogue {
@@ -538,6 +540,26 @@ impl App {
             ));
             return;
         }
+        // A bookshelf within reach: take a book down and read. The shelf you
+        // face (straight ahead of you in the aisle) wins over its neighbors,
+        // so each step along a stack turns exactly one page of the catalogue.
+        let shelf = [
+            (0, -1),
+            (-1, 0),
+            (1, 0),
+            (0, 1),
+            (-1, -1),
+            (1, -1),
+            (-1, 1),
+            (1, 1),
+        ]
+        .iter()
+        .map(|(dx, dy)| (px + dx, py + dy))
+        .find(|&(x, y)| self.zone().tile(x, y) == Tile::Bookshelf);
+        if let Some((x, y)) = shelf {
+            self.read_shelf(x, y);
+            return;
+        }
         // Water within reach and a rod in the satchel: that's fishing.
         let water = spots
             .iter()
@@ -545,6 +567,27 @@ impl App {
         if water && self.has_item(Item::FishingRod) {
             self.go_fishing();
         }
+    }
+
+    /// Each shelf tile holds one book, assigned by walking order along the
+    /// stacks — browse a row left to right and you read the collection in
+    /// sequence (wrapping around once the titles run out).
+    fn read_shelf(&mut self, sx: i32, sy: i32) {
+        let zone = self.zone();
+        let mut ordinal = 0usize;
+        'scan: for y in 0..MAP_H {
+            for x in 0..MAP_W {
+                if zone.tile(x, y) == Tile::Bookshelf {
+                    if (x, y) == (sx, sy) {
+                        break 'scan;
+                    }
+                    ordinal += 1;
+                }
+            }
+        }
+        let book = &books::BOOKS[ordinal % books::BOOKS.len()];
+        let pages = book.pages.iter().map(|p| p.to_string()).collect();
+        self.screen = Screen::Dialogue(Dialogue::new(book.title, pages, DialogueKind::Book));
     }
 
     /// Catch-and-release, strictly. The river keeps its residents; you keep
@@ -935,6 +978,46 @@ mod tests {
         app.on_key(KeyEvent::from(KeyCode::Char('e')));
         assert_eq!(app.fish, 1);
         assert!(app.toast.is_some(), "the catch deserves a mention");
+    }
+
+    #[test]
+    fn library_shelves_read_aloud_in_order() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        app.zone_idx = zones::GREAT_LIBRARY;
+        // Find two side-by-side shelves with standable floor beneath.
+        let zone = app.zone();
+        let mut spot = None;
+        'outer: for y in 1..MAP_H - 1 {
+            for x in 1..MAP_W - 1 {
+                if zone.tile(x, y) == Tile::Bookshelf
+                    && zone.tile(x + 1, y) == Tile::Bookshelf
+                    && zone.tile(x, y + 1).walkable()
+                    && zone.tile(x + 1, y + 1).walkable()
+                {
+                    spot = Some((x, y));
+                    break 'outer;
+                }
+            }
+        }
+        let (x, y) = spot.expect("the Library has stacks with an aisle");
+
+        app.player = (x, y + 1);
+        app.on_key(KeyEvent::from(KeyCode::Char('e')));
+        let Screen::Dialogue(d) = &app.screen else {
+            panic!("the shelf had nothing to say");
+        };
+        assert!(matches!(d.kind, DialogueKind::Book));
+        let first = d.speaker.clone();
+
+        // One step along the stack: the next title in the collection.
+        app.screen = Screen::World;
+        app.player = (x + 1, y + 1);
+        app.on_key(KeyEvent::from(KeyCode::Char('e')));
+        let Screen::Dialogue(d) = &app.screen else {
+            panic!("the second shelf had nothing to say");
+        };
+        assert_ne!(d.speaker, first, "neighboring shelves hold the same book");
     }
 
     #[test]
