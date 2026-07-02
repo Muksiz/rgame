@@ -11,7 +11,7 @@ use crate::gfx::frame::{FB_H, FB_W, Frame};
 use crate::gfx::shade;
 use crate::world::camera;
 use crate::world::entity::{CritterKind, Npc};
-use crate::world::map::{Tile, Weather, hash2};
+use crate::world::map::{Tile, Weather, Zone, hash2};
 
 /// Visible tiles: 480/16 × ceil(270/16).
 const VIEW_W: i32 = (FB_W / TILE) as i32;
@@ -68,16 +68,7 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
             let (wx, wy) = (ox + col, oy + row);
             let tile = zone.tile(wx, wy);
             let (px, py) = (col * TILE as i32, row * TILE as i32);
-            let (base, overlay) = tile_sprites(
-                tile,
-                wx,
-                wy,
-                app.tick,
-                zone.seed,
-                zone.id,
-                zone.interior,
-                lantern_lit,
-            );
+            let (base, overlay) = tile_sprites(tile, wx, wy, app.tick, zone, lantern_lit);
             fb.sprite(atlas, base, px, py, dl);
             // A few darker specks so long runs of road/sand don't look flat.
             if matches!(tile, Tile::Path | Tile::Sand) {
@@ -97,12 +88,15 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
                 }
             }
             match tile {
-                Tile::Water => shoreline(fb, zone, wx, wy, px, py, dl, app.tick),
-                Tile::Path => path_rim(fb, zone, wx, wy, px, py, dl),
+                Tile::Water | Tile::WaterRock => shoreline(fb, zone, wx, wy, px, py, dl, app.tick),
+                Tile::Path => path_rim(fb, zone, wx, wy, px, py, dl, (104, 84, 56)),
+                Tile::Plaza => path_rim(fb, zone, wx, wy, px, py, dl, (96, 94, 88)),
+                Tile::Cliff => path_rim(fb, zone, wx, wy, px, py, dl, (88, 92, 88)),
                 Tile::Roof => roof_detail(fb, zone, wx, wy, px, py, dl),
                 Tile::Floor => floor_rim(fb, zone, wx, wy, px, py, dl),
                 Tile::Rug => rug_detail(fb, zone, wx, wy, px, py, dl),
                 Tile::Runestone => stone_glimmer(fb, app, wx, wy, px, py),
+                Tile::Campfire => smoke_wisp(fb, px, py, app.tick, zone.seed ^ 0x5F0, dl),
                 _ => {}
             }
             if let Some(id) = overlay {
@@ -111,10 +105,20 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
                     id,
                     atlas::TREE_GREEN
                         | atlas::TREE_ORANGE
+                        | atlas::TREE_TEAL
                         | atlas::PINE
+                        | atlas::PINE_ORANGE
+                        | atlas::PINE_TEAL
+                        | atlas::DEAD_TREE
                         | atlas::BUSH
                         | atlas::BERRY_BUSH
+                        | atlas::BUSH_FLOWER
+                        | atlas::BUSH_FRUIT
+                        | atlas::HEDGE
                         | atlas::STUMP
+                        | atlas::STUMP_OLD
+                        | atlas::STALL_A
+                        | atlas::STALL_B
                         | atlas::SIGN
                 ) {
                     blob_shadow(fb, px + 2, py + 12, 12, 3);
@@ -140,8 +144,11 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
                 CritterKind::Moth => atlas::MOTH,
                 CritterKind::Cat => atlas::CAT,
             };
+            // Little lives fidget: a one-pixel hop on each critter's own beat.
+            let phase = hash2(critter.pos.0, critter.pos.1, 0xC1717) as u64;
+            let hop = (app.tick / 4 + phase).is_multiple_of(6) as i32;
             blob_shadow(fb, px + 4, py + 13, 8, 2);
-            fb.sprite(atlas, id, px, py, ent_light);
+            fb.sprite(atlas, id, px, py - hop, ent_light);
         }
     }
 
@@ -150,8 +157,18 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
         let Some((px, py)) = to_screen(npc.pos.0, npc.pos.1) else {
             continue;
         };
+        // Folk turn to face the player when spoken-to distance, and breathe
+        // with a slow one-pixel sway on their own rhythm.
+        let (dx, dy) = (app.player.0 - npc.pos.0, app.player.1 - npc.pos.1);
+        let dir = if dx.abs() + dy.abs() == 1 {
+            facing_cell((dx, dy))
+        } else {
+            0
+        };
+        let phase = npc.name.len() as u64;
+        let sway = (app.tick / 12 + phase).is_multiple_of(5) as i32;
         blob_shadow(fb, px + 3, py + 13, 10, 2);
-        fb.sprite(atlas, npc_sprite(npc), px, py, ent_light);
+        fb.sprite(atlas, npc_sprite(npc) + dir, px, py + sway, ent_light);
         if npc.quest.is_some() && npc.quest == active {
             let accepted = active.map(|id| app.accepted.contains(&id)).unwrap_or(false);
             let bob = if (app.tick / 8).is_multiple_of(2) {
@@ -168,8 +185,15 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
     }
 
     if let Some((px, py)) = to_screen(app.player.0, app.player.1) {
+        let dir = facing_cell(app.facing);
+        // A fresh step plays the stride; standing still rests on the idle.
+        let id = if app.tick.saturating_sub(app.walked_at) < 4 {
+            atlas::PLAYER_WALK + dir * 2 + ((app.tick / 2) % 2) as u16
+        } else {
+            atlas::CAST + dir
+        };
         blob_shadow(fb, px + 3, py + 13, 10, 2);
-        fb.sprite(atlas, atlas::PLAYER, px, py, ent_light);
+        fb.sprite(atlas, id, px, py, ent_light);
     }
 
     ambient_life(fb, atlas, app, ox, oy, dl);
@@ -182,76 +206,153 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
 
 /// Tile → (opaque base sprite, transparent overlay). The one place tile
 /// appearance lives.
-#[allow(clippy::too_many_arguments)]
 fn tile_sprites(
     tile: Tile,
     x: i32,
     y: i32,
     tick: u64,
-    seed: u32,
-    zone_id: usize,
-    interior: bool,
+    zone: &Zone,
     lantern_lit: bool,
 ) -> (u16, Option<u16>) {
-    let h = hash2(x, y, seed);
-    // Indoors (the cave, mostly) freestanding things sit on bare earth, not grass.
-    let ground = if interior { atlas::PATH } else { atlas::GRASS };
+    let h = hash2(x, y, zone.seed);
+    let (zone_id, interior) = (zone.id, zone.interior);
+    // Indoors (the cave, mostly) freestanding things sit on bare earth, not
+    // grass; outdoors they sit on whatever the biome grows.
+    let ground = if interior {
+        atlas::PATH
+    } else {
+        ground_base(zone, h)
+    };
     match tile {
-        Tile::Grass => (
-            if h.is_multiple_of(11) {
-                atlas::GRASS_ALT
-            } else {
-                atlas::GRASS
-            },
-            grass_decor(h, zone_id),
-        ),
+        Tile::Grass => {
+            let mut decor = grass_decor(h, zone_id);
+            // Decor tufts sway along with their taller tall-grass cousins.
+            if let Some(partner) = decor.and_then(sway_partner)
+                && (((tick / 12) as i32) + x) % 2 == 0
+            {
+                decor = Some(partner);
+            }
+            (ground_base(zone, h), decor)
+        }
         Tile::TallGrass => {
+            // Each biome's encounter grass sways between its own two frames.
+            let (a, b) = match zone_id {
+                1 => (atlas::TUFT_DEEP_A, atlas::TUFT_DEEP_B),
+                3 => (atlas::TUFT_SNOW_A, atlas::TUFT_SNOW_B),
+                _ => (atlas::SPROUT, atlas::SPROUT_ALT),
+            };
             let sway = (((tick / 12) as i32) + x) % 2 == 0;
-            (
-                atlas::GRASS,
-                Some(if sway {
-                    atlas::SPROUT
-                } else {
-                    atlas::SPROUT_ALT
-                }),
-            )
+            (ground_base(zone, h), Some(if sway { a } else { b }))
         }
-        Tile::Flower => (
-            [
-                atlas::FLOWER_ORANGE,
-                atlas::FLOWER_WHITE,
-                atlas::FLOWER_BLUE,
-            ][(h % 3) as usize],
-            None,
-        ),
+        Tile::Flower => {
+            // Flowers are transparent overlays, so they bloom on any ground.
+            // In the village, a flower ringed by flowers grows into a dense
+            // bed (the bed tiles carry village grass, so only there).
+            let petals = |t: Tile| t == Tile::Flower;
+            let ring = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+                .iter()
+                .filter(|&&(dx, dy)| petals(zone.tile(x + dx, y + dy)))
+                .count();
+            if zone_id == 0 && ring >= 3 {
+                let beds = [
+                    atlas::FLOWERBED_RED,
+                    atlas::FLOWERBED_WHITE,
+                    atlas::FLOWERBED_BLUE,
+                ];
+                (beds[(h % 3) as usize], None)
+            } else {
+                let singles = [
+                    atlas::FLOWER_O_OVER,
+                    atlas::FLOWER_W_OVER,
+                    atlas::FLOWER_B_OVER,
+                ];
+                (ground_base(zone, h), Some(singles[(h % 3) as usize]))
+            }
+        }
         Tile::Tree => {
-            let id = match h % 5 {
-                0 | 1 => atlas::TREE_GREEN,
-                2 | 3 => atlas::PINE,
-                _ => atlas::TREE_ORANGE,
+            // Each zone grows its own woods: broadleaf orchards around the
+            // village, deep mixed pines (and the odd dead snag) in the
+            // Whispering Woods, hardy conifers up by the Hearthspire.
+            const VILLAGE: [u16; 6] = [
+                atlas::TREE_GREEN,
+                atlas::TREE_GREEN,
+                atlas::TREE_ORANGE,
+                atlas::TREE_TEAL,
+                atlas::TREE_GREEN,
+                atlas::PINE,
+            ];
+            const WOODS: [u16; 6] = [
+                atlas::PINE,
+                atlas::TREE_GREEN,
+                atlas::PINE_TEAL,
+                atlas::TREE_TEAL,
+                atlas::TREE_ORANGE,
+                atlas::PINE_ORANGE,
+            ];
+            const RIVER: [u16; 6] = [
+                atlas::TREE_GREEN,
+                atlas::TREE_TEAL,
+                atlas::PINE,
+                atlas::TREE_GREEN,
+                atlas::TREE_ORANGE,
+                atlas::PINE_TEAL,
+            ];
+            const CRAGS: [u16; 6] = [
+                atlas::PINE,
+                atlas::PINE_TEAL,
+                atlas::PINE,
+                atlas::TREE_TEAL,
+                atlas::PINE_ORANGE,
+                atlas::PINE,
+            ];
+            let mix = match zone_id {
+                0 => VILLAGE,
+                1 => WOODS,
+                2 => RIVER,
+                _ => CRAGS,
             };
-            (atlas::GRASS, Some(id))
+            let id = if matches!(zone_id, 1 | 3) && h % 19 == 7 {
+                atlas::DEAD_TREE
+            } else {
+                mix[(h % 6) as usize]
+            };
+            (ground_base(zone, h), Some(id))
         }
-        Tile::Bush => (
-            atlas::GRASS,
-            Some(if h.is_multiple_of(4) {
-                atlas::BERRY_BUSH
-            } else {
-                atlas::BUSH
-            }),
-        ),
-        Tile::Water => (water_frame(x, y, tick), None),
-        Tile::Reed => {
-            // Riverbank reeds stand on the grass beside the water.
-            let sway = (((tick / 14) as i32) + x) % 2 == 0;
-            let id = if h.is_multiple_of(4) {
-                atlas::LILY
-            } else if sway {
-                atlas::SPROUT_ALT
-            } else {
-                atlas::SPROUT
+        Tile::Bush => {
+            let id = match h % 9 {
+                0 | 1 => atlas::BERRY_BUSH,
+                2 => atlas::BUSH_FLOWER,
+                3 => atlas::BUSH_FRUIT,
+                _ => atlas::BUSH,
             };
-            (atlas::GRASS, Some(id))
+            (ground_base(zone, h), Some(id))
+        }
+        Tile::Water => {
+            // A lily pad drifts here and there, where water meets the banks.
+            let pad = h.is_multiple_of(29)
+                && [(-1, 0), (1, 0), (0, -1), (0, 1)]
+                    .iter()
+                    .any(|&(dx, dy)| matches!(zone.tile(x + dx, y + dy), Tile::Reed | Tile::Sand));
+            (water_frame(x, y, tick), pad.then_some(atlas::LILY_PAD))
+        }
+        Tile::WaterRock => {
+            let id = match h % 5 {
+                0 => atlas::ROCK_GREY_C,
+                1 => atlas::ROCK_MOSSY_GREY,
+                _ => atlas::ROCK_GREY_B,
+            };
+            (water_frame(x, y, tick), Some(id))
+        }
+        Tile::Reed => {
+            // Riverbank reeds stand on the bank beside the water.
+            let sway = (((tick / 14) as i32) + x) % 2 == 0;
+            let id = match h % 5 {
+                0 => atlas::LILY,
+                1 => atlas::SHRUB_SMALL,
+                _ if sway => atlas::SPROUT_ALT,
+                _ => atlas::SPROUT,
+            };
+            (ground_base(zone, h), Some(id))
         }
         Tile::Bridge => (atlas::BRIDGE, None),
         Tile::Path => (
@@ -262,28 +363,88 @@ fn tile_sprites(
             },
             None,
         ),
+        Tile::Plaza => (
+            if h.is_multiple_of(7) {
+                atlas::COBBLE_ALT
+            } else {
+                atlas::COBBLE
+            },
+            None,
+        ),
         Tile::Sand => (atlas::SAND, None),
-        Tile::Wall => (atlas::WALL, None),
+        Tile::Wall => (
+            atlas::WALL,
+            // Outside walls grow a sprig of ivy here and there.
+            (!interior && h.is_multiple_of(7)).then_some(atlas::IVY),
+        ),
         Tile::Roof => (atlas::ROOF, None),
         Tile::Door => (atlas::WALL, Some(atlas::DOOR)),
         Tile::Floor => (atlas::FLOOR, None),
-        Tile::Fence => (atlas::GRASS, Some(atlas::FENCE)),
-        Tile::Cliff => (
-            atlas::STONE,
-            Some(if h.is_multiple_of(4) {
-                atlas::ROCK_BROWN
+        Tile::Fence => {
+            // Fences follow their run: rails along a row, posts-and-rails up
+            // a column, and a stout post at corners, junctions and ends.
+            let fency = |t: Tile| matches!(t, Tile::Fence | Tile::Gate);
+            let row = fency(zone.tile(x - 1, y)) || fency(zone.tile(x + 1, y));
+            let col = fency(zone.tile(x, y - 1)) || fency(zone.tile(x, y + 1));
+            let id = match (row, col) {
+                (true, false) => atlas::FENCE,
+                (false, true) => atlas::FENCE_V,
+                _ => atlas::FENCE_POST,
+            };
+            (ground_base(zone, h), Some(id))
+        }
+        Tile::Cliff => {
+            // Crag bands: weathered stone, cracks, and the odd fallen boulder.
+            let overlay = match h % 10 {
+                0 | 1 => Some(atlas::ROCK_GREY),
+                2 | 3 => Some(atlas::ROCK_GREY_B),
+                4 => Some(atlas::ROCK_GREY_C),
+                5 => Some(atlas::ROCK_BROWN),
+                6 | 7 => Some(atlas::CRACK_A),
+                8 => Some(atlas::CRACK_B),
+                _ => None,
+            };
+            (atlas::STONE, overlay)
+        }
+        Tile::Rock => {
+            let id = match (zone_id, h % 8) {
+                // Mossgrown in the damp woods, riverstone by the ford,
+                // snow-capped up on the Hearthspire approach.
+                (1, 0..=2) => atlas::ROCK_MOSSY_GREY,
+                (1, 3) => atlas::ROCK_MOSSY_BROWN,
+                (2, 0..=1) => atlas::NA_STONE,
+                (3, 0..=3) => atlas::SNOWROCK_A,
+                (3, 4..=5) => atlas::SNOWROCK_B,
+                (_, 0) => atlas::ROCK_GREY_B,
+                (_, 1) => atlas::ROCK_GREY_C,
+                (_, 2) => atlas::ROCK_MOSSY_GREY,
+                _ => atlas::ROCK_GREY,
+            };
+            (ground, Some(id))
+        }
+        Tile::Stall => (
+            atlas::COBBLE,
+            Some(if h.is_multiple_of(2) {
+                atlas::STALL_A
             } else {
-                atlas::ROCK_GREY
+                atlas::STALL_B
             }),
         ),
-        Tile::Rock => (ground, Some(atlas::ROCK_GREY)),
+        Tile::Awning => (
+            atlas::COBBLE,
+            Some(if h.is_multiple_of(2) {
+                atlas::AWNING_GREEN
+            } else {
+                atlas::AWNING_ORANGE
+            }),
+        ),
         Tile::Campfire => {
             let flame = if (tick / 6).is_multiple_of(2) {
                 atlas::CAMPFIRE_A
             } else {
                 atlas::CAMPFIRE_B
             };
-            (atlas::PATH_ALT, Some(flame))
+            (paved_base(zone, x, y, atlas::PATH_ALT), Some(flame))
         }
         Tile::Lantern => {
             let id = if !lantern_lit {
@@ -293,7 +454,7 @@ fn tile_sprites(
             } else {
                 atlas::TORCH_LIT_B
             };
-            (atlas::PATH, Some(id))
+            (paved_base(zone, x, y, atlas::PATH), Some(id))
         }
         Tile::Gate => (atlas::PATH, Some(atlas::GATE)),
         Tile::Sign => (ground, Some(atlas::SIGN)),
@@ -315,51 +476,141 @@ fn tile_sprites(
             };
             (atlas::FLOOR, Some(flame))
         }
-        Tile::Barrel => (atlas::FLOOR, Some(atlas::BARREL)),
-        Tile::Crate => (atlas::FLOOR, Some(atlas::CRATE)),
+        Tile::Barrel => (furniture_base(zone, x, y), Some(atlas::BARREL)),
+        Tile::Crate => (furniture_base(zone, x, y), Some(atlas::CRATE)),
         Tile::Herb => (ground, Some(atlas::HERB)),
-        Tile::Chest => (ground, Some(atlas::CHEST)),
-        Tile::Runestone => (ground, Some(atlas::RUNESTONE)),
+        Tile::Chest => (furniture_base(zone, x, y), Some(atlas::CHEST)),
+        Tile::Runestone => (furniture_base(zone, x, y), Some(atlas::RUNESTONE)),
     }
 }
 
-/// Sprinkle non-blocking décor over plain grass — each zone grows its own mix
-/// (flowers near the village, mushrooms in the woods, pebbles by the spire).
+/// Fixtures that stand in paved places (the lantern, the campfire) sit on
+/// cobbles when the square around them is cobbled, packed earth otherwise.
+fn paved_base(zone: &Zone, x: i32, y: i32, default: u16) -> u16 {
+    let paved = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        .iter()
+        .any(|&(dx, dy)| zone.tile(x + dx, y + dy) == Tile::Plaza);
+    if paved { atlas::COBBLE } else { default }
+}
+
+/// What freestanding clutter sits on: the biome's ground outdoors, and
+/// indoors whatever the room is floored with — bare earth in the cave and
+/// cellar, boards everywhere else — so a barrel never brings its own square
+/// of wrong floor.
+fn furniture_base(zone: &Zone, x: i32, y: i32) -> u16 {
+    if !zone.interior {
+        return ground_base(zone, hash2(x, y, zone.seed));
+    }
+    let earthen = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+        .iter()
+        .any(|&(dx, dy)| zone.tile(x + dx, y + dy) == Tile::Path);
+    if earthen { atlas::PATH } else { atlas::FLOOR }
+}
+
+/// The zone's ground — what "grass" is there: spring green in the village,
+/// dark forest floor in the woods, wet marsh meadow by the river, snowfield
+/// on the Hearthspire approach. Mostly plain, with sprinkled richer variants.
+fn ground_base(zone: &Zone, h: u32) -> u16 {
+    let family = match zone.id {
+        1 => [atlas::DEEP, atlas::DEEP_B, atlas::DEEP_C],
+        2 => [atlas::MARSH, atlas::MARSH_B, atlas::MARSH_C],
+        3 => [atlas::SNOW, atlas::SNOW_B, atlas::SNOW_C],
+        _ => {
+            return match h % 19 {
+                0 => atlas::GRASS_ALT,
+                // The mottled patch only reads as sunlit growth in
+                // daylight; in dim places it would look like a stain.
+                1 if zone.daylight > 0.5 => atlas::GRASS_MOTTLED,
+                _ => atlas::GRASS,
+            };
+        }
+    };
+    match h % 13 {
+        0 => family[1],
+        1 => family[2],
+        _ => family[0],
+    }
+}
+
+/// The other frame of a two-frame swaying tuft, if this decor sways.
+fn sway_partner(id: u16) -> Option<u16> {
+    Some(match id {
+        atlas::SPROUT => atlas::SPROUT_ALT,
+        atlas::SPROUT_ALT => atlas::SPROUT,
+        atlas::TUFT_DEEP_A => atlas::TUFT_DEEP_B,
+        atlas::TUFT_DEEP_B => atlas::TUFT_DEEP_A,
+        atlas::TUFT_MARSH_A => atlas::TUFT_MARSH_B,
+        atlas::TUFT_MARSH_B => atlas::TUFT_MARSH_A,
+        atlas::TUFT_SNOW_A => atlas::TUFT_SNOW_B,
+        atlas::TUFT_SNOW_B => atlas::TUFT_SNOW_A,
+        _ => return None,
+    })
+}
+
+/// Sprinkle non-blocking décor over plain ground — each biome grows its own
+/// (garden flowers in the village, ferns and logs in the deep woods, bog
+/// clumps in the marsh, ice and drift-tufts — and the odd old bone — in
+/// the snow).
 fn grass_decor(h: u32, zone_id: usize) -> Option<u16> {
+    if zone_id == 3 && h % 179 == 3 {
+        return Some(atlas::BONE);
+    }
     if h % 5 != 3 {
         return None;
     }
-    const MIXES: [[u16; 5]; 4] = [
+    // The swaying tuft pairs are reserved for TallGrass, so encounter grass
+    // stays tellable from mere decoration.
+    const MIXES: [[u16; 6]; 4] = [
         [
             atlas::SPROUT_ALT,
             atlas::FLOWER_SMALL_A,
+            atlas::SUNFLOWER,
             atlas::FLOWER_SMALL_B,
-            atlas::PEBBLE,
             atlas::SPROUT,
+            atlas::SHRUB_SMALL,
         ],
         [
             atlas::MUSHROOM,
-            atlas::SPROUT,
-            atlas::STUMP,
+            atlas::FERN,
+            atlas::STUMP_OLD,
             atlas::MUSHROOM_TALL,
-            atlas::SPROUT_ALT,
+            atlas::LOG_NA,
+            atlas::SHRUB_SMALL,
         ],
         [
-            atlas::SPROUT,
-            atlas::FLOWER_SMALL_A,
+            atlas::TUFT_MARSH_A,
+            atlas::BOGBERRY,
             atlas::PEBBLE,
-            atlas::SPROUT_ALT,
+            atlas::SHRUB_SMALL,
+            atlas::TUFT_MARSH_B,
             atlas::FLOWER_SMALL_B,
         ],
         [
             atlas::PEBBLE,
-            atlas::MUSHROOM_TALL,
-            atlas::SPROUT_ALT,
-            atlas::PEBBLE,
-            atlas::SPROUT,
+            atlas::SNOWROCK_B,
+            atlas::ICE_A,
+            atlas::ICE_B,
+            atlas::ICE_A,
+            atlas::SNOWROCK_A,
         ],
     ];
-    Some(MIXES[zone_id.min(3)][(h / 16) as usize % 5])
+    Some(MIXES[zone_id.min(3)][(h / 16) as usize % 6])
+}
+
+/// A curl of smoke over a campfire: three specks on staggered clocks, each
+/// rising, drifting a little, and thinning to nothing before it loops.
+fn smoke_wisp(fb: &mut Frame, px: i32, py: i32, tick: u64, seed: u32, dl: f32) {
+    let grey = shade((198, 196, 202), dl.max(0.45));
+    for k in 0..3i32 {
+        let t = ((tick + hash2(k, 7, seed) as u64) % 26) as i32;
+        let x = px + 7 + ((hash2(k, t / 5, seed) % 3) as i32 - 1);
+        let y = py + 3 - t / 2;
+        let fade = (140 - t * 5).max(0) as u8;
+        fb.blend(x, y, grey, fade);
+        if t < 13 {
+            fb.blend(x + 1, y, grey, fade / 2);
+        }
+    }
 }
 
 /// A soft pool of shade under anything that stands up out of the grass.
@@ -378,7 +629,7 @@ fn blob_shadow(fb: &mut Frame, x: i32, y: i32, w: i32, h: i32) {
 
 /// Tiles that read as water surface (no shoreline drawn between them).
 fn is_wet(t: Tile) -> bool {
-    matches!(t, Tile::Water | Tile::Bridge)
+    matches!(t, Tile::Water | Tile::WaterRock | Tile::Bridge)
 }
 
 /// Lighter shallows along every water edge that touches land, plus the
@@ -418,8 +669,9 @@ fn shoreline(
     }
 }
 
-/// A one-pixel darker rim where the road meets greenery, so paths read as
-/// worn into the grass instead of painted on top.
+/// A one-pixel darker rim where paving meets greenery, so paths and plazas
+/// read as worn into the grass instead of painted on top.
+#[allow(clippy::too_many_arguments)]
 fn path_rim(
     fb: &mut Frame,
     zone: &crate::world::map::Zone,
@@ -428,6 +680,7 @@ fn path_rim(
     px: i32,
     py: i32,
     dl: f32,
+    rim: (u8, u8, u8),
 ) {
     let t = TILE as i32;
     let grassy = |tile: Tile| {
@@ -436,7 +689,7 @@ fn path_rim(
             Tile::Grass | Tile::TallGrass | Tile::Flower | Tile::Tree | Tile::Bush
         )
     };
-    let rim = shade((104, 84, 56), dl);
+    let rim = shade(rim, dl);
     if grassy(zone.tile(wx, wy - 1)) {
         fb.fill(px, py, t, 1, rim);
     }
@@ -621,12 +874,33 @@ fn water_frame(x: i32, y: i32, tick: u64) -> u16 {
     }
 }
 
-fn npc_sprite(npc: &Npc) -> u16 {
-    match npc.quest {
-        Some(id) if (1..=12).contains(&id) => atlas::NPC_1 + (id as u16 - 1),
-        // The folk who just live here: one of the villager looks, picked by name.
-        _ => atlas::VILLAGER_1 + npc.name.bytes().map(u16::from).sum::<u16>() % 3,
+/// Atlas cell offset for a facing step vector (down, up, left, right —
+/// the order the cast strips were baked in).
+fn facing_cell(step: (i32, i32)) -> u16 {
+    match step {
+        (0, -1) => 1,
+        (-1, 0) => 2,
+        (1, 0) => 3,
+        _ => 0, // down, and the shrug for anything unexpected
     }
+}
+
+/// An NPC's idle cell, facing down (add `facing_cell` for the other ways):
+/// quest folk by quest id, the named side folk by name, and any future
+/// stranger falls back to one of the flavor-villager looks.
+fn npc_sprite(npc: &Npc) -> u16 {
+    let member = match npc.quest {
+        Some(id) if (1..=12).contains(&id) => id as u16,
+        _ => match npc.name {
+            "Granny Sorrel" => 13,
+            "Old Nettle" => 14,
+            "Carpenter Alder" => 15,
+            "Hen-keeper Tilly" => 16,
+            "Under-librarian Twill" => 17,
+            _ => 18 + npc.name.bytes().map(u16::from).sum::<u16>() % 3,
+        },
+    };
+    atlas::CAST + member * atlas::CAST_FACINGS
 }
 
 // ── HUD bars ───────────────────────────────────────────────────────────────

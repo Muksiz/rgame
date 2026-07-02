@@ -23,9 +23,13 @@ pub enum Tile {
     Tree,
     Bush,
     Water,
+    /// A rock breaking the river's surface, ripples lapping around it.
+    WaterRock,
     Reed,
     Bridge,
     Path,
+    /// Cobbled paving — the festival square and other village-proud ground.
+    Plaza,
     Sand,
     Wall,
     Roof,
@@ -52,6 +56,10 @@ pub enum Tile {
     Hearth,
     Barrel,
     Crate,
+    /// A market stall counter, stacked with produce and good cheer.
+    Stall,
+    /// The striped canopy over a stall's counter.
+    Awning,
     /// A patch of something pickable (moon-mint, so far). Press `e` beside it.
     Herb,
     /// A sturdy old chest. Locked, until it isn't.
@@ -68,6 +76,7 @@ impl Tile {
                 | Tile::TallGrass
                 | Tile::Flower
                 | Tile::Path
+                | Tile::Plaza
                 | Tile::Bridge
                 | Tile::Sand
                 | Tile::Floor
@@ -278,7 +287,11 @@ impl MapBuilder {
         for y in 0..MAP_H {
             let cx = center_x + (amplitude * (y as f32 / 11.0).sin()) as i32;
             for x in cx - half_width..=cx + half_width {
-                self.set(x, y, Tile::Water);
+                // Mostly open water, with the odd rock breaking the surface
+                // (kept off the banks so the shoreline stays clean).
+                let rock = x.abs_diff(cx) < half_width as u32
+                    && hash2(x, y, self.seed ^ 0x0C0C) % 1000 < 30;
+                self.set(x, y, if rock { Tile::WaterRock } else { Tile::Water });
             }
             for &x in &[cx - half_width - 1, cx + half_width + 1] {
                 if self.get(x, y) == Tile::Grass && hash2(x, y, self.seed ^ 0x0EED) % 100 < 45 {

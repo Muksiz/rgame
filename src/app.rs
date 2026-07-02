@@ -123,6 +123,11 @@ pub struct App {
     pub zones: Vec<Zone>,
     pub zone_idx: usize,
     pub player: (i32, i32),
+    /// Which way the player faces (a unit step vector); purely cosmetic,
+    /// so it is never saved.
+    pub facing: (i32, i32),
+    /// Tick of the last successful step — while fresh, the walk cycle plays.
+    pub walked_at: u64,
     pub completed: BTreeSet<u8>,
     pub accepted: BTreeSet<u8>,
     pub hints: BTreeMap<u8, usize>,
@@ -152,6 +157,8 @@ impl App {
             zones,
             zone_idx: 0,
             player,
+            facing: (0, 1),
+            walked_at: 0,
             completed: BTreeSet::new(),
             accepted: BTreeSet::new(),
             hints: BTreeMap::new(),
@@ -453,6 +460,8 @@ impl App {
     }
 
     fn try_move(&mut self, dx: i32, dy: i32) {
+        // Face the way you push, even into a wall — then step if you can.
+        self.facing = (dx, dy);
         let target = (self.player.0 + dx, self.player.1 + dy);
 
         // Stepping off the west edge walks back toward the previous zone
@@ -505,6 +514,7 @@ impl App {
             || self.zone().critters.iter().any(|c| c.pos == target);
         if tile.walkable() && !occupied {
             self.player = target;
+            self.walked_at = self.tick;
             if tile == Tile::TallGrass && !self.zone().interior {
                 self.rustle_grass();
             }

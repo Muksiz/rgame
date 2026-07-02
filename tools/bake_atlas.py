@@ -11,11 +11,73 @@ Usage: python3 tools/bake_atlas.py <roguelikeSheet_transparent.png> <roguelikeCh
 """
 
 import sys
+from pathlib import Path
 
 from PIL import Image
 
 TILE = 16
 COLS = 16  # atlas cells per row
+
+NA_DIR = Path(__file__).resolve().parent.parent / "assets" / "ninja_adventure"
+
+# The cast, in atlas order (index 0 is the player; 1..12 the quest NPCs in
+# quest order; then the named side folk; then the flavor house villagers).
+# Each Ninja Adventure strip holds one 16x16 frame per facing, in the order
+# down, up, left, right — which is also the order the cells are baked in.
+CAST = [
+    ("BOY", "Boy"),  # the player
+    ("MASTER", "Master"),  # 1 Elder Rowan
+    ("OLDMAN2", "OldMan2"),  # 2 Baker Poppy (the beret! the stripes!)
+    ("VILLAGER_M", "Villager"),  # 3 Well-keeper Bram
+    ("CHILD", "Child"),  # 4 Wren
+    ("CAVEGIRL", "Cavegirl"),  # 5 Forager Maren (leaves in her hair)
+    ("MANGREEN", "ManGreen"),  # 6 Shepherd Ambrose
+    ("VILLAGER2", "Villager2"),  # 7 Ferryman Wick
+    ("EGGBOY", "EggBoy"),  # 8 Fisher Juniper (bucket hat)
+    ("MONK", "Monk"),  # 9 Hermit Morrow
+    ("INSPECTOR", "Inspector"),  # 10 Archivist Elm (spectacles)
+    ("STATUE", "Statue"),  # 11 The Stone Golem
+    ("OLDMAN3", "OldMan3"),  # 12 Sage Alderly
+    ("OLDWOMAN", "OldWoman"),  # Granny Sorrel
+    ("GREENMAN", "Greenman"),  # Old Nettle
+    ("HUNTER", "Hunter"),  # Carpenter Alder
+    ("WOMAN", "Woman"),  # Hen-keeper Tilly
+    ("NOBLE", "Noble"),  # Under-librarian Twill
+    ("VILLAGER3", "Villager3"),  # the flavor villagers in the houses
+    ("VILLAGER4", "Villager4"),
+    ("PRINCESS", "Princess"),
+]
+
+
+def na_tile(sheet_name, c, r):
+    """One 16x16 cell from a Ninja Adventure tileset (margin-free grid)."""
+    sheet = Image.open(NA_DIR / "tilesets" / f"{sheet_name}.png").convert("RGBA")
+    return sheet.crop((c * TILE, r * TILE, c * TILE + TILE, r * TILE + TILE))
+
+
+def na_idles(folder):
+    """The four 16x16 idle frames (down, up, left, right) of a cast member.
+
+    Most characters ship an `Idle.png` strip; a couple only have the compact
+    `SpriteSheet.png`, whose top row is the same four facings.
+    """
+    idle = NA_DIR / folder / "Idle.png"
+    sheet = Image.open(idle if idle.exists() else NA_DIR / folder / "SpriteSheet.png")
+    sheet = sheet.convert("RGBA")
+    return [sheet.crop((d * TILE, 0, d * TILE + TILE, TILE)) for d in range(4)]
+
+
+def na_walks(folder):
+    """Two stride frames per facing (down, up, left, right) from Walk.png,
+    where columns are facings and rows are the four walk-cycle frames."""
+    sheet = Image.open(NA_DIR / folder / "Walk.png").convert("RGBA")
+    frames = []
+    for d in range(4):
+        for row in (1, 3):  # the two full-stride frames of the 4-frame cycle
+            frames.append(
+                sheet.crop((d * TILE, row * TILE, d * TILE + TILE, row * TILE + TILE))
+            )
+    return frames
 
 
 def cell(sheet, c, r):
@@ -526,6 +588,100 @@ def main(sheet_path, chars_path):
         ("CHEST", from_art(CHEST, PALETTE)),
         ("RUNESTONE", from_art(RUNESTONE, PALETTE)),
         ("HERB", from_art(HERB, PALETTE)),
+        # ── the variety pass: more of the sheet, so the world isn't monotone ──
+        # richer ground bases (opaque)
+        ("GRASS_MOTTLED", cell(sheet, 3, 16)),
+        ("AUTUMN_GRASS", cell(sheet, 3, 19)),
+        ("BLOSSOM_GRASS", cell(sheet, 3, 22)),
+        ("FLOWERBED_RED", cell(sheet, 3, 7)),
+        ("FLOWERBED_WHITE", cell(sheet, 3, 10)),
+        ("FLOWERBED_BLUE", cell(sheet, 3, 13)),
+        ("COBBLE", cell(sheet, 6, 2)),
+        ("COBBLE_ALT", cell(sheet, 6, 3)),
+        # more trees & bushes (overlays)
+        ("TREE_TEAL", cell(sheet, 15, 9)),
+        ("PINE_ORANGE", cell(sheet, 17, 9)),
+        ("PINE_TEAL", cell(sheet, 18, 9)),
+        ("DEAD_TREE", cell(sheet, 27, 11)),
+        ("BUSH_FLOWER", cell(sheet, 25, 10)),
+        ("BUSH_FRUIT", cell(sheet, 26, 10)),
+        ("HEDGE", cell(sheet, 19, 9)),
+        # the rock family (overlays)
+        ("ROCK_BROWN_B", cell(sheet, 55, 19)),
+        ("ROCK_BROWN_C", cell(sheet, 56, 19)),
+        ("ROCK_GREY_B", cell(sheet, 55, 21)),
+        ("ROCK_GREY_C", cell(sheet, 56, 21)),
+        ("ROCK_MOSSY_BROWN", cell(sheet, 55, 20)),
+        ("ROCK_MOSSY_GREY", cell(sheet, 55, 22)),
+        ("CRACK_A", cell(sheet, 26, 19)),
+        ("CRACK_B", cell(sheet, 26, 20)),
+        # riverbank & village life (overlays)
+        ("LILY_PAD", cell(sheet, 26, 11)),
+        ("SHRUB_SMALL", cell(sheet, 28, 11)),
+        ("STUMP_OLD", cell(sheet, 53, 19)),
+        ("STALL_A", cell(sheet, 15, 6)),
+        ("STALL_B", cell(sheet, 16, 6)),
+        ("AWNING_ORANGE", cell(sheet, 10, 0)),
+        ("AWNING_GREEN", cell(sheet, 11, 0)),
+        ("IVY", cell(sheet, 44, 23)),
+        # ── the animated cast (Ninja Adventure pack, see assets/CREDITS.md) ──
+        # Four idle cells per member (facing down, up, left, right); only the
+        # first of each quartet gets a named constant.
+        *[
+            (f"CAST_{name}" if d == 0 else None, frame)
+            for name, folder in CAST
+            for d, frame in enumerate(na_idles(folder))
+        ],
+        # The player's stride: two frames per facing, same facing order.
+        *[
+            ("PLAYER_WALK" if i == 0 else None, frame)
+            for i, frame in enumerate(na_walks("Boy"))
+        ],
+        # ── biome grounds & props (Ninja Adventure tilesets) ─────────────────
+        # Each overworld zone gets its own ground family: plain + two
+        # tuft-decorated variants, all seamless fills.
+        ("MARSH", na_tile("TilesetFloor", 0, 12)),
+        ("MARSH_B", na_tile("TilesetFloor", 1, 12)),
+        ("MARSH_C", na_tile("TilesetFloor", 3, 12)),
+        ("DEEP", na_tile("TilesetFloor", 11, 12)),
+        ("DEEP_B", na_tile("TilesetFloor", 12, 12)),
+        ("DEEP_C", na_tile("TilesetFloor", 14, 12)),
+        ("SNOW", na_tile("TilesetFloor", 0, 19)),
+        ("SNOW_B", na_tile("TilesetFloor", 1, 19)),
+        ("SNOW_C", na_tile("TilesetFloor", 3, 19)),
+        # swaying tall-grass pairs, one per biome
+        ("TUFT_DEEP_A", na_tile("TilesetFloorDetail", 0, 2)),
+        ("TUFT_DEEP_B", na_tile("TilesetFloorDetail", 1, 2)),
+        ("TUFT_MARSH_A", na_tile("TilesetFloorDetail", 6, 2)),
+        ("TUFT_MARSH_B", na_tile("TilesetFloorDetail", 7, 2)),
+        ("TUFT_SNOW_A", na_tile("TilesetFloorDetail", 0, 3)),
+        ("TUFT_SNOW_B", na_tile("TilesetFloorDetail", 1, 3)),
+        # ground-litter details
+        ("LEAF_LITTER", na_tile("TilesetFloorDetail", 1, 0)),
+        ("GOLD_SPECKS", na_tile("TilesetFloorDetail", 3, 0)),
+        ("TWIG", na_tile("TilesetFloorDetail", 7, 0)),
+        ("BONE", na_tile("TilesetFloorDetail", 14, 0)),
+        # snowbound props
+        ("SNOWROCK_A", na_tile("TilesetNature", 4, 12)),
+        ("SNOWROCK_B", na_tile("TilesetNature", 6, 12)),
+        ("ICE_A", na_tile("TilesetNature", 8, 13)),
+        ("ICE_B", na_tile("TilesetNature", 9, 13)),
+        # forest & marsh props
+        ("NA_STONE", na_tile("TilesetNature", 17, 9)),
+        ("LOG_NA", na_tile("TilesetNature", 12, 13)),
+        ("FERN", na_tile("TilesetNature", 4, 11)),
+        ("BOGBERRY", na_tile("TilesetNature", 4, 14)),
+        # village garden flowers
+        ("SUNFLOWER", na_tile("TilesetNature", 0, 11)),
+        ("TULIP", na_tile("TilesetNature", 3, 11)),
+        # fence pieces for the edge-aware pass: the vertical run is the
+        # horizontal rail turned on its side, so the wood always matches
+        ("FENCE_V", cell(sheet, 52, 23).transpose(Image.ROTATE_90)),
+        ("FENCE_POST", cell(sheet, 45, 23)),
+        # single flowers as transparent overlays, so they bloom on any ground
+        ("FLOWER_O_OVER", cell(sheet, 29, 9)),
+        ("FLOWER_W_OVER", cell(sheet, 31, 9)),
+        ("FLOWER_B_OVER", cell(sheet, 30, 9)),
     ]
 
     rows = (len(cells) + COLS - 1) // COLS
@@ -536,7 +692,8 @@ def main(sheet_path, chars_path):
 
     print(f"atlas: {atlas.width}x{atlas.height}, {len(cells)} cells")
     for i, (name, _) in enumerate(cells):
-        print(f"pub const {name}: u16 = {i};")
+        if name is not None:
+            print(f"pub const {name}: u16 = {i};")
 
 
 if __name__ == "__main__":

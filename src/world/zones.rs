@@ -257,19 +257,33 @@ fn emberwick() -> Zone {
     b.road(&[(130, 26), (130, 39)]);
     b.road(&[(77, 45), (77, 42)]);
 
-    // Festival square: paving, the unlit lantern, a cosy campfire.
-    b.rect(80, 32, 13, 6, Tile::Path);
+    // Festival square: cobbles, the unlit lantern, a cosy campfire, and a
+    // couple of market stalls under striped awnings.
+    b.rect(80, 32, 13, 6, Tile::Plaza);
     b.set(86, 34, Tile::Lantern);
     b.set(90, 36, Tile::Campfire);
+    for x in [82, 89] {
+        b.set(x, 33, Tile::Awning);
+        b.set(x, 34, Tile::Stall);
+    }
     for x in [79, 93] {
         for y in [32, 34, 36] {
             b.set(x, y, Tile::Flower);
         }
     }
+    // Flowerbeds flanking the square's south edge, dense in the middle.
+    b.rect(81, 38, 3, 2, Tile::Flower);
+    b.rect(88, 38, 3, 2, Tile::Flower);
 
     // The old well, up a short lane.
     b.stamp(108, 22, WELL);
     b.road(&[(110, 26), (110, 30)]);
+
+    // Village clutter: barrels and crates left out beside the doors.
+    b.set(63, 22, Tile::Barrel);
+    b.set(69, 22, Tile::Crate);
+    b.set(139, 50, Tile::Crate);
+    b.set(140, 50, Tile::Barrel);
 
     // Chicken pen.
     b.rect(52, 44, 12, 7, Tile::Grass);
@@ -374,6 +388,7 @@ fn whispering_woods() -> Zone {
     b.scatter_all(Tile::Bush, 80);
     b.scatter_all(Tile::TallGrass, 90);
     b.scatter_all(Tile::Flower, 15);
+    b.scatter_all(Tile::Rock, 12); // mossgrown boulders between the trees
     b.edge_band(Tile::Tree, 4);
 
     // Ambrose's meadow (before the road, which passes through it).
@@ -613,11 +628,12 @@ fn hearthspire() -> Zone {
     b.scatter_all(Tile::Rock, 45);
     b.scatter_all(Tile::Tree, 25);
     b.scatter_all(Tile::Flower, 15);
-    // Craggy highland bands north and south.
+    // Craggy highland bands north and south, crumbling into loose
+    // boulders where they meet the meadow.
     b.rect(0, 0, 240, 8, Tile::Cliff);
     b.rect(0, 62, 240, 8, Tile::Cliff);
-    b.scatter(Tile::Cliff, 250, (0, 8, 240, 6));
-    b.scatter(Tile::Cliff, 250, (0, 56, 240, 6));
+    b.scatter(Tile::Rock, 250, (0, 8, 240, 6));
+    b.scatter(Tile::Rock, 250, (0, 56, 240, 6));
     b.edge_band(Tile::Cliff, 2);
 
     b.road(&[
@@ -634,7 +650,7 @@ fn hearthspire() -> Zone {
     // The Great Library of Hearthspire.
     b.stamp(198, 25, LIBRARY);
     for x in 208..=211 {
-        b.set(x, 34, Tile::Path); // forecourt up to the door
+        b.set(x, 34, Tile::Plaza); // cobbled forecourt up to the door
     }
 
     b.set(8, 34, Tile::Sign);
