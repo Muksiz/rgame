@@ -4,7 +4,7 @@ use std::sync::mpsc::Receiver;
 use crate::checker::{self, Outcome};
 use crate::content::items::{self, Item};
 use crate::content::quests::{self, QUESTS, Quest};
-use crate::content::{books, wilds};
+use crate::content::{books, sides, stones, wilds};
 use crate::save::{self, SaveData};
 use crate::world::map::hash2;
 use crate::world::map::{MAP_H, MAP_W, Tile, Zone};
@@ -48,6 +48,10 @@ pub enum DialogueKind {
     Flavor,
     /// A book taken down from a Library shelf.
     Book,
+    /// Side-quest talk; closing it may set a world flag.
+    Side(Option<&'static str>),
+    /// A runestone read aloud (gets the stone portrait).
+    Stone,
 }
 
 pub struct Dialogue {
@@ -128,6 +132,9 @@ pub struct App {
     pub fish: u32,
     /// Steps taken through tall grass; part of the deterministic encounter roll.
     pub grass_steps: u32,
+    /// World-state flags: side quests, runestones, opened chests. Anything
+    /// that isn't quest completion but must be remembered.
+    pub flags: BTreeSet<String>,
     pub toast: Option<(String, u64)>,
     pub cast_rx: Option<Receiver<Outcome>>,
     pub has_save: bool,
@@ -151,6 +158,7 @@ impl App {
             grimoire: BTreeSet::new(),
             fish: 0,
             grass_steps: 0,
+            flags: BTreeSet::new(),
             toast: None,
             cast_rx: None,
             has_save: save::exists(),
@@ -174,6 +182,15 @@ impl App {
         self.completed
             .iter()
             .any(|&id| items::reward(id) == Some(item))
+    }
+
+    /// World flags: the memory for everything off the main quest road.
+    pub fn has_flag(&self, flag: &str) -> bool {
+        self.flags.contains(flag)
+    }
+
+    pub fn set_flag(&mut self, flag: &str) {
+        self.flags.insert(flag.to_string());
     }
 
     /// The next quest on the road: the first one not yet completed.
@@ -316,6 +333,7 @@ impl App {
         self.grimoire.clear();
         self.fish = 0;
         self.grass_steps = 0;
+        self.flags.clear();
         self.play_ticks = 0;
         self.screen = Screen::World;
         self.toast("A quiet morning in Emberwick. Someone near the festival square could use a hand. (Arrows/WASD to walk, e to talk.)");
@@ -338,6 +356,7 @@ impl App {
         self.hints = data.hints;
         self.grimoire = data.grimoire.into_iter().collect();
         self.fish = data.fish;
+        self.flags = data.flags.into_iter().collect();
         self.zone_idx = data.zone.min(self.zones.len() - 1);
         self.play_ticks = data.play_ticks;
         let (x, y) = data.pos;
@@ -355,6 +374,7 @@ impl App {
             hints: self.hints.clone(),
             grimoire: self.grimoire.iter().copied().collect(),
             fish: self.fish,
+            flags: self.flags.iter().cloned().collect(),
             zone: self.zone_idx,
             pos: self.player,
             play_ticks: self.play_ticks,
@@ -456,8 +476,9 @@ impl App {
 
         // Doorways: step through, and the world changes around you.
         if let Some(warp) = self.zone().warp_at(target.0, target.1) {
-            // The Echo Cave is pitch dark; only a steady light gets you in.
-            if warp.to_zone == zones::ECHO_CAVE {
+            // Dark places (the Echo Cave, the storehouse cellar): only a
+            // steady light gets you in.
+            if zones::needs_light(warp.to_zone) {
                 if !self.has_item(Item::StormLantern) {
                     self.toast(
                         "The dark inside is absolute. Something with a steady light would help.",
@@ -468,7 +489,7 @@ impl App {
             }
             self.zone_idx = warp.to_zone;
             self.player = warp.to_pos;
-            if self.zone().interior && self.zone_idx != zones::ECHO_CAVE {
+            if self.zone().interior && !zones::needs_light(self.zone_idx) {
                 let name = self.zone().name;
                 self.toast(format!("You step inside — {name}."));
             }
@@ -540,14 +561,21 @@ impl App {
             self.screen = Screen::Dialogue(dialogue);
             return;
         }
-        let sign = spots.iter().find_map(|(x, y)| {
-            (self.zone().tile(*x, *y) == Tile::Sign)
-                .then(|| self.zone().sign_at(*x, *y).map(|s| s.text))
-                .flatten()
+        // Anything with writing on it: signposts outside, notes left on
+        // tables and crates indoors.
+        let note = spots.iter().find_map(|&(x, y)| {
+            self.zone()
+                .sign_at(x, y)
+                .map(|s| (self.zone().tile(x, y), s.text))
         });
-        if let Some(text) = sign {
+        if let Some((tile, text)) = note {
+            let speaker = if tile == Tile::Sign {
+                "Signpost"
+            } else {
+                "A note"
+            };
             self.screen = Screen::Dialogue(Dialogue::new(
-                "Signpost",
+                speaker,
                 vec![text.to_string()],
                 DialogueKind::Flavor,
             ));
@@ -572,6 +600,26 @@ impl App {
         if let Some((x, y)) = shelf {
             self.read_shelf(x, y);
             return;
+        }
+        // The quiet secrets: herbs to pick, stones to find, chests to try.
+        let secret = spots.iter().find_map(|&(x, y)| {
+            let tile = self.zone().tile(x, y);
+            matches!(tile, Tile::Herb | Tile::Chest | Tile::Runestone).then_some((tile, x, y))
+        });
+        match secret {
+            Some((Tile::Herb, ..)) => {
+                self.pick_herb();
+                return;
+            }
+            Some((Tile::Chest, ..)) => {
+                self.try_chest();
+                return;
+            }
+            Some((Tile::Runestone, x, y)) => {
+                self.touch_runestone(x, y);
+                return;
+            }
+            _ => {}
         }
         // Water within reach and a rod in the satchel: that's fishing.
         let water = spots
@@ -603,6 +651,69 @@ impl App {
         self.screen = Screen::Dialogue(Dialogue::new(book.title, pages, DialogueKind::Book));
     }
 
+    /// The moon-mint patch off the cave path — Granny Sorrel's favor.
+    fn pick_herb(&mut self) {
+        if !self.has_flag(sides::SORREL_ASKED) {
+            self.toast(
+                "A silvery patch of moon-mint. It smells like cool evenings and somebody's kettle.",
+            );
+        } else if !self.has_flag(sides::SORREL_MINT) {
+            self.set_flag(sides::SORREL_MINT);
+            self.toast(
+                "You pick a sprig of moon-mint for Granny Sorrel. The patch barely notices.",
+            );
+        } else {
+            self.toast("The moon-mint is regrowing, unhurried. One sprig was plenty.");
+        }
+    }
+
+    /// The chest in the storehouse cellar: locked until Old Nettle's rusted
+    /// key has been carried home to it.
+    fn try_chest(&mut self) {
+        if self.has_flag(sides::CHEST_OPENED) {
+            self.toast("The chest stands open and empty, but keeps the shape of a secret.");
+            return;
+        }
+        if !self.has_flag(sides::NETTLE_MET) {
+            self.toast("A sturdy old chest, locked. The keyhole is small, rusted, and patient.");
+            return;
+        }
+        self.set_flag(sides::CHEST_OPENED);
+        let id = stones::RUNESTONES.len() as u8; // the Keystone, the eighth
+        self.flags.insert(sides::runestone_flag(id));
+        let stone = stones::stone(id);
+        let pages = vec![
+            "Old Nettle's rusted key turns with a click the cellar has waited years to hear. Inside, wrapped in oilcloth: a runestone.".to_string(),
+            stone.legend.to_string(),
+            self.rubbing_line(),
+        ];
+        self.screen = Screen::Dialogue(Dialogue::new(stone.name, pages, DialogueKind::Stone));
+    }
+
+    /// A hidden runestone found: rub its rune into the journal.
+    fn touch_runestone(&mut self, x: i32, y: i32) {
+        let Some(id) = zones::runestone_id(self.zone_idx, (x, y)) else {
+            return; // a stone nobody catalogued; leave it its mystery
+        };
+        let flag = sides::runestone_flag(id);
+        if self.flags.contains(&flag) {
+            self.toast("The stone hums contentedly. Its rune is already in your journal.");
+            return;
+        }
+        self.flags.insert(flag);
+        let stone = stones::stone(id);
+        let pages = vec![stone.legend.to_string(), self.rubbing_line()];
+        self.screen = Screen::Dialogue(Dialogue::new(stone.name, pages, DialogueKind::Stone));
+    }
+
+    fn rubbing_line(&self) -> String {
+        format!(
+            "(You rub the rune into your journal. Runestones found: {}/{}.)",
+            stones::found(&self.flags),
+            stones::RUNESTONES.len()
+        )
+    }
+
     /// Catch-and-release, strictly. The river keeps its residents; you keep
     /// the count and the stories.
     fn go_fishing(&mut self) {
@@ -618,6 +729,10 @@ impl App {
 
     fn npc_dialogue(&self, x: i32, y: i32) -> Dialogue {
         let npc = self.zone().npc_at(x, y).expect("checked above");
+        // Side business first: some folk have favors going, off the quest road.
+        if let Some(talk) = sides::talk(npc.name, &self.flags) {
+            return Dialogue::new(npc.name, talk.pages, DialogueKind::Side(talk.set));
+        }
         let idle = npc.idle.first().copied().unwrap_or("...").to_string();
         let Some(qid) = npc.quest else {
             return Dialogue::new(npc.name, vec![idle], DialogueKind::Flavor);
@@ -719,6 +834,12 @@ impl App {
                         ));
                     }
                     Err(e) => self.toast(format!("The quest scroll wouldn't write itself: {e}")),
+                }
+                self.screen = Screen::World;
+            }
+            DialogueKind::Side(set) => {
+                if let Some(flag) = set {
+                    self.set_flag(flag);
                 }
                 self.screen = Screen::World;
             }
@@ -1031,6 +1152,146 @@ mod tests {
             panic!("the second shelf had nothing to say");
         };
         assert_ne!(d.speaker, first, "neighboring shelves hold the same book");
+    }
+
+    /// Press Enter until the dialogue closes (side-quest flags land on close).
+    fn click_through(app: &mut App) {
+        for _ in 0..40 {
+            if !matches!(app.screen, Screen::Dialogue(_)) {
+                return;
+            }
+            app.on_key(Key::Enter);
+        }
+        panic!("dialogue never ended");
+    }
+
+    #[test]
+    fn granny_sorrels_favor_walks_its_whole_arc() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+
+        // Tea with Granny Sorrel: she asks for moon-mint.
+        app.zone_idx = zones::SORREL_COTTAGE;
+        let granny = app.zone().npcs[0].pos;
+        app.player = (granny.0, granny.1 + 1);
+        app.on_key(Key::Char('e'));
+        let Screen::Dialogue(d) = &app.screen else {
+            panic!("Granny Sorrel had nothing to say");
+        };
+        assert!(matches!(
+            d.kind,
+            DialogueKind::Side(Some(sides::SORREL_ASKED))
+        ));
+        click_through(&mut app);
+        assert!(app.has_flag(sides::SORREL_ASKED));
+
+        // The mint patch off the cave path in the woods.
+        app.zone_idx = zones::WHISPERING_WOODS;
+        let zone = app.zone();
+        let mint = (0..MAP_H)
+            .flat_map(|y| (0..MAP_W).map(move |x| (x, y)))
+            .find(|&(x, y)| zone.tile(x, y) == Tile::Herb)
+            .expect("the woods grow moon-mint");
+        app.player = (mint.0 + 1, mint.1);
+        app.on_key(Key::Char('e'));
+        assert!(app.has_flag(sides::SORREL_MINT), "no sprig was picked");
+
+        // Back to the kettle.
+        app.zone_idx = zones::SORREL_COTTAGE;
+        app.player = (granny.0, granny.1 + 1);
+        app.on_key(Key::Char('e'));
+        click_through(&mut app);
+        assert!(app.has_flag(sides::SORREL_DONE), "the tea never happened");
+    }
+
+    #[test]
+    fn the_cellar_chest_wants_nettles_key() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+
+        // The cellar door is as dark as the cave: lantern required.
+        app.zone_idx = zones::STOREHOUSE;
+        let cellar_door = app.zones[zones::STOREHOUSE].warps[1].at;
+        app.player = (cellar_door.0, cellar_door.1 + 1);
+        app.try_move(0, -1);
+        assert_eq!(
+            app.zone_idx,
+            zones::STOREHOUSE,
+            "walked into a pitch-dark cellar without a light"
+        );
+        app.completed.insert(3); // Bram's storm-lantern
+        app.try_move(0, -1);
+        assert_eq!(app.zone_idx, zones::STOREHOUSE_CELLAR);
+
+        // The chest is locked without Old Nettle's key.
+        let zone = app.zone();
+        let chest = (0..MAP_H)
+            .flat_map(|y| (0..MAP_W).map(move |x| (x, y)))
+            .find(|&(x, y)| zone.tile(x, y) == Tile::Chest)
+            .expect("the cellar keeps a chest");
+        app.player = (chest.0 - 1, chest.1);
+        app.on_key(Key::Char('e'));
+        assert!(
+            !app.has_flag(sides::CHEST_OPENED),
+            "the lock gave way to nothing"
+        );
+
+        // Old Nettle's key turns it, and the Keystone is inside.
+        app.set_flag(sides::NETTLE_MET);
+        app.on_key(Key::Char('e'));
+        assert!(app.has_flag(sides::CHEST_OPENED));
+        let Screen::Dialogue(d) = &app.screen else {
+            panic!("the chest opened silently");
+        };
+        assert!(matches!(d.kind, DialogueKind::Stone));
+        assert!(
+            app.has_flag(&sides::runestone_flag(8)),
+            "the Keystone went missing"
+        );
+        click_through(&mut app);
+
+        // Opening it twice would be greedy.
+        app.on_key(Key::Char('e'));
+        assert!(
+            matches!(app.screen, Screen::World),
+            "the empty chest reopened"
+        );
+    }
+
+    #[test]
+    fn runestones_rub_into_the_journal_once() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        let (zone, pos) = zones::runestone_spots()[0]; // the Henstone
+        app.zone_idx = zone;
+        app.player = (pos.0, pos.1 + 1);
+        app.on_key(Key::Char('e'));
+        let Screen::Dialogue(d) = &app.screen else {
+            panic!("the stone said nothing");
+        };
+        assert!(matches!(d.kind, DialogueKind::Stone));
+        assert!(app.has_flag(&sides::runestone_flag(1)));
+        assert_eq!(stones::found(&app.flags), 1);
+        click_through(&mut app);
+
+        // A second rub just hums.
+        app.on_key(Key::Char('e'));
+        assert!(matches!(app.screen, Screen::World));
+        assert_eq!(stones::found(&app.flags), 1);
+    }
+
+    #[test]
+    fn notes_indoors_read_like_signs() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        app.zone_idx = zones::STOREHOUSE;
+        let note = app.zone().signs[0].pos;
+        app.player = (note.0 + 1, note.1);
+        app.on_key(Key::Char('e'));
+        let Screen::Dialogue(d) = &app.screen else {
+            panic!("the note was blank");
+        };
+        assert_eq!(d.speaker, "A note", "a crate is not a signpost");
     }
 
     #[test]

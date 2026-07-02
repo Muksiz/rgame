@@ -71,6 +71,9 @@ pub const SHELF: u16 = 72;
 pub const BOOKSHELF: u16 = 73;
 pub const CAT: u16 = 74;
 pub const VILLAGER_1: u16 = 75;
+pub const CHEST: u16 = 78;
+pub const RUNESTONE: u16 = 79;
+pub const HERB: u16 = 80;
 
 static ATLAS_PNG: &[u8] = include_bytes!("../../assets/atlas.png");
 

@@ -4,7 +4,7 @@
 use crate::app::{App, Dialogue, DialogueKind, EPILOGUE, EncounterPhase, Screen};
 use crate::checker::{self, Outcome};
 use crate::content::quests::{self, FIZZLE_LINES, PASS_LINES, QUESTS};
-use crate::content::{items, wilds};
+use crate::content::{items, sides, stones, wilds};
 use crate::gfx::atlas::{self, Atlas, TILE};
 use crate::gfx::font::{self, GLYPH};
 use crate::gfx::frame::{FB_H, FB_W, Frame};
@@ -102,6 +102,7 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
                 Tile::Roof => roof_detail(fb, zone, wx, wy, px, py, dl),
                 Tile::Floor => floor_rim(fb, zone, wx, wy, px, py, dl),
                 Tile::Rug => rug_detail(fb, zone, wx, wy, px, py, dl),
+                Tile::Runestone => stone_glimmer(fb, app, wx, wy, px, py),
                 _ => {}
             }
             if let Some(id) = overlay {
@@ -316,6 +317,9 @@ fn tile_sprites(
         }
         Tile::Barrel => (atlas::FLOOR, Some(atlas::BARREL)),
         Tile::Crate => (atlas::FLOOR, Some(atlas::CRATE)),
+        Tile::Herb => (ground, Some(atlas::HERB)),
+        Tile::Chest => (ground, Some(atlas::CHEST)),
+        Tile::Runestone => (ground, Some(atlas::RUNESTONE)),
     }
 }
 
@@ -540,6 +544,29 @@ fn roof_detail(
     }
     if zone.tile(wx + 1, wy) != Tile::Roof {
         fb.fill(px + t - 1, py, 1, t, eave);
+    }
+}
+
+/// An undiscovered runestone catches the light now and then — a small cyan
+/// twinkle beside the stone. Once its rune is in the journal, it rests.
+fn stone_glimmer(fb: &mut Frame, app: &App, wx: i32, wy: i32, px: i32, py: i32) {
+    let found = crate::world::zones::runestone_id(app.zone_idx, (wx, wy))
+        .map(|id| app.has_flag(&sides::runestone_flag(id)))
+        .unwrap_or(true);
+    if found {
+        return;
+    }
+    let phase = (app.tick / 5).wrapping_add(hash2(wx, wy, 0x57A2) as u64) % 16;
+    if phase >= 4 {
+        return;
+    }
+    let (gx, gy) = (px + 12, py + 2);
+    let c = (170, 230, 240);
+    fb.set(gx, gy, c);
+    if phase < 2 {
+        for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1)] {
+            fb.set(gx + dx, gy + dy, c);
+        }
     }
 }
 
@@ -827,6 +854,8 @@ fn dialogue(fb: &mut Frame, atlas: &Atlas, app: &App, d: &Dialogue) {
     // Portrait: the speaker's sprite, nice and big.
     let portrait = if matches!(d.kind, DialogueKind::Book) {
         Some(atlas::BOOKSHELF)
+    } else if matches!(d.kind, DialogueKind::Stone) {
+        Some(atlas::RUNESTONE)
     } else if d.speaker == "Signpost" {
         Some(atlas::SIGN)
     } else {
@@ -950,9 +979,11 @@ fn journal(fb: &mut Frame, app: &App) {
     }
 
     let satchel = items::satchel(&app.completed);
-    if !satchel.is_empty() {
+    let carried = sides::carried(&app.flags);
+    if !satchel.is_empty() || !carried.is_empty() {
         lines.push((String::new(), DIM));
         let mut owned: Vec<&str> = satchel.iter().map(|i| i.name()).collect();
+        owned.extend(carried);
         let fish_line;
         if app.fish > 0 {
             fish_line = format!("{} fish met", app.fish);
@@ -961,13 +992,33 @@ fn journal(fb: &mut Frame, app: &App) {
         push(&format!("Satchel: {}", owned.join(" . ")), WARM, &mut lines);
     }
 
+    // Side business underway: little memory-aids, never demands.
+    let notes = sides::journal_notes(&app.flags);
+    if !notes.is_empty() {
+        lines.push((String::new(), DIM));
+        for note in notes {
+            push(&format!("~ {note}"), (168, 186, 200), &mut lines);
+        }
+    }
+
     lines.push((String::new(), DIM));
+    let stones_found = stones::found(&app.flags);
+    let stones_part = if stones_found > 0 {
+        format!(
+            " . runestones {}/{}",
+            stones_found,
+            stones::RUNESTONES.len()
+        )
+    } else {
+        String::new() // the stones stay a secret until the first is found
+    };
     lines.push((
         format!(
-            "Runes mastered: {}/12 . grimoire {}/{} (g) . esc close",
+            "Runes mastered: {}/12 . grimoire {}/{} (g){} . esc close",
             app.completed.len(),
             app.grimoire.len(),
-            wilds::WILDS.len()
+            wilds::WILDS.len(),
+            stones_part,
         ),
         DIM,
     ));

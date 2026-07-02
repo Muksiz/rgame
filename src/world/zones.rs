@@ -62,8 +62,9 @@ const WORKSHOP_ROOM: &str = concat!(
     "######+######",
 );
 
+// The door in the back wall leads down to the cellar (dark — bring a light).
 const STORE_ROOM: &str = concat!(
-    "#############\n",
+    "######+######\n",
     "#.oo.....oo.#\n",
     "#.oox....xo.#\n",
     "#...........#\n",
@@ -71,6 +72,16 @@ const STORE_ROOM: &str = concat!(
     "#........t..#\n",
     "#...........#\n",
     "#...........#\n",
+    "######+######",
+);
+
+const CELLAR_ROOM: &str = concat!(
+    "#############\n",
+    "#:::::::::::#\n",
+    "#:oo:::::xx:#\n",
+    "#::::::::::C#\n",
+    "#:x:::::::::#\n",
+    "#:::::::::::#\n",
     "######+######",
 );
 
@@ -84,7 +95,7 @@ const LIBRARY_ROOM: &str = concat!(
     "#........................#\n",
     "#BBBB.BBBBB....BBBBB.BBBB#\n",
     "#........................#\n",
-    "#..L..................L..#\n",
+    "#@.L..................L..#\n",
     "#........................#\n",
     "###########++#############",
 );
@@ -92,7 +103,7 @@ const LIBRARY_ROOM: &str = concat!(
 const CAVE_ROOM: &str = concat!(
     "  %%%%%%%%%%%  \n",
     " %%:::::::::%% \n",
-    " %:::::::::::% \n",
+    " %@::::::::::% \n",
     " %::~~~::::::% \n",
     " %::~~~:::&::% \n",
     " %:::::::::::% \n",
@@ -114,6 +125,12 @@ pub const TILLY_COTTAGE: usize = 7;
 pub const STOREHOUSE: usize = 8;
 pub const ECHO_CAVE: usize = 9;
 pub const GREAT_LIBRARY: usize = 10;
+pub const STOREHOUSE_CELLAR: usize = 11;
+
+/// Places with no light of their own: only the storm-lantern gets you in.
+pub fn needs_light(zone: usize) -> bool {
+    matches!(zone, ECHO_CAVE | STOREHOUSE_CELLAR)
+}
 
 // Every interior room is stamped at the same spot mid-map (each has its own
 // map, so they never collide) — the camera centers on it from any door.
@@ -133,6 +150,8 @@ const BAKERY_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 7, ROOM_AT.1 + 8);
 const COTTAGE_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 5, ROOM_AT.1 + 7);
 const WORKSHOP_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 6, ROOM_AT.1 + 8);
 const STORE_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 6, ROOM_AT.1 + 8);
+const STORE_CELLAR_DOOR: (i32, i32) = (ROOM_AT.0 + 6, ROOM_AT.1);
+const CELLAR_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 6, ROOM_AT.1 + 6);
 const LIBRARY_ROOM_DOORS: [(i32, i32); 2] = [
     (ROOM_AT.0 + 11, ROOM_AT.1 + 11),
     (ROOM_AT.0 + 12, ROOM_AT.1 + 11),
@@ -170,7 +189,30 @@ pub fn zones() -> Vec<Zone> {
         storehouse(),
         echo_cave(),
         great_library(),
+        storehouse_cellar(),
     ]
+}
+
+/// Where the seven standing runestones were planted, in stone-id order
+/// (`content/stones.rs` ids 1..=7; the eighth sleeps in the cellar chest).
+pub fn runestone_spots() -> [(usize, (i32, i32)); 7] {
+    [
+        (EMBERWICK, (60, 46)),         // among the chickens
+        (WHISPERING_WOODS, (46, 15)),  // the edge of Wren's clearing
+        (WHISPERING_WOODS, (217, 10)), // Old Nettle's hollow
+        (SILVERFORD, (124, 59)),       // half-sunk in Morrow's beach
+        (HEARTHSPIRE, (130, 10)),      // alone in the northern crags
+        (ECHO_CAVE, at(2, 2)),         // humming in the dark
+        (GREAT_LIBRARY, at(1, 9)),     // catalogued, never moved
+    ]
+}
+
+/// The stone id (1-based) standing at this spot, if any.
+pub fn runestone_id(zone: usize, pos: (i32, i32)) -> Option<u8> {
+    runestone_spots()
+        .iter()
+        .position(|&(z, p)| z == zone && p == pos)
+        .map(|i| i as u8 + 1)
 }
 
 /// A tree line across the map with an opening for the gate tiles, so the gate
@@ -262,6 +304,9 @@ fn emberwick() -> Zone {
     ] {
         b.clearing(door.0, door.1 + 1, 0);
     }
+
+    // A runestone in the chicken pen, glossy from generations of hens.
+    b.set(60, 46, Tile::Runestone);
 
     Zone {
         id: 0,
@@ -383,6 +428,28 @@ fn whispering_woods() -> Zone {
     b.clearing(101, 46, 1);
     b.clearing(172, 28, 1);
 
+    // Old Nettle's hollow, deep in the woods where no road goes: a winding
+    // thread of gaps in the trees, findable but never signposted.
+    for (x, y) in [
+        (210, 27),
+        (210, 25),
+        (209, 23),
+        (210, 21),
+        (211, 19),
+        (212, 17),
+        (213, 15),
+        (214, 13),
+    ] {
+        b.clearing(x, y, 1);
+    }
+    b.clearing(215, 12, 2);
+
+    // Moon-mint for Granny Sorrel's kettle, just off the cave path,
+    // and two runestones for sharp-eyed wanderers.
+    b.set(110, 52, Tile::Herb);
+    b.set(46, 15, Tile::Runestone);
+    b.set(217, 10, Tile::Runestone);
+
     Zone {
         id: 1,
         name: "Whispering Woods",
@@ -415,6 +482,13 @@ fn whispering_woods() -> Zone {
                 pos: (172, 28),
                 quest: Some(6),
                 idle: &["*yaaawn* ...I wasn't sleeping. I was counting very slowly."],
+            },
+            // Hidden in the deep woods; her dialogue lives in content/sides.rs.
+            Npc {
+                name: "Old Nettle",
+                pos: (215, 12),
+                quest: None,
+                idle: &["Still here. So are the trees."],
             },
         ],
         critters: vec![
@@ -476,6 +550,9 @@ fn silverford() -> Zone {
     b.clearing(136, 45, 1);
     b.clearing(148, 22, 1);
     b.clearing(118, 57, 1);
+
+    // A runestone half-sunk at the far end of Morrow's beach.
+    b.set(124, 59, Tile::Runestone);
 
     Zone {
         id: 2,
@@ -566,6 +643,13 @@ fn hearthspire() -> Zone {
     b.clearing(68, 48, 1);
     b.clearing(172, 24, 1);
     b.clearing(206, 35, 1);
+
+    // A lone runestone up in the northern crags, with just enough of a
+    // scramble cleared through the rocks to reach it.
+    for (x, y) in [(129, 18), (130, 15), (129, 13), (130, 11)] {
+        b.clearing(x, y, 1);
+    }
+    b.set(130, 10, Tile::Runestone);
 
     Zone {
         id: 3,
@@ -677,7 +761,10 @@ fn bakery() -> Zone {
         vec![exit(BAKERY_ROOM_DOOR, EMBERWICK, BAKERY_DOOR)],
         vec![],
         vec![Critter::new(CritterKind::Cat, at(4, 1))],
-        vec![],
+        vec![Sign {
+            pos: at(4, 3),
+            text: "A recipe card, dusted with flour: 'Honey-oat loaves. Flour, oats, honey, patience. If it looks wrong, add butter. If it looks right: also butter.'",
+        }],
     )
 }
 
@@ -715,7 +802,10 @@ fn carpenter_house() -> Zone {
             idle: &["Measure twice, saw once, sweep thrice. Nobody warns you about the sweeping."],
         }],
         vec![],
-        vec![],
+        vec![Sign {
+            pos: at(3, 4),
+            text: "A pencilled note on the workbench, underlined three times: 'Gate hinge 34 and a HALF. Not 43 and a half. We do not speak of the tall gate.'",
+        }],
     )
 }
 
@@ -745,9 +835,29 @@ fn storehouse() -> Zone {
         99,
         STORE_ROOM,
         0.7,
-        vec![exit(STORE_ROOM_DOOR, EMBERWICK, STOREHOUSE_DOOR)],
+        vec![
+            exit(STORE_ROOM_DOOR, EMBERWICK, STOREHOUSE_DOOR),
+            enter(STORE_CELLAR_DOOR, STOREHOUSE_CELLAR, CELLAR_ROOM_DOOR),
+        ],
         vec![],
         vec![Critter::new(CritterKind::Cat, at(8, 3))],
+        vec![Sign {
+            pos: at(4, 4),
+            text: "An inventory, in a fading hand: preserves - CELLAR. Cellar key - LOST (went walking in the deep woods; the key did not come back, and neither did my afternoon).",
+        }],
+    )
+}
+
+fn storehouse_cellar() -> Zone {
+    room(
+        STOREHOUSE_CELLAR,
+        "The Storehouse Cellar",
+        133,
+        CELLAR_ROOM,
+        0.4,
+        vec![exit(CELLAR_ROOM_DOOR, STOREHOUSE, STORE_CELLAR_DOOR)],
+        vec![],
+        vec![],
         vec![],
     )
 }
@@ -914,6 +1024,73 @@ mod tests {
                     zone.name
                 );
             }
+        }
+    }
+
+    #[test]
+    fn every_runestone_stands_where_the_catalogue_says() {
+        let all = zones();
+        // The spots table and the actual tiles must agree, both ways.
+        for (i, (zone, (x, y))) in runestone_spots().iter().enumerate() {
+            assert_eq!(
+                all[*zone].tile(*x, *y),
+                Tile::Runestone,
+                "stone {} missing at {:?} in {}",
+                i + 1,
+                (x, y),
+                all[*zone].name
+            );
+            assert_eq!(runestone_id(*zone, (*x, *y)), Some(i as u8 + 1));
+        }
+        let standing: usize = all
+            .iter()
+            .map(|z| {
+                (0..H)
+                    .flat_map(|y| (0..W).map(move |x| (x, y)))
+                    .filter(|&(x, y)| z.tile(x, y) == Tile::Runestone)
+                    .count()
+            })
+            .sum();
+        assert_eq!(
+            standing,
+            runestone_spots().len(),
+            "an uncatalogued runestone is standing somewhere"
+        );
+        // Seven standing stones + one in the cellar chest = the full set.
+        assert_eq!(
+            standing + 1,
+            crate::content::stones::RUNESTONES.len(),
+            "the stones content and the world disagree on the count"
+        );
+    }
+
+    #[test]
+    fn every_secret_can_be_walked_to() {
+        let all = zones();
+        let seen: Vec<_> = all.iter().map(reachable).collect();
+        for (zone, pos) in runestone_spots() {
+            assert!(
+                adjacent_reachable(&seen[zone], pos),
+                "runestone at {:?} unreachable in {}",
+                pos,
+                all[zone].name
+            );
+        }
+        // The moon-mint patch, and the cellar chest.
+        for (zone, tile) in [
+            (WHISPERING_WOODS, Tile::Herb),
+            (STOREHOUSE_CELLAR, Tile::Chest),
+        ] {
+            let z = &all[zone];
+            let spot = (0..H)
+                .flat_map(|y| (0..W).map(move |x| (x, y)))
+                .find(|&(x, y)| z.tile(x, y) == tile)
+                .unwrap_or_else(|| panic!("no {tile:?} anywhere in {}", z.name));
+            assert!(
+                adjacent_reachable(&seen[zone], spot),
+                "{tile:?} at {spot:?} unreachable in {}",
+                z.name
+            );
         }
     }
 

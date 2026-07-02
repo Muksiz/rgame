@@ -74,7 +74,24 @@ fn every_screen_renders() {
     app.hints.insert(1, 2);
     app.completed.extend([1, 2, 3, 8]); // satchel has keepsakes to show
     app.fish = 3;
+    // Side business underway: trinkets carried, notes pending, stones found.
+    app.set_flag(rgame::content::sides::SORREL_ASKED);
+    app.set_flag(rgame::content::sides::SORREL_MINT);
+    app.set_flag(rgame::content::sides::NETTLE_MET);
+    app.set_flag(&rgame::content::sides::runestone_flag(1));
+    app.set_flag(&rgame::content::sides::runestone_flag(8));
     app.screen = Screen::Journal;
+    render(&atlas, &app);
+
+    // A runestone reading itself aloud, stone portrait and all.
+    let stone = rgame::content::stones::stone(1);
+    app.screen = Screen::Dialogue(Dialogue {
+        speaker: stone.name.to_string(),
+        pages: vec![stone.legend.to_string()],
+        page: 0,
+        revealed: 400,
+        kind: DialogueKind::Stone,
+    });
     render(&atlas, &app);
 
     for phase in [
@@ -136,6 +153,11 @@ fn a_completed_game_still_renders() {
     app.completed.extend(1..=12u8);
     app.accepted.extend(1..=12u8);
     app.grimoire.extend(1..=16u8);
+    for id in 1..=8 {
+        app.set_flag(&rgame::content::sides::runestone_flag(id));
+    }
+    app.set_flag(rgame::content::sides::SORREL_DONE);
+    app.set_flag(rgame::content::sides::CHEST_OPENED);
     app.zone_idx = 3;
     app.player = app.zones[3].spawn;
     app.screen = Screen::World;

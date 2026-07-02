@@ -17,6 +17,10 @@ pub struct SaveData {
     pub grimoire: Vec<u8>,
     #[serde(default)]
     pub fish: u32,
+    /// World-state flags (side quests, runestones found, opened chests).
+    /// `default` again: old scrolls simply have no flags set yet.
+    #[serde(default)]
+    pub flags: Vec<String>,
     pub zone: usize,
     pub pos: (i32, i32),
     pub play_ticks: u64,
@@ -51,6 +55,7 @@ mod tests {
             hints,
             grimoire: vec![1, 11],
             fish: 3,
+            flags: vec!["sorrel.asked".to_string(), "runestone.4".to_string()],
             zone: 1,
             pos: (42, 17),
             play_ticks: 9001,
@@ -66,5 +71,6 @@ mod tests {
         let back: SaveData = serde_json::from_str(old).unwrap();
         assert!(back.grimoire.is_empty());
         assert_eq!(back.fish, 0);
+        assert!(back.flags.is_empty());
     }
 }

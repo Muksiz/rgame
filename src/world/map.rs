@@ -52,6 +52,12 @@ pub enum Tile {
     Hearth,
     Barrel,
     Crate,
+    /// A patch of something pickable (moon-mint, so far). Press `e` beside it.
+    Herb,
+    /// A sturdy old chest. Locked, until it isn't.
+    Chest,
+    /// A hidden standing stone with a rune worth collecting. Press `e`.
+    Runestone,
 }
 
 impl Tile {
@@ -358,6 +364,8 @@ pub fn char_tile(c: char) -> Option<Tile> {
         'h' => Tile::Hearth,
         'o' => Tile::Barrel,
         'x' => Tile::Crate,
+        'C' => Tile::Chest,
+        '@' => Tile::Runestone,
         _ => return None,
     })
 }

@@ -8,8 +8,9 @@
 - *Roguelike Characters* — `kenney/roguelikeChar_transparent.png`
   https://kenney.nl/assets/roguelike-characters
 
-The critter and Ferris sprites in the atlas are original pixel art for this
-project (same CC0 spirit — do what you like with them).
+The critter, Ferris, bookshelf, chest, runestone and moon-mint sprites in
+the atlas are original pixel art for this project (same CC0 spirit — do
+what you like with them).
 
 To rebake after editing the script:
 

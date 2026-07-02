@@ -5,17 +5,18 @@ of old Pokémon and Zelda. Each step multiplies the value of the world that
 already exists; polish comes last because the tone is already carrying a lot.
 
 Ordering: **interiors ✅ → items & gates ✅ → grass encounters ✅ →
-side content (begun) → NPC life → audio & polish.**
+side content ✅ → NPC life (next) → audio & polish.**
 
-**Where things stand** (July 2026): steps 1–3 are shipped — every door
+**Where things stand** (July 2026): steps 1–4 are shipped — every door
 opens, each place keeps its own fixed hour and weather, quests leave real
-keepsakes that gate the world, and the tall grass hides sixteen wild runes
-that fill the Grimoire. Step 4 has its first piece: the Great Library's
-shelves hold real books about Rust, its features and its history. Along the
-way, Fern became **Wren** (too close to Ferris), the rune collection is
-deliberately the **Grimoire** — in-world names over franchise-adjacent ones —
-and the original Ratatui TUI frontend was retired: the sprite-rendered
-Macroquad build is the game now (`cargo run`).
+keepsakes that gate the world, the tall grass hides sixteen wild runes that
+fill the Grimoire, and the world now keeps secrets off the main road: side
+quests remembered in world flags, eight hidden runestones, a locked cellar,
+and a Library of real books about Rust. Along the way, Fern became **Wren**
+(too close to Ferris), the rune collection is deliberately the **Grimoire**
+— in-world names over franchise-adjacent ones — and the original Ratatui
+TUI frontend was retired: the sprite-rendered Macroquad build is the game
+now (`cargo run`).
 
 ---
 
@@ -51,9 +52,9 @@ storm-lantern, and any reedy bank becomes a fishing spot (press `e`) once
 the rod is in the satchel — strictly catch-and-release, with a running
 count of fish met.
 
-Still open for later passes: more gates on *optional* content (the main
-road is linear, so meaningful gating wants side content from step 4), and
-dimming undiscovered dark places until the lantern is owned.
+Still open for later passes: dimming undiscovered dark places until the
+lantern is owned. (Step 4 delivered the promised gate on *optional*
+content: the storehouse cellar is dark, and the lantern is the way in.)
 
 ## 3. Tall-grass encounters — wild runes and the Grimoire ✅
 
@@ -71,22 +72,33 @@ day. Both screens are `Screen` variants reachable through
 Still open for later passes: more runes per zone, encounter art (a proper
 grass-rustle transition), and rare runes that only stir at particular spots.
 
-## 4. Side quests, secrets, and collectibles ◐ (next up)
+## 4. Side quests, secrets, and collectibles ✅
 
-`active_quest()` stays strictly linear for the main road, but old Pokémon
-always had optional stuff off the critical path:
+*Done.* `active_quest()` stays strictly linear for the main road; everything
+here lives off it, remembered in a new `flags: BTreeSet<String>` on
+`App`/`SaveData` (behind `#[serde(default)]`, so old scrolls keep loading):
 
-- A parallel set of side quests (a hidden NPC in the deep woods, a locked
-  chest, a favor for Granny Sorrel) — needs a general
-  `flags: BTreeSet<Flag>` on `App`/`SaveData` for world state that isn't
-  quest completion.
-- Collectibles: e.g. eight hidden runestones with a counter in the journal;
-  a bush that hides a passage once you've learned the right rune.
-- The interiors are ready-made stages for this — a note on a table, a
-  cellar door in the storehouse.
-- *First piece in place:* the Great Library's shelves are readable
-  (`content/books.rs`) — sixteen real books on Rust's features, guides,
-  and history, one per shelf tile, browsed in walking order with `e`.
+- **Side quests** (`content/sides.rs`, dialogue driven by flags): Granny
+  Sorrel's favor — a sprig of moon-mint from a patch off the Echo Cave
+  path, for a kettle that finally commits to boiling — and Old Nettle, a
+  whittler hidden deep in the Whispering Woods where no road goes, who
+  hands over a rusted key stamped EMBERWICK STOREHOUSE.
+- **The locked chest**: the storehouse grew a cellar door (a new interior
+  zone) — pitch dark, so Bram's storm-lantern gates it, the promised
+  "gate on optional content" — and the chest down there wants Nettle's key.
+- **Collectibles** (`content/stones.rs`): eight hidden runestones, seven
+  standing in quiet corners of the world (they glimmer until found), the
+  eighth inside the chest. The journal counts them once the first is found.
+- **Interior secrets**: signs generalized into notes that can sit on any
+  tile — a recipe card in the bakery, Alder's measurements, a storehouse
+  inventory whose margins point at both the cellar and the lost key.
+- The Great Library's shelves are readable (`content/books.rs`) — sixteen
+  real books on Rust's features, guides, and history, one per shelf tile,
+  browsed in walking order with `e`.
+
+Still open for later passes: more side arcs (the flags plumbing makes them
+cheap now), and a bush that hides a passage once you've learned the right
+rune.
 
 ## 5. NPC life and dialogue depth
 
