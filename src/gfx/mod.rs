@@ -1,8 +1,8 @@
-//! The graphical frontend: everything renders CPU-side into a 480×270
-//! framebuffer ([`Frame`]) — sprites for the world, an 8×8 bitmap font for
-//! words — and the Macroquad shell (`src/bin/rune_road_gfx.rs`) just scales it
-//! up, pixel-perfect. `examples/gfx_snapshot.rs` dumps the same buffer to PNG,
-//! which is how these screens are eyeballed without a window.
+//! The renderer: everything draws CPU-side into a 480×270 framebuffer
+//! ([`Frame`]) — sprites for the world, an 8×8 bitmap font for words — and
+//! the Macroquad shell (`src/main.rs`) just scales it up, pixel-perfect.
+//! `examples/snapshot.rs` dumps the same buffer to PNG, which is how these
+//! screens are eyeballed without a window.
 
 pub mod atlas;
 pub mod font;
@@ -13,8 +13,8 @@ pub use atlas::Atlas;
 pub use frame::{FB_H, FB_W, Frame};
 pub use scene::render;
 
-/// Day/night applied to a color — same math as `ui::shade`, kept as plain RGB
-/// so sprites and text share it.
+/// The zone's fixed daylight applied to a color, kept as plain RGB so
+/// sprites and text share it.
 pub fn shade(c: (u8, u8, u8), daylight: f32) -> (u8, u8, u8) {
     let bright = 0.45 + 0.55 * daylight;
     let night = 1.0 - daylight;

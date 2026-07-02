@@ -1,42 +1,32 @@
-//! Renders every screen at a spread of terminal sizes — tiny, classic 80x24,
-//! wide, and ultrawide-bigger-than-the-map — to prove nothing panics and the
-//! camera/out-of-bounds fill hold up everywhere.
-
-use ratatui::Terminal;
-use ratatui::backend::TestBackend;
+//! Renders every game screen through the real renderer into the 480×270
+//! framebuffer — every zone, the camera pinned to the map corners and past
+//! them — to prove nothing panics and the out-of-bounds fill holds up.
 
 use rgame::app::{App, Dialogue, DialogueKind, EncounterPhase, Screen};
 use rgame::checker::Outcome;
-use rgame::ui;
+use rgame::content::books;
+use rgame::gfx::{self, Atlas, Frame};
 use rgame::world::map::{MAP_H, MAP_W};
 
-const SIZES: &[(u16, u16)] = &[(10, 5), (80, 24), (160, 45), (300, 90)];
-
-fn render(app: &App, w: u16, h: u16) {
-    let backend = TestBackend::new(w, h);
-    let mut terminal = Terminal::new(backend).unwrap();
-    terminal.draw(|frame| ui::draw(frame, app)).unwrap();
-}
-
-fn render_all_sizes(app: &App) {
-    for &(w, h) in SIZES {
-        render(app, w, h);
-    }
+fn render(atlas: &Atlas, app: &App) {
+    let mut fb = Frame::new();
+    gfx::render(&mut fb, atlas, app);
 }
 
 #[test]
-fn every_screen_renders_at_every_size() {
+fn every_screen_renders() {
+    let atlas = Atlas::load();
     let mut app = App::new();
-    app.tick = 12345; // some arbitrary time of day, animations mid-frame
+    app.tick = 12345; // animations mid-frame
 
-    render_all_sizes(&app); // Title
+    render(&atlas, &app); // Title
 
     // Every zone, interiors included — each keeps its own hour and weather.
     for zone in 0..app.zones.len() {
         app.zone_idx = zone;
         app.player = app.zones[zone].spawn;
         app.screen = Screen::World;
-        render_all_sizes(&app);
+        render(&atlas, &app);
     }
 
     // Camera pinned to the map corners, and past them.
@@ -48,10 +38,13 @@ fn every_screen_renders_at_every_size() {
         (0, MAP_H - 1),
     ] {
         app.player = corner;
-        render_all_sizes(&app);
+        render(&atlas, &app);
     }
 
     app.player = app.zones[0].spawn;
+    app.toast("A toast! To toast.");
+    render(&atlas, &app);
+
     app.screen = Screen::Dialogue(Dialogue {
         speaker: "Elder Rowan".to_string(),
         pages: vec![
@@ -62,14 +55,27 @@ fn every_screen_renders_at_every_size() {
         revealed: 8,
         kind: DialogueKind::Flavor,
     });
-    render_all_sizes(&app);
+    render(&atlas, &app);
+
+    // A book off a Library shelf gets its own portrait.
+    let book = &books::BOOKS[0];
+    app.screen = Screen::Dialogue(Dialogue {
+        speaker: book.title.to_string(),
+        pages: book.pages.iter().map(|p| p.to_string()).collect(),
+        page: 0,
+        revealed: 400,
+        kind: DialogueKind::Book,
+    });
+    render(&atlas, &app);
 
     app.screen = Screen::Journal;
-    render_all_sizes(&app);
+    render(&atlas, &app);
     app.accepted.insert(1);
     app.hints.insert(1, 2);
+    app.completed.extend([1, 2, 3, 8]); // satchel has keepsakes to show
+    app.fish = 3;
     app.screen = Screen::Journal;
-    render_all_sizes(&app);
+    render(&atlas, &app);
 
     for phase in [
         EncounterPhase::Asking,
@@ -81,16 +87,15 @@ fn every_screen_renders_at_every_size() {
             selected: 1,
             phase,
         };
-        render_all_sizes(&app);
+        render(&atlas, &app);
     }
 
     app.grimoire.extend([1, 5, 11]);
-    app.fish = 3;
     app.screen = Screen::Grimoire;
-    render_all_sizes(&app);
+    render(&atlas, &app);
 
     app.screen = Screen::Casting { quest: 1 };
-    render_all_sizes(&app);
+    render(&atlas, &app);
 
     for outcome in [
         Outcome::Pass {
@@ -112,28 +117,32 @@ fn every_screen_renders_at_every_size() {
             outcome,
             scroll: 3,
         };
-        render_all_sizes(&app);
+        render(&atlas, &app);
     }
 
     app.screen = Screen::Paused { selected: 1 };
-    render_all_sizes(&app);
+    render(&atlas, &app);
 
     for page in 0..4 {
         app.screen = Screen::Epilogue { page };
-        render_all_sizes(&app);
+        render(&atlas, &app);
     }
 }
 
 #[test]
 fn a_completed_game_still_renders() {
+    let atlas = Atlas::load();
     let mut app = App::new();
     app.completed.extend(1..=12u8);
     app.accepted.extend(1..=12u8);
+    app.grimoire.extend(1..=16u8);
     app.zone_idx = 3;
     app.player = app.zones[3].spawn;
     app.screen = Screen::World;
     app.tick = 99999;
-    render_all_sizes(&app);
+    render(&atlas, &app);
     app.screen = Screen::Journal;
-    render_all_sizes(&app);
+    render(&atlas, &app);
+    app.screen = Screen::Grimoire;
+    render(&atlas, &app);
 }

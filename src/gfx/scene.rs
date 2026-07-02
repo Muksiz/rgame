@@ -1,5 +1,5 @@
-//! Draws every game screen onto the framebuffer. This is `ui/` re-imagined in
-//! sprites: same state, same tone, 16×16 pixels per tile instead of one glyph.
+//! Draws every game screen onto the framebuffer: sprites for the world, the
+//! 8×8 bitmap font for words, 16×16 pixels per tile.
 
 use crate::app::{App, Dialogue, DialogueKind, EPILOGUE, EncounterPhase, Screen};
 use crate::checker::{self, Outcome};
@@ -180,7 +180,7 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
 }
 
 /// Tile → (opaque base sprite, transparent overlay). The one place tile
-/// appearance lives, exactly like `tile_visual` in the TUI.
+/// appearance lives.
 #[allow(clippy::too_many_arguments)]
 fn tile_sprites(
     tile: Tile,
@@ -1039,8 +1039,8 @@ fn encounter(fb: &mut Frame, rune_id: u8, selected: usize, phase: EncounterPhase
 
 fn grimoire(fb: &mut Frame, app: &App) {
     let (ix, iy, iw, ih) = centered_panel(fb, 440, 220, "Grimoire - wild runes of the road");
-    // Names only, two columns per zone — the lore is read at catch time (and
-    // in the TUI's roomier grimoire); this keeps all four zones on one page.
+    // Names only, two columns per zone — the lore is read at catch time —
+    // so all four zones fit on one page.
     let mut y = iy + 2;
     for zone in 0..=3 {
         font::text(fb, ix + 4, y, app.zones[zone].name, WARM, 1);
@@ -1076,7 +1076,7 @@ fn grimoire(fb: &mut Frame, app: &App) {
 fn casting(fb: &mut Frame, app: &App) {
     let (ix, iy, iw, _) = centered_panel(fb, 280, 72, "Casting");
     let spin = ['|', '/', '-', '\\'][(app.tick / 2) as usize % 4];
-    let phrase = crate::ui::cast::WEAVING[(app.tick / 24) as usize % 4];
+    let phrase = quests::WEAVING[(app.tick / 24) as usize % quests::WEAVING.len()];
     font::text_center(
         fb,
         ix + iw / 2,

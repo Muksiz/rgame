@@ -36,6 +36,14 @@ pub static PASS_LINES: &[&str] = &[
     "Ferris clicks both claws like castanets. \"Flawless!\"",
 ];
 
+/// What the casting screen mumbles while rustc reads the scroll.
+pub const WEAVING: [&str; 4] = [
+    "weaving the runes…",
+    "coaxing the borrow spirit…",
+    "warming the type glyphs…",
+    "asking rustc very nicely…",
+];
+
 pub static QUESTS: [Quest; 12] = [
     Quest {
         id: 1,

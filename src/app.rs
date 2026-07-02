@@ -1,8 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::mpsc::Receiver;
 
-use ratatui::crossterm::event::{KeyCode, KeyEvent};
-
 use crate::checker::{self, Outcome};
 use crate::content::items::{self, Item};
 use crate::content::quests::{self, QUESTS, Quest};
@@ -16,6 +14,21 @@ use crate::world::zones;
 const TOAST_TICKS: u64 = 110;
 /// Typewriter reveal speed, characters per tick.
 const REVEAL_PER_TICK: usize = 2;
+
+/// The game's own input alphabet. The windowing shell translates whatever
+/// the platform reports into these; tests feed them to `App::on_key` directly.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Key {
+    Up,
+    Down,
+    Left,
+    Right,
+    Enter,
+    Esc,
+    PageUp,
+    PageDown,
+    Char(char),
+}
 
 pub static EPILOGUE: &[&str] = &[
     "The tall doors of the Great Library swing wide, and warm lamplight spills down the steps and into the mist. Somewhere above, the shelves go up and up until they look like a night full of square stars.",
@@ -253,34 +266,34 @@ impl App {
 
     // ── input ──────────────────────────────────────────────────────────────
 
-    pub fn on_key(&mut self, key: KeyEvent) {
+    pub fn on_key(&mut self, key: Key) {
         match &mut self.screen {
-            Screen::Title { .. } => self.title_key(key.code),
-            Screen::World => self.world_key(key.code),
-            Screen::Dialogue(_) => self.dialogue_key(key.code),
-            Screen::Journal => self.journal_key(key.code),
-            Screen::Encounter { .. } => self.encounter_key(key.code),
-            Screen::Grimoire => self.grimoire_key(key.code),
+            Screen::Title { .. } => self.title_key(key),
+            Screen::World => self.world_key(key),
+            Screen::Dialogue(_) => self.dialogue_key(key),
+            Screen::Journal => self.journal_key(key),
+            Screen::Encounter { .. } => self.encounter_key(key),
+            Screen::Grimoire => self.grimoire_key(key),
             Screen::Casting { .. } => {} // the runes are busy
-            Screen::CastResult { .. } => self.cast_result_key(key.code),
-            Screen::Paused { .. } => self.paused_key(key.code),
-            Screen::Epilogue { .. } => self.epilogue_key(key.code),
+            Screen::CastResult { .. } => self.cast_result_key(key),
+            Screen::Paused { .. } => self.paused_key(key),
+            Screen::Epilogue { .. } => self.epilogue_key(key),
         }
     }
 
-    fn title_key(&mut self, code: KeyCode) {
+    fn title_key(&mut self, code: Key) {
         let items = if self.has_save { 3 } else { 2 };
         let Screen::Title { selected } = &mut self.screen else {
             return;
         };
         match code {
-            KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('w') => {
+            Key::Up | Key::Char('k') | Key::Char('w') => {
                 *selected = (*selected + items - 1) % items;
             }
-            KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('s') => {
+            Key::Down | Key::Char('j') | Key::Char('s') => {
                 *selected = (*selected + 1) % items;
             }
-            KeyCode::Enter | KeyCode::Char(' ') => {
+            Key::Enter | Key::Char(' ') => {
                 // With a save: [Continue, New Journey, Quit]; without: [New Journey, Quit].
                 let choice = *selected;
                 match (self.has_save, choice) {
@@ -289,7 +302,7 @@ impl App {
                     _ => self.should_quit = true,
                 }
             }
-            KeyCode::Esc | KeyCode::Char('q') => self.should_quit = true,
+            Key::Esc | Key::Char('q') => self.should_quit = true,
             _ => {}
         }
     }
@@ -352,23 +365,23 @@ impl App {
         }
     }
 
-    fn world_key(&mut self, code: KeyCode) {
+    fn world_key(&mut self, code: Key) {
         match code {
-            KeyCode::Up | KeyCode::Char('w') | KeyCode::Char('k') => self.try_move(0, -1),
-            KeyCode::Down | KeyCode::Char('s') | KeyCode::Char('j') => self.try_move(0, 1),
-            KeyCode::Left | KeyCode::Char('a') | KeyCode::Char('h') => self.try_move(-1, 0),
-            KeyCode::Right | KeyCode::Char('d') | KeyCode::Char('l') => self.try_move(1, 0),
-            KeyCode::Enter | KeyCode::Char('e') => self.interact(),
-            KeyCode::Char('c') => self.start_cast(),
-            KeyCode::Char('q') => self.screen = Screen::Journal,
-            KeyCode::Char('g') => self.screen = Screen::Grimoire,
-            KeyCode::Char('f') => self.ferris_hint(),
-            KeyCode::Esc => self.screen = Screen::Paused { selected: 0 },
+            Key::Up | Key::Char('w') | Key::Char('k') => self.try_move(0, -1),
+            Key::Down | Key::Char('s') | Key::Char('j') => self.try_move(0, 1),
+            Key::Left | Key::Char('a') | Key::Char('h') => self.try_move(-1, 0),
+            Key::Right | Key::Char('d') | Key::Char('l') => self.try_move(1, 0),
+            Key::Enter | Key::Char('e') => self.interact(),
+            Key::Char('c') => self.start_cast(),
+            Key::Char('q') => self.screen = Screen::Journal,
+            Key::Char('g') => self.screen = Screen::Grimoire,
+            Key::Char('f') => self.ferris_hint(),
+            Key::Esc => self.screen = Screen::Paused { selected: 0 },
             _ => {}
         }
     }
 
-    fn encounter_key(&mut self, code: KeyCode) {
+    fn encounter_key(&mut self, code: Key) {
         let Screen::Encounter {
             rune,
             selected,
@@ -380,13 +393,13 @@ impl App {
         let rune_id = *rune;
         match *phase {
             EncounterPhase::Asking => match code {
-                KeyCode::Up | KeyCode::Char('k') | KeyCode::Char('w') => {
+                Key::Up | Key::Char('k') | Key::Char('w') => {
                     *selected = (*selected + 2) % 3;
                 }
-                KeyCode::Down | KeyCode::Char('j') | KeyCode::Char('s') => {
+                Key::Down | Key::Char('j') | Key::Char('s') => {
                     *selected = (*selected + 1) % 3;
                 }
-                KeyCode::Enter | KeyCode::Char(' ') => {
+                Key::Enter | Key::Char(' ') => {
                     if *selected == wilds::wild(rune_id).answer {
                         *phase = EncounterPhase::Caught;
                         self.grimoire.insert(rune_id);
@@ -394,7 +407,7 @@ impl App {
                         *phase = EncounterPhase::Fizzled;
                     }
                 }
-                KeyCode::Esc => {
+                Key::Esc => {
                     // Fleeing is always free.
                     self.screen = Screen::World;
                     self.toast("You back away slowly. The grass settles. No harm done.");
@@ -402,7 +415,7 @@ impl App {
                 _ => {}
             },
             _ => match code {
-                KeyCode::Enter | KeyCode::Char(' ') | KeyCode::Esc => {
+                Key::Enter | Key::Char(' ') | Key::Esc => {
                     self.screen = Screen::World;
                 }
                 _ => {}
@@ -410,9 +423,9 @@ impl App {
         }
     }
 
-    fn grimoire_key(&mut self, code: KeyCode) {
+    fn grimoire_key(&mut self, code: Key) {
         match code {
-            KeyCode::Esc | KeyCode::Char('g') | KeyCode::Char('q') | KeyCode::Enter => {
+            Key::Esc | Key::Char('g') | Key::Char('q') | Key::Enter => {
                 self.screen = Screen::World;
             }
             _ => {}
@@ -668,12 +681,12 @@ impl App {
         self.screen = Screen::Journal;
     }
 
-    fn dialogue_key(&mut self, code: KeyCode) {
+    fn dialogue_key(&mut self, code: Key) {
         let Screen::Dialogue(d) = &mut self.screen else {
             return;
         };
         match code {
-            KeyCode::Enter | KeyCode::Char(' ') | KeyCode::Char('e') => {
+            Key::Enter | Key::Char(' ') | Key::Char('e') => {
                 let page_len = d.pages[d.page].chars().count();
                 if d.revealed < page_len {
                     d.revealed = page_len; // skip the typewriter
@@ -684,7 +697,7 @@ impl App {
                     self.end_dialogue();
                 }
             }
-            KeyCode::Esc => self.end_dialogue(),
+            Key::Esc => self.end_dialogue(),
             _ => {}
         }
     }
@@ -722,15 +735,15 @@ impl App {
         }
     }
 
-    fn journal_key(&mut self, code: KeyCode) {
+    fn journal_key(&mut self, code: Key) {
         match code {
-            KeyCode::Esc | KeyCode::Char('q') | KeyCode::Enter => self.screen = Screen::World,
-            KeyCode::Char('f') => self.ferris_hint(),
+            Key::Esc | Key::Char('q') | Key::Enter => self.screen = Screen::World,
+            Key::Char('f') => self.ferris_hint(),
             _ => {}
         }
     }
 
-    fn cast_result_key(&mut self, code: KeyCode) {
+    fn cast_result_key(&mut self, code: Key) {
         let Screen::CastResult {
             quest,
             outcome,
@@ -740,11 +753,11 @@ impl App {
             return;
         };
         match code {
-            KeyCode::Up => *scroll = scroll.saturating_sub(1),
-            KeyCode::Down => *scroll = scroll.saturating_add(1),
-            KeyCode::PageUp => *scroll = scroll.saturating_sub(10),
-            KeyCode::PageDown => *scroll = scroll.saturating_add(10),
-            KeyCode::Enter | KeyCode::Esc | KeyCode::Char(' ') => {
+            Key::Up => *scroll = scroll.saturating_sub(1),
+            Key::Down => *scroll = scroll.saturating_add(1),
+            Key::PageUp => *scroll = scroll.saturating_sub(10),
+            Key::PageDown => *scroll = scroll.saturating_add(10),
+            Key::Enter | Key::Esc | Key::Char(' ') => {
                 let quest_id = *quest;
                 if matches!(outcome, Outcome::Pass { .. }) {
                     let q = quests::quest(quest_id);
@@ -770,19 +783,19 @@ impl App {
         }
     }
 
-    fn paused_key(&mut self, code: KeyCode) {
+    fn paused_key(&mut self, code: Key) {
         let Screen::Paused { selected } = &mut self.screen else {
             return;
         };
         match code {
-            KeyCode::Up
-            | KeyCode::Down
-            | KeyCode::Char('k')
-            | KeyCode::Char('j')
-            | KeyCode::Char('w')
-            | KeyCode::Char('s') => *selected = 1 - *selected,
-            KeyCode::Esc => self.screen = Screen::World,
-            KeyCode::Enter | KeyCode::Char(' ') => {
+            Key::Up
+            | Key::Down
+            | Key::Char('k')
+            | Key::Char('j')
+            | Key::Char('w')
+            | Key::Char('s') => *selected = 1 - *selected,
+            Key::Esc => self.screen = Screen::World,
+            Key::Enter | Key::Char(' ') => {
                 if *selected == 0 {
                     self.screen = Screen::World;
                 } else {
@@ -794,12 +807,12 @@ impl App {
         }
     }
 
-    fn epilogue_key(&mut self, code: KeyCode) {
+    fn epilogue_key(&mut self, code: Key) {
         let Screen::Epilogue { page } = &mut self.screen else {
             return;
         };
         match code {
-            KeyCode::Enter | KeyCode::Char(' ') => {
+            Key::Enter | Key::Char(' ') => {
                 if *page + 1 < EPILOGUE.len() {
                     *page += 1;
                 } else {
@@ -808,7 +821,7 @@ impl App {
                     self.autosave();
                 }
             }
-            KeyCode::Esc => {
+            Key::Esc => {
                 self.screen = Screen::World;
                 self.autosave();
             }
@@ -903,9 +916,9 @@ mod tests {
 
         // Answer correctly, purely through keystrokes.
         for _ in 0..wilds::wild(rune).answer {
-            app.on_key(KeyEvent::from(KeyCode::Down));
+            app.on_key(Key::Down);
         }
-        app.on_key(KeyEvent::from(KeyCode::Enter));
+        app.on_key(Key::Enter);
         assert!(matches!(
             app.screen,
             Screen::Encounter {
@@ -914,7 +927,7 @@ mod tests {
             }
         ));
         assert!(app.grimoire.contains(&rune), "caught rune not inscribed");
-        app.on_key(KeyEvent::from(KeyCode::Enter));
+        app.on_key(Key::Enter);
         assert!(matches!(app.screen, Screen::World));
     }
 
@@ -926,7 +939,7 @@ mod tests {
             selected: 0,
             phase: EncounterPhase::Asking,
         };
-        app.on_key(KeyEvent::from(KeyCode::Esc));
+        app.on_key(Key::Esc);
         assert!(matches!(app.screen, Screen::World));
         assert!(app.grimoire.is_empty());
     }
@@ -972,10 +985,10 @@ mod tests {
             }
         }
         app.player = spot.expect("Silverford has a quiet riverbank somewhere");
-        app.on_key(KeyEvent::from(KeyCode::Char('e')));
+        app.on_key(Key::Char('e'));
         assert_eq!(app.fish, 0, "fished without a rod");
         app.completed.insert(8); // Juniper's spare rod
-        app.on_key(KeyEvent::from(KeyCode::Char('e')));
+        app.on_key(Key::Char('e'));
         assert_eq!(app.fish, 1);
         assert!(app.toast.is_some(), "the catch deserves a mention");
     }
@@ -1003,7 +1016,7 @@ mod tests {
         let (x, y) = spot.expect("the Library has stacks with an aisle");
 
         app.player = (x, y + 1);
-        app.on_key(KeyEvent::from(KeyCode::Char('e')));
+        app.on_key(Key::Char('e'));
         let Screen::Dialogue(d) = &app.screen else {
             panic!("the shelf had nothing to say");
         };
@@ -1013,7 +1026,7 @@ mod tests {
         // One step along the stack: the next title in the collection.
         app.screen = Screen::World;
         app.player = (x + 1, y + 1);
-        app.on_key(KeyEvent::from(KeyCode::Char('e')));
+        app.on_key(Key::Char('e'));
         let Screen::Dialogue(d) = &app.screen else {
             panic!("the second shelf had nothing to say");
         };

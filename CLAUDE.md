@@ -4,33 +4,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-**Rune & Road** — a cozy game that teaches Rust, growing step by step into an old-Pokémon/Zelda-shaped world (see `ROADMAP.md` for what's done and what's next). It has two frontends over one `App`: a Ratatui TUI and a sprite-based Macroquad build. The repo owner (Jani) is both the developer and the *player*: the game scaffolds exercise files into `quests/` which he solves in his own editor to learn Rust. Full solutions live in `tests/solutions/` — treat them as spoilers when he's asking about a quest he's playing, and give hints instead.
+**Rune & Road** — a cozy game that teaches Rust, growing step by step into an old-Pokémon/Zelda-shaped world (see `ROADMAP.md` for what's done and what's next). It renders as 16×16 sprites on a 480×270 framebuffer, integer-scaled into a Macroquad window. The original Ratatui TUI frontend has been retired; the graphical build *is* the game. The repo owner (Jani) is both the developer and the *player*: the game scaffolds exercise files into `quests/` which he solves in his own editor to learn Rust. Full solutions live in `tests/solutions/` — treat them as spoilers when he's asking about a quest he's playing, and give hints instead.
 
-Beyond the 12 main quests, the world now has optional layers: enterable interiors behind every door, quest keepsakes that gate the world (the storm-lantern, the fishing rod), wild rune encounters in the tall grass feeding the Grimoire collection, and a Great Library whose shelves hold real books about Rust.
+Beyond the 12 main quests, the world has optional layers: enterable interiors behind every door, quest keepsakes that gate the world (the storm-lantern, the fishing rod), wild rune encounters in the tall grass feeding the Grimoire collection, and a Great Library whose shelves hold real books about Rust.
 
 ## Commands
 
 ```sh
-cargo run                                        # play (needs a real TTY)
-cargo test                                       # everything, incl. a simulated full playthrough (~4s)
-cargo test --test journey                        # start-to-finish playthrough via real keystrokes
+cargo run                                        # play (opens the game window)
+cargo test                                       # everything, incl. a simulated full playthrough
+cargo test --test journey                        # start-to-finish playthrough via real key input
 cargo test --test solve_through                  # compiles all 24 templates+solutions with real rustc
-cargo test --test render                         # every screen at sizes 10x5 → 300x90
+cargo test --test render                         # every screen through the real renderer, headless
 cargo test <name>                                # single unit test by name
 cargo clippy --all-targets && cargo fmt          # keep both clean (they are)
-cargo run --example snapshot -- <zone> <x> <y> <w> <h>       # render a map region as text, no TTY (0-3 overworld, 4+ interiors)
-cargo run --features gfx --bin rune-road-gfx    # play the graphical (Macroquad) edition in a window
-cargo run --example gfx_snapshot -- <scene> [zone] [--pos x,y] [--tick n] [--out f.png]   # gfx screen → PNG, headless
+cargo run --example snapshot -- <scene> [zone] [--pos x,y] [--tick n] [--out f.png]   # any screen → PNG, no window
 ```
 
-The `snapshot` example is the way to "see" map edits without launching the game;
-`gfx_snapshot` is the same idea for the graphical frontend (scenes: title, world,
-dialogue, journal, casting, pass, fizzle, paused, epilogue, toast, encounter,
-caught, grimoire, book).
+The `snapshot` example is the way to "see" anything — map edits, new screens —
+without launching the game: it renders the same framebuffer the window shows,
+byte for byte, to a PNG (scenes: title, world, dialogue, journal, casting,
+pass, fizzle, paused, epilogue, toast, encounter, caught, grimoire, book;
+`world` takes a zone index: 0-3 overworld, 4+ interiors).
 
 ## Architecture
 
-Lib + thin bin split (`src/lib.rs` + `src/main.rs`) exists so integration tests can drive the whole game black-box through `App::on_key` / `App::on_tick` — keep new behavior reachable through those two entry points.
+Lib + thin bin split: `src/main.rs` is only the Macroquad shell (keymap → `app::Key`, a 50ms tick, framebuffer upload). Everything else lives in the lib so integration tests can drive the whole game black-box through `App::on_key` / `App::on_tick` — keep new behavior reachable through those two entry points. Input is the game's own `app::Key` enum; nothing outside `main.rs` knows about macroquad key codes.
 
 **Quest pipeline** (the core loop, spans several files):
 `content/quests.rs` holds the static `QUESTS: [Quest; 12]` array — all dialogue, hints, and templates (`include_str!` from `src/content/templates/*.rs`). Accepting a quest makes `checker::scaffold` copy the template to `./quests/` in the cwd (**never overwrites** — player work is sacred). Pressing `c` runs `checker::cast`: a background thread compiles the file standalone with `rustc --edition 2024 --test`, runs the test binary with a 10s kill-timeout (players write infinite loops), and reports an `Outcome` over an mpsc channel polled in `App::on_tick`.
@@ -48,17 +47,14 @@ Lib + thin bin split (`src/lib.rs` + `src/main.rs`) exists so integration tests 
 
 **Interiors & warps**: zones 0–3 are the overworld; zones 4+ are rooms behind doors (houses, the Echo Cave, the Great Library) — small stamped rooms floating in `Tile::Void`, built by `room()` in `world/zones.rs`. Every `Tile::Door` (and the cave mouth) carries a `Warp { at, to_zone, to_pos }`; `App::try_move` warps on step-on. Invariant tests: every Door tile has a warp, every warp lands on ground reachable from the destination zone's spawn, and every way in has a way back. **Time of day and weather are static per zone** (`Zone::daylight`, `Zone::weather: Option<Weather>` — interiors have `None`): each place keeps its own fixed hour, from Emberwick's bright morning (0.95) to Hearthspire's misty night (0.3); there is no ticking day/night clock.
 
-**Rendering** (`ui/`): the camera (`world/camera.rs`) clamps to the map and, when the terminal exceeds the map, centers it while `Zone::tile` returns `Border` scenery for out-of-bounds coords — a hard requirement: ultrawide terminals must never see black bars. Tile appearance lives in one place, `tile_visual()` in `ui/overworld.rs` (glyph + fg + bg per tile, animated by tick). All colors pass through `ui::shade()` with the zone's fixed `App::daylight()`. Weather particles (`ui/effects.rs`) only replace glyph+fg, never bg, so they sit "in" the world.
+**Rendering** (`src/gfx/`): everything draws CPU-side into a 480×270 RGBA framebuffer (`gfx/frame.rs`); the shell only uploads and integer-scales it, which is what lets `examples/snapshot.rs` dump pixel-identical PNGs headless and lets `tests/render.rs` exercise every screen without a window. The camera (`world/camera.rs`) follows the player and clamps to the map. Tile appearance lives in one place: `tile_sprites()` in `gfx/scene.rs` (base sprite + transparent overlay per tile, animated by tick), with edge-aware detail passes (shoreline, path/floor rims, rugs, roof shingles) beside it. All colors pass through `gfx::shade()` with the zone's fixed `App::daylight()`. Weather is pixel particles drawn over the world but under the HUD. Text is the `font8x8`-based bitmap font in `gfx/font.rs`. Sprites come from `assets/atlas.png`, baked by `tools/bake_atlas.py` from Kenney's CC0 packs (`assets/CREDITS.md`, sheets in `assets/kenney/`); to add sprites, append cells at the *end* of the bake list (existing ids must not shift), run `python3 tools/bake_atlas.py assets/kenney/roguelikeSheet_transparent.png assets/kenney/roguelikeChar_transparent.png` (needs Pillow), and sync the printed constants into `gfx/atlas.rs`. Hand-pixeled sprites (critters, Ferris, the bookshelf) are `from_art` text grids in the bake script — match that style for new ones.
 
-**Screens** are one enum (`app::Screen`); input dispatch and all state transitions live in `app.rs`. Dialogue endings carry side effects via `DialogueKind` (Intro → scaffold+accept, Success → gate unlock / epilogue / keepsake handover; Book → a Library shelf reading itself, with a book portrait in both frontends). The encounter and grimoire screens draw from `ui/wilds.rs` in the TUI and `gfx/scene.rs` in the sprite build.
-
-**Graphical frontend** (`src/gfx/` + `src/bin/rune_road_gfx.rs`, feature `gfx`): a second face on the same `App` — Zelda-style 16×16 sprites instead of glyphs. Everything renders CPU-side into a 480×270 RGBA framebuffer (`gfx/frame.rs`); the Macroquad shell only uploads that buffer and integer-scales it, so `examples/gfx_snapshot.rs` can dump pixel-identical PNGs headless (the way to "see" gfx changes). Tile appearance lives in `tile_sprites()` in `gfx/scene.rs`, the sprite twin of `tile_visual()` — keep the two in step. Sprites come from `assets/atlas.png`, baked by `tools/bake_atlas.py` from Kenney's CC0 packs (`assets/CREDITS.md`, sheets in `assets/kenney/`); to add sprites, append cells at the *end* of the bake list (existing ids must not shift), run `python3 tools/bake_atlas.py assets/kenney/roguelikeSheet_transparent.png assets/kenney/roguelikeChar_transparent.png` (needs Pillow), and sync the printed constants into `gfx/atlas.rs`. Hand-pixeled sprites (critters, Ferris, the bookshelf) are `from_art` text grids in the bake script — match that style for new ones. Macroquad is an optional dep, feature-gated so `cargo test` and the TUI never compile it — don't leak it into the lib.
+**Screens** are one enum (`app::Screen`); input dispatch and all state transitions live in `app.rs`, drawing in `gfx/scene.rs`. Dialogue endings carry side effects via `DialogueKind` (Intro → scaffold+accept, Success → gate unlock / epilogue / keepsake handover; Book → a Library shelf reading itself, with a bookshelf portrait).
 
 ## Gotchas
 
-- ratatui 0.30 re-exports crossterm as `ratatui::crossterm` — do **not** add a separate `crossterm` dependency (version mismatch).
 - The game writes `quests/` and `save.json` into the **cwd** (both gitignored). Tests that touch them (`tests/journey.rs`) chdir into a temp dir; keep that test alone in its file since cwd is process-global.
 - **Save compatibility is a promise**: new `SaveData` fields go behind `#[serde(default)]`, and state that can be derived (item ownership comes from `completed`) is derived, never stored — an old `save.json` must always load. There's a test for it in `save.rs`.
 - **Autosave only at milestones** (quest pass, gate crossing, save-and-quit). Frequent actions — warping through doors, catching runes, fishing — deliberately don't write to disk, both for feel and so unit tests that exercise them don't litter the repo cwd with `save.json`.
-- `Style::new().bold()/.italic()` are inherent in ratatui 0.30 — importing `Stylize` triggers unused-import warnings.
+- Macroquad is a plain dependency compiled by every build including `cargo test` (only the first build pays for it). Keep it confined to `src/main.rs` — the lib and tests must stay window-free so everything runs headless.
 - Tone is part of the spec: cozy, gentle, no fail states. Player-facing text (fizzle messages, toasts, dialogue) should stay in voice — the compiler is "the politest grump", errors are fizzles, "no harm done."

@@ -12,8 +12,10 @@ opens, each place keeps its own fixed hour and weather, quests leave real
 keepsakes that gate the world, and the tall grass hides sixteen wild runes
 that fill the Grimoire. Step 4 has its first piece: the Great Library's
 shelves hold real books about Rust, its features and its history. Along the
-way, Fern became **Wren** (too close to Ferris), and the rune collection is
-deliberately the **Grimoire** — in-world names over franchise-adjacent ones.
+way, Fern became **Wren** (too close to Ferris), the rune collection is
+deliberately the **Grimoire** — in-world names over franchise-adjacent ones —
+and the original Ratatui TUI frontend was retired: the sprite-rendered
+Macroquad build is the game now (`cargo run`).
 
 ---
 
@@ -66,9 +68,8 @@ wrong answer just fizzles and the rune skitters off to ask again another
 day. Both screens are `Screen` variants reachable through
 `on_key`/`on_tick`, so the black-box tests can play them.
 
-Still open for later passes: more runes per zone, encounter art in the gfx
-build (a proper grass-rustle transition), and rare runes that only stir at
-particular spots.
+Still open for later passes: more runes per zone, encounter art (a proper
+grass-rustle transition), and rare runes that only stir at particular spots.
 
 ## 4. Side quests, secrets, and collectibles ◐ (next up)
 
@@ -98,10 +99,10 @@ always had optional stuff off the critical path:
 
 ## 6. Presentation polish
 
-- **Audio** (gfx build only, feature-gated so `cargo test` and the TUI
-  never touch it): a CC0 chiptune loop per zone, SFX for cast/pass/fizzle.
+- **Audio**: a CC0 chiptune loop per zone, SFX for cast/pass/fizzle (keep
+  playback in the `src/main.rs` shell so tests stay silent and headless).
 - Zone-entry banners ("~ Whispering Woods ~" sliding in), a walk cycle and
-  grass-rustle particles in gfx.
+  grass-rustle particles.
 - An options screen — text speed first, the most Pokémon setting there is.
 - Save slots, or at least a "save & quit" confirmation.
 
@@ -113,8 +114,7 @@ always had optional stuff off the critical path:
   `App::on_tick` — the black-box tests must be able to play it.
 - All randomness derives from `hash2(x, y, seed)` — playthroughs stay
   deterministic and testable.
-- `tile_visual()` (TUI) and `tile_sprites()` (gfx) move in lockstep when
-  tiles are added.
+- Tile appearance lives in one place: `tile_sprites()` in `gfx/scene.rs`.
 - Extend the render matrix (`tests/render.rs`) and the world invariant
   tests (`world/zones.rs`) with every new screen, zone, or warp.
 - New persistent state goes in `SaveData` behind `#[serde(default)]`, and

@@ -3,5 +3,4 @@ pub mod checker;
 pub mod content;
 pub mod gfx;
 pub mod save;
-pub mod ui;
 pub mod world;

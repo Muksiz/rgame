@@ -8,14 +8,12 @@
 
 use std::time::{Duration, Instant};
 
-use ratatui::crossterm::event::{KeyCode, KeyEvent};
-
-use rgame::app::{App, Screen};
+use rgame::app::{App, Key, Screen};
 use rgame::checker::QUEST_DIR;
 use rgame::content::quests::QUESTS;
 
-fn key(app: &mut App, code: KeyCode) {
-    app.on_key(KeyEvent::from(code));
+fn key(app: &mut App, code: Key) {
+    app.on_key(code);
 }
 
 /// Keep pressing Enter until the dialogue closes (reveal, page, close).
@@ -24,7 +22,7 @@ fn click_through_dialogue(app: &mut App) {
         if !matches!(app.screen, Screen::Dialogue(_)) {
             return;
         }
-        key(app, KeyCode::Enter);
+        key(app, Key::Enter);
     }
     panic!("dialogue never ended");
 }
@@ -64,7 +62,7 @@ fn the_whole_journey_can_be_walked() {
 
     let mut app = App::new();
     app.screen = Screen::Title { selected: 0 };
-    key(&mut app, KeyCode::Enter); // A new journey
+    key(&mut app, Key::Enter); // A new journey
     assert!(matches!(app.screen, Screen::World));
 
     for quest in &QUESTS {
@@ -82,7 +80,7 @@ fn the_whole_journey_can_be_walked() {
             .unwrap()
             .pos;
         stand_next_to(&mut app, npc_pos);
-        key(&mut app, KeyCode::Char('e'));
+        key(&mut app, Key::Char('e'));
         assert!(
             matches!(app.screen, Screen::Dialogue(_)),
             "no dialogue from {} for quest {}",
@@ -94,7 +92,7 @@ fn the_whole_journey_can_be_walked() {
         assert!(scroll.exists(), "quest {} was not scaffolded", quest.id);
 
         // A fresh cast must fizzle (the template is not a solution).
-        key(&mut app, KeyCode::Char('c'));
+        key(&mut app, Key::Char('c'));
         wait_for_cast_result(&mut app);
         let Screen::CastResult { outcome, .. } = &app.screen else {
             unreachable!()
@@ -104,11 +102,11 @@ fn the_whole_journey_can_be_walked() {
             "quest {} passed unedited",
             quest.id
         );
-        key(&mut app, KeyCode::Enter);
+        key(&mut app, Key::Enter);
 
         // "Solve" it in the editor.
         std::fs::copy(solutions.join(quest.file_name), &scroll).unwrap();
-        key(&mut app, KeyCode::Char('c'));
+        key(&mut app, Key::Char('c'));
         wait_for_cast_result(&mut app);
         let Screen::CastResult { outcome, .. } = &app.screen else {
             unreachable!()
@@ -118,7 +116,7 @@ fn the_whole_journey_can_be_walked() {
             "quest {} solution rejected: {outcome:?}",
             quest.id
         );
-        key(&mut app, KeyCode::Enter); // into the success dialogue
+        key(&mut app, Key::Enter); // into the success dialogue
         click_through_dialogue(&mut app);
         assert!(app.completed.contains(&quest.id));
 
@@ -129,14 +127,14 @@ fn the_whole_journey_can_be_walked() {
                 "finishing quest 12 should roll the epilogue"
             );
             for _ in 0..10 {
-                key(&mut app, KeyCode::Enter);
+                key(&mut app, Key::Enter);
             }
             assert!(matches!(app.screen, Screen::World));
         } else if quest.id % 3 == 0 {
             let gate = app.zone().gate.unwrap();
             let before = app.zone_idx;
             app.player = (gate.0 - 1, gate.1);
-            key(&mut app, KeyCode::Right);
+            key(&mut app, Key::Right);
             assert_eq!(
                 app.zone_idx,
                 before + 1,
