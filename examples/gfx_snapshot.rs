@@ -7,8 +7,9 @@
 //! cargo run --example gfx_snapshot -- <title|world|dialogue|journal|casting|pass|fizzle|paused|epilogue|toast>
 //! ```
 //!
-//! `world` takes an optional zone (0-3) and `--pos x,y`; `--tick` sets time of
-//! day (600 ≈ noon, 3000 ≈ night). Default output: gfx_snapshot.png.
+//! `world` takes an optional zone (0-3 overworld, 4+ interiors) and
+//! `--pos x,y`; `--tick` drives animations (time of day is fixed per zone).
+//! Default output: gfx_snapshot.png.
 
 use std::io::BufWriter;
 

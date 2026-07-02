@@ -8,9 +8,8 @@ use crate::gfx::atlas::{self, Atlas, TILE};
 use crate::gfx::font::{self, GLYPH};
 use crate::gfx::frame::{FB_H, FB_W, Frame};
 use crate::gfx::shade;
-use crate::ui::daylight;
 use crate::world::camera;
-use crate::world::entity::CritterKind;
+use crate::world::entity::{CritterKind, Npc};
 use crate::world::map::{Tile, Weather, hash2};
 
 /// Visible tiles: 480/16 × ceil(270/16).
@@ -50,18 +49,28 @@ pub fn render(fb: &mut Frame, atlas: &Atlas, app: &App) {
 // ── the overworld ──────────────────────────────────────────────────────────
 
 fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
-    let dl = daylight(app.tick);
+    let dl = app.daylight();
     let (ox, oy) = camera::viewport_origin(app.player, VIEW_W, VIEW_H);
     let zone = app.zone();
-    let lantern_lit = zone.id == 0 && app.completed.contains(&1);
+    // Emberwick's festival lantern waits for quest 1; every other lantern
+    // (the Library's lamps) burns on its own.
+    let lantern_lit = zone.id != 0 || app.completed.contains(&1);
 
     for row in 0..VIEW_H {
         for col in 0..VIEW_W {
             let (wx, wy) = (ox + col, oy + row);
             let tile = zone.tile(wx, wy);
             let (px, py) = (col * TILE as i32, row * TILE as i32);
-            let (base, overlay) =
-                tile_sprites(tile, wx, wy, app.tick, zone.seed, zone.id, lantern_lit);
+            let (base, overlay) = tile_sprites(
+                tile,
+                wx,
+                wy,
+                app.tick,
+                zone.seed,
+                zone.id,
+                zone.interior,
+                lantern_lit,
+            );
             fb.sprite(atlas, base, px, py, dl);
             // A few darker specks so long runs of road/sand don't look flat.
             if matches!(tile, Tile::Path | Tile::Sand) {
@@ -85,6 +94,7 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
                 Tile::Path => path_rim(fb, zone, wx, wy, px, py, dl),
                 Tile::Roof => roof_detail(fb, zone, wx, wy, px, py, dl),
                 Tile::Floor => floor_rim(fb, zone, wx, wy, px, py, dl),
+                Tile::Rug => rug_detail(fb, zone, wx, wy, px, py, dl),
                 _ => {}
             }
             if let Some(id) = overlay {
@@ -120,6 +130,7 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
                 CritterKind::Sheep => atlas::SHEEP,
                 CritterKind::Frog => atlas::FROG,
                 CritterKind::Moth => atlas::MOTH,
+                CritterKind::Cat => atlas::CAT,
             };
             blob_shadow(fb, px + 4, py + 13, 8, 2);
             fb.sprite(atlas, id, px, py, ent_light);
@@ -132,8 +143,8 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
             continue;
         };
         blob_shadow(fb, px + 3, py + 13, 10, 2);
-        fb.sprite(atlas, npc_sprite(npc.quest), px, py, ent_light);
-        if npc.quest == active {
+        fb.sprite(atlas, npc_sprite(npc), px, py, ent_light);
+        if npc.quest.is_some() && npc.quest == active {
             let accepted = active.map(|id| app.accepted.contains(&id)).unwrap_or(false);
             let bob = if (app.tick / 8).is_multiple_of(2) {
                 0
@@ -154,13 +165,16 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
     }
 
     ambient_life(fb, atlas, app, ox, oy, dl);
-    weather(fb, zone.weather, app.tick, dl);
+    if let Some(kind) = zone.weather {
+        weather(fb, kind, app.tick, dl);
+    }
     top_bar(fb, app, dl);
     bottom_bar(fb, app);
 }
 
 /// Tile → (opaque base sprite, transparent overlay). The one place tile
 /// appearance lives, exactly like `tile_visual` in the TUI.
+#[allow(clippy::too_many_arguments)]
 fn tile_sprites(
     tile: Tile,
     x: i32,
@@ -168,9 +182,12 @@ fn tile_sprites(
     tick: u64,
     seed: u32,
     zone_id: usize,
+    interior: bool,
     lantern_lit: bool,
 ) -> (u16, Option<u16>) {
     let h = hash2(x, y, seed);
+    // Indoors (the cave, mostly) freestanding things sit on bare earth, not grass.
+    let ground = if interior { atlas::PATH } else { atlas::GRASS };
     match tile {
         Tile::Grass => (
             if h.is_multiple_of(11) {
@@ -251,7 +268,7 @@ fn tile_sprites(
                 atlas::ROCK_GREY
             }),
         ),
-        Tile::Rock => (atlas::GRASS, Some(atlas::ROCK_GREY)),
+        Tile::Rock => (ground, Some(atlas::ROCK_GREY)),
         Tile::Campfire => {
             let flame = if (tick / 6).is_multiple_of(2) {
                 atlas::CAMPFIRE_A
@@ -271,7 +288,27 @@ fn tile_sprites(
             (atlas::PATH, Some(id))
         }
         Tile::Gate => (atlas::PATH, Some(atlas::GATE)),
-        Tile::Sign => (atlas::GRASS, Some(atlas::SIGN)),
+        Tile::Sign => (ground, Some(atlas::SIGN)),
+        Tile::Void => (atlas::VOID, None),
+        // Rugs are drawn edge-aware by `rug_detail`, so any patch of them
+        // reads as one carpet instead of a grid of doormats.
+        Tile::Rug => (atlas::FLOOR, None),
+        Tile::Bookshelf => (atlas::FLOOR, Some(atlas::BOOKSHELF)),
+        Tile::Shelf => (atlas::FLOOR, Some(atlas::SHELF)),
+        Tile::Table => (atlas::FLOOR, Some(atlas::TABLE)),
+        Tile::Stool => (atlas::FLOOR, Some(atlas::STOOL)),
+        Tile::BedHead => (atlas::FLOOR, Some(atlas::BED_HEAD)),
+        Tile::BedFoot => (atlas::FLOOR, Some(atlas::BED_FOOT)),
+        Tile::Hearth => {
+            let flame = if (tick / 6).is_multiple_of(2) {
+                atlas::HEARTH_A
+            } else {
+                atlas::HEARTH_B
+            };
+            (atlas::FLOOR, Some(flame))
+        }
+        Tile::Barrel => (atlas::FLOOR, Some(atlas::BARREL)),
+        Tile::Crate => (atlas::FLOOR, Some(atlas::CRATE)),
     }
 }
 
@@ -403,6 +440,44 @@ fn path_rim(
     }
 }
 
+/// A woven carpet over the floorboards: warm weave inside, a pale hem only
+/// along the edges that meet bare floor, so rug patches read as one rug.
+fn rug_detail(
+    fb: &mut Frame,
+    zone: &crate::world::map::Zone,
+    wx: i32,
+    wy: i32,
+    px: i32,
+    py: i32,
+    dl: f32,
+) {
+    let t = TILE as i32;
+    let weave = shade((156, 72, 60), dl);
+    fb.fill(px, py, t, t, weave);
+    for k in 0..6 {
+        let h = hash2(wx * 7 + k, wy * 3 + k, 0x2A6);
+        fb.set(
+            px + (h % 16) as i32,
+            py + ((h >> 8) % 16) as i32,
+            shade((134, 58, 48), dl),
+        );
+    }
+    let hem = shade((222, 198, 152), dl);
+    let bare = |tile: Tile| tile != Tile::Rug;
+    if bare(zone.tile(wx, wy - 1)) {
+        fb.fill(px, py, t, 2, hem);
+    }
+    if bare(zone.tile(wx, wy + 1)) {
+        fb.fill(px, py + t - 2, t, 2, hem);
+    }
+    if bare(zone.tile(wx - 1, wy)) {
+        fb.fill(px, py, 2, t, hem);
+    }
+    if bare(zone.tile(wx + 1, wy)) {
+        fb.fill(px + t - 2, py, 2, t, hem);
+    }
+}
+
 /// Interior floors darken where they meet their walls, so rooms feel enclosed
 /// even in the top-down cutaway view.
 fn floor_rim(
@@ -465,8 +540,8 @@ fn roof_detail(
 /// bird crosses the sky. Small lives, big difference.
 fn ambient_life(fb: &mut Frame, atlas: &Atlas, app: &App, ox: i32, oy: i32, dl: f32) {
     use crate::world::map::{MAP_H, MAP_W};
-    if dl <= 0.45 {
-        return; // butterflies and birds are day folk; fireflies own the night
+    if dl <= 0.45 || app.zone().interior {
+        return; // butterflies and birds are day folk, and outdoor folk at that
     }
     let t = app.tick as f32;
     for i in 0..120i32 {
@@ -512,10 +587,11 @@ fn water_frame(x: i32, y: i32, tick: u64) -> u16 {
     }
 }
 
-fn npc_sprite(quest: Option<u8>) -> u16 {
-    match quest {
+fn npc_sprite(npc: &Npc) -> u16 {
+    match npc.quest {
         Some(id) if (1..=12).contains(&id) => atlas::NPC_1 + (id as u16 - 1),
-        _ => atlas::NPC_1,
+        // The folk who just live here: one of the villager looks, picked by name.
+        _ => atlas::VILLAGER_1 + npc.name.bytes().map(u16::from).sum::<u16>() % 3,
     }
 }
 
@@ -747,7 +823,7 @@ fn dialogue(fb: &mut Frame, atlas: &Atlas, app: &App, d: &Dialogue) {
             .npcs
             .iter()
             .find(|n| n.name == d.speaker)
-            .map(|n| npc_sprite(n.quest))
+            .map(npc_sprite)
     };
     let text_x = if let Some(id) = portrait {
         fb.sprite_scaled(atlas, id, ix + 2, iy + (ih - 64) / 2, 4, 1.0);

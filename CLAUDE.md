@@ -16,7 +16,7 @@ cargo test --test solve_through                  # compiles all 24 templates+sol
 cargo test --test render                         # every screen at sizes 10x5 → 300x90
 cargo test <name>                                # single unit test by name
 cargo clippy --all-targets && cargo fmt          # keep both clean (they are)
-cargo run --example snapshot -- <zone 0-3> <x> <y> <w> <h>   # render a map region as text, no TTY
+cargo run --example snapshot -- <zone> <x> <y> <w> <h>       # render a map region as text, no TTY (0-3 overworld, 4+ interiors)
 cargo run --features gfx --bin rune-road-gfx    # play the graphical (Macroquad) edition in a window
 cargo run --example gfx_snapshot -- <scene> [zone] [--pos x,y] [--tick n] [--out f.png]   # gfx screen → PNG, headless
 ```
@@ -41,7 +41,9 @@ Lib + thin bin split (`src/lib.rs` + `src/main.rs`) exists so integration tests 
 
 **World generation** (`world/map.rs` + `world/zones.rs`): maps are 240×70, built procedurally at startup by `MapBuilder` (scatter/road/river/stamp/clearing) — no map literals to edit; everything derives from the deterministic `hash2(x, y, seed)`, including animation phases and out-of-bounds scenery. Zone gates use `barrier()` (a full-height tree/cliff line with Gate tiles in the road) so they can't be walked around. If you move an NPC/sign/gate or reshape terrain, the BFS reachability tests in `world/zones.rs` and the spawn/standability tests in `app.rs` will catch dead ends — run `cargo test` after any map change.
 
-**Rendering** (`ui/`): the camera (`world/camera.rs`) clamps to the map and, when the terminal exceeds the map, centers it while `Zone::tile` returns `Border` scenery for out-of-bounds coords — a hard requirement: ultrawide terminals must never see black bars. Tile appearance lives in one place, `tile_visual()` in `ui/overworld.rs` (glyph + fg + bg per tile, animated by tick). All colors pass through `ui::shade()` for the day/night cycle. Weather particles (`ui/effects.rs`) only replace glyph+fg, never bg, so they sit "in" the world.
+**Interiors & warps**: zones 0–3 are the overworld; zones 4+ are rooms behind doors (houses, the Echo Cave, the Great Library) — small stamped rooms floating in `Tile::Void`, built by `room()` in `world/zones.rs`. Every `Tile::Door` (and the cave mouth) carries a `Warp { at, to_zone, to_pos }`; `App::try_move` warps on step-on. Invariant tests: every Door tile has a warp, every warp lands on ground reachable from the destination zone's spawn, and every way in has a way back. **Time of day and weather are static per zone** (`Zone::daylight`, `Zone::weather: Option<Weather>` — interiors have `None`): each place keeps its own fixed hour, from Emberwick's bright morning (0.95) to Hearthspire's misty night (0.3); there is no ticking day/night clock.
+
+**Rendering** (`ui/`): the camera (`world/camera.rs`) clamps to the map and, when the terminal exceeds the map, centers it while `Zone::tile` returns `Border` scenery for out-of-bounds coords — a hard requirement: ultrawide terminals must never see black bars. Tile appearance lives in one place, `tile_visual()` in `ui/overworld.rs` (glyph + fg + bg per tile, animated by tick). All colors pass through `ui::shade()` with the zone's fixed `App::daylight()`. Weather particles (`ui/effects.rs`) only replace glyph+fg, never bg, so they sit "in" the world.
 
 **Screens** are one enum (`app::Screen`); input dispatch and all state transitions live in `app.rs`. Dialogue endings carry side effects via `DialogueKind` (Intro → scaffold+accept, Success → gate unlock / epilogue).
 

@@ -1,5 +1,5 @@
 use crate::world::entity::{Critter, CritterKind, Npc, Sign};
-use crate::world::map::{Border, MAP_H, MapBuilder, Tile, Weather, Zone};
+use crate::world::map::{Border, MAP_H, MAP_W, MapBuilder, Tile, Warp, Weather, Zone};
 
 const HOUSE: &str = concat!("rrrrrrrrr\n", "#.......#\n", "#.......#\n", "####+####",);
 
@@ -23,8 +23,154 @@ const DOCK: &str = concat!("____      \n", "==========\n", "____      ",);
 
 const CAVE: &str = concat!("  ^^^^^  \n", "^^^^^^^^^\n", "^^^% %^^^\n", "^^%   %^^",);
 
+// ── the rooms behind the doors ──────────────────────────────────────────────
+// Interiors are their own zones: a room stamped in the middle of a map of
+// Void, with a warp on each door tile leading back out.
+
+const BAKERY_ROOM: &str = concat!(
+    "###############\n",
+    "#.hh......SSS.#\n",
+    "#.............#\n",
+    "#..stts...oo..#\n",
+    "#.........ox..#\n",
+    "#....RR.......#\n",
+    "#....RR.......#\n",
+    "#.............#\n",
+    "#######+#######",
+);
+
+const COTTAGE_ROOM: &str = concat!(
+    "###########\n",
+    "#.nh......#\n",
+    "#.u....ts.#\n",
+    "#.........#\n",
+    "#...RR....#\n",
+    "#...RR....#\n",
+    "#.........#\n",
+    "#####+#####",
+);
+
+const WORKSHOP_ROOM: &str = concat!(
+    "#############\n",
+    "#.nh.....xx.#\n",
+    "#.u......xx.#\n",
+    "#...........#\n",
+    "#..tt....s..#\n",
+    "#..tt.......#\n",
+    "#....RR.....#\n",
+    "#...........#\n",
+    "######+######",
+);
+
+const STORE_ROOM: &str = concat!(
+    "#############\n",
+    "#.oo.....oo.#\n",
+    "#.oox....xo.#\n",
+    "#...........#\n",
+    "#..xx.......#\n",
+    "#........t..#\n",
+    "#...........#\n",
+    "#...........#\n",
+    "######+######",
+);
+
+const LIBRARY_ROOM: &str = concat!(
+    "##########################\n",
+    "#BBBB.BBBBB....BBBBB.BBBB#\n",
+    "#........................#\n",
+    "#..stt.....RRRR.....tts..#\n",
+    "#..........RRRR..........#\n",
+    "#..stt.....RRRR.....tts..#\n",
+    "#........................#\n",
+    "#BBBB.BBBBB....BBBBB.BBBB#\n",
+    "#........................#\n",
+    "#..L..................L..#\n",
+    "#........................#\n",
+    "###########++#############",
+);
+
+const CAVE_ROOM: &str = concat!(
+    "  %%%%%%%%%%%  \n",
+    " %%:::::::::%% \n",
+    " %:::::::::::% \n",
+    " %::~~~::::::% \n",
+    " %::~~~:::&::% \n",
+    " %:::::::::::% \n",
+    " %%:::::::!:%% \n",
+    "  %%%%:::%%%%  \n",
+    "     %:::%     \n",
+    "     %%:%%     ",
+);
+
+// Zone indices: the four overworld zones, then every room behind a door.
+pub const EMBERWICK: usize = 0;
+pub const WHISPERING_WOODS: usize = 1;
+pub const SILVERFORD: usize = 2;
+pub const HEARTHSPIRE: usize = 3;
+pub const BAKERY: usize = 4;
+pub const SORREL_COTTAGE: usize = 5;
+pub const CARPENTER_HOUSE: usize = 6;
+pub const TILLY_COTTAGE: usize = 7;
+pub const STOREHOUSE: usize = 8;
+pub const ECHO_CAVE: usize = 9;
+pub const GREAT_LIBRARY: usize = 10;
+
+// Every interior room is stamped at the same spot mid-map (each has its own
+// map, so they never collide) — the camera centers on it from any door.
+const ROOM_AT: (i32, i32) = (112, 28);
+
+// Exterior door tiles (derived from the house stamps in each zone builder).
+const BAKERY_DOOR: (i32, i32) = (66, 21);
+const SORREL_DOOR: (i32, i32) = (93, 16);
+const CARPENTER_DOOR: (i32, i32) = (130, 23);
+const TILLY_DOOR: (i32, i32) = (77, 48);
+const STOREHOUSE_DOOR: (i32, i32) = (136, 49);
+const CAVE_MOUTH: (i32, i32) = (122, 54);
+const LIBRARY_DOORS: [(i32, i32); 2] = [(210, 32), (211, 32)];
+
+// Interior door tiles (stamp origin + the '+' offset in each room's art).
+const BAKERY_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 7, ROOM_AT.1 + 8);
+const COTTAGE_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 5, ROOM_AT.1 + 7);
+const WORKSHOP_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 6, ROOM_AT.1 + 8);
+const STORE_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 6, ROOM_AT.1 + 8);
+const LIBRARY_ROOM_DOORS: [(i32, i32); 2] = [
+    (ROOM_AT.0 + 11, ROOM_AT.1 + 11),
+    (ROOM_AT.0 + 12, ROOM_AT.1 + 11),
+];
+const CAVE_ROOM_EXIT: (i32, i32) = (ROOM_AT.0 + 7, ROOM_AT.1 + 9);
+
+/// Stepping on the outside door lands just inside the room's own door...
+fn enter(outside: (i32, i32), interior: usize, inside_door: (i32, i32)) -> Warp {
+    Warp {
+        at: outside,
+        to_zone: interior,
+        to_pos: (inside_door.0, inside_door.1 - 1),
+    }
+}
+
+/// ...and the room's door leads back to just outside the house.
+fn exit(inside_door: (i32, i32), back_to: usize, outside: (i32, i32)) -> Warp {
+    Warp {
+        at: inside_door,
+        to_zone: back_to,
+        to_pos: (outside.0, outside.1 + 1),
+    }
+}
+
 pub fn zones() -> Vec<Zone> {
-    vec![emberwick(), whispering_woods(), silverford(), hearthspire()]
+    vec![
+        emberwick(),
+        whispering_woods(),
+        silverford(),
+        hearthspire(),
+        bakery(),
+        sorrel_cottage(),
+        carpenter_house(),
+        tilly_cottage(),
+        storehouse(),
+        echo_cave(),
+        great_library(),
+    ]
 }
 
 /// A tree line across the map with an opening for the gate tiles, so the gate
@@ -105,6 +251,18 @@ fn emberwick() -> Zone {
     b.clearing(66, 25, 1);
     b.clearing(112, 27, 1);
 
+    // Granny Sorrel's lane, and a clear doorstep in front of every front door.
+    b.road(&[(93, 18), (93, 29)]);
+    for door in [
+        BAKERY_DOOR,
+        SORREL_DOOR,
+        CARPENTER_DOOR,
+        TILLY_DOOR,
+        STOREHOUSE_DOOR,
+    ] {
+        b.clearing(door.0, door.1 + 1, 0);
+    }
+
     Zone {
         id: 0,
         name: "Emberwick Village",
@@ -113,9 +271,18 @@ fn emberwick() -> Zone {
         gate: Some((231, 36)),
         locked_msg: "A fallen oak blocks the road. Maybe help the villagers first — starting with Elder Rowan at the festival square.",
         unlock_msg: "The villagers roll the old oak aside, cheering. The road east lies open!",
-        weather: Weather::Petals,
+        weather: Some(Weather::Petals),
+        daylight: 0.95,
+        interior: false,
         border: Border::Forest,
         seed,
+        warps: vec![
+            enter(BAKERY_DOOR, BAKERY, BAKERY_ROOM_DOOR),
+            enter(SORREL_DOOR, SORREL_COTTAGE, COTTAGE_ROOM_DOOR),
+            enter(CARPENTER_DOOR, CARPENTER_HOUSE, WORKSHOP_ROOM_DOOR),
+            enter(TILLY_DOOR, TILLY_COTTAGE, COTTAGE_ROOM_DOOR),
+            enter(STOREHOUSE_DOOR, STOREHOUSE, STORE_ROOM_DOOR),
+        ],
         npcs: vec![
             Npc {
                 name: "Elder Rowan",
@@ -199,7 +366,17 @@ fn whispering_woods() -> Zone {
     b.clearing(101, 47, 4);
     b.scatter(Tile::Bush, 200, (97, 43, 9, 9));
 
-    // The echo cave, just off the road.
+    // The echo cave, just off the road — its mouth leads inside. The footpath
+    // leaves the road, loops around the hill and walks up into the mouth from
+    // the south; it goes down first so the stamp's rocky jaw closes over any
+    // stray paving while the mouth itself stays walkable.
+    b.road(&[
+        (CAVE_MOUTH.0, 44),
+        (112, 46),
+        (112, 57),
+        (CAVE_MOUTH.0, 57),
+        (CAVE_MOUTH.0, CAVE_MOUTH.1 + 1),
+    ]);
     b.stamp(118, 52, CAVE);
 
     // Mossy old gate across the east road.
@@ -220,9 +397,12 @@ fn whispering_woods() -> Zone {
         gate: Some((233, 32)),
         locked_msg: "An old mossy gate, swollen shut. The woods aren't done with you yet, it seems.",
         unlock_msg: "The mossy gate creaks open, almost politely. Onward, to the river!",
-        weather: Weather::Fireflies,
+        weather: Some(Weather::Fireflies),
+        daylight: 0.45,
+        interior: false,
         border: Border::Forest,
         seed,
+        warps: vec![enter(CAVE_MOUTH, ECHO_CAVE, CAVE_ROOM_EXIT)],
         npcs: vec![
             Npc {
                 name: "Fern",
@@ -317,9 +497,12 @@ fn silverford() -> Zone {
         gate: Some((146, 34)),
         locked_msg: "The bridge planks are drawn up on the far side. Ferryman Wick shrugs at you meaningfully.",
         unlock_msg: "Wick lowers the planks with a satisfied nod. The far bank awaits!",
-        weather: Weather::Rain,
+        weather: Some(Weather::Rain),
+        daylight: 0.55,
+        interior: false,
         border: Border::Meadow,
         seed,
+        warps: vec![],
         npcs: vec![
             Npc {
                 name: "Ferryman Wick",
@@ -410,9 +593,15 @@ fn hearthspire() -> Zone {
         gate: None,
         locked_msg: "",
         unlock_msg: "",
-        weather: Weather::Mist,
+        weather: Some(Weather::Mist),
+        daylight: 0.3,
+        interior: false,
         border: Border::Cliffs,
         seed,
+        warps: vec![
+            enter(LIBRARY_DOORS[0], GREAT_LIBRARY, LIBRARY_ROOM_DOORS[0]),
+            enter(LIBRARY_DOORS[1], GREAT_LIBRARY, LIBRARY_ROOM_DOORS[1]),
+        ],
         npcs: vec![
             Npc {
                 name: "Archivist Elm",
@@ -457,6 +646,183 @@ fn hearthspire() -> Zone {
         ],
     }
 }
+// ── interiors ───────────────────────────────────────────────────────────────
+
+/// A room floating in the dark: stamp the art at `ROOM_AT`, spawn just inside
+/// the door. Everything else about the zone is quiet — no sky, no gate.
+#[allow(clippy::too_many_arguments)]
+fn room(
+    id: usize,
+    name: &'static str,
+    seed: u32,
+    art: &str,
+    daylight: f32,
+    warps: Vec<Warp>,
+    npcs: Vec<Npc>,
+    critters: Vec<Critter>,
+    signs: Vec<Sign>,
+) -> Zone {
+    let mut b = MapBuilder::new(seed);
+    b.rect(0, 0, MAP_W, MAP_H, Tile::Void);
+    b.stamp(ROOM_AT.0, ROOM_AT.1, art);
+    let door = warps.first().expect("every room has a way out").at;
+    Zone {
+        id,
+        name,
+        tiles: b.tiles,
+        spawn: (door.0, door.1 - 1),
+        gate: None,
+        locked_msg: "",
+        unlock_msg: "",
+        weather: None,
+        daylight,
+        interior: true,
+        border: Border::Void,
+        seed,
+        warps,
+        npcs,
+        critters,
+        signs,
+    }
+}
+
+/// Furniture offsets are relative to `ROOM_AT`, mirroring each room's art.
+fn at(dx: i32, dy: i32) -> (i32, i32) {
+    (ROOM_AT.0 + dx, ROOM_AT.1 + dy)
+}
+
+fn bakery() -> Zone {
+    room(
+        BAKERY,
+        "Poppy's Bakery",
+        55,
+        BAKERY_ROOM,
+        0.85,
+        vec![exit(BAKERY_ROOM_DOOR, EMBERWICK, BAKERY_DOOR)],
+        vec![],
+        vec![Critter::new(CritterKind::Cat, at(4, 1))],
+        vec![],
+    )
+}
+
+fn sorrel_cottage() -> Zone {
+    room(
+        SORREL_COTTAGE,
+        "Granny Sorrel's Cottage",
+        66,
+        COTTAGE_ROOM,
+        0.85,
+        vec![exit(COTTAGE_ROOM_DOOR, EMBERWICK, SORREL_DOOR)],
+        vec![Npc {
+            name: "Granny Sorrel",
+            glyph: 'N',
+            color: (208, 178, 188),
+            pos: at(8, 3),
+            quest: None,
+            idle: &["Sit down, sit down. The kettle's just... well, it's thinking about boiling."],
+        }],
+        vec![Critter::new(CritterKind::Cat, at(4, 4))],
+        vec![],
+    )
+}
+
+fn carpenter_house() -> Zone {
+    room(
+        CARPENTER_HOUSE,
+        "Alder's Workshop",
+        77,
+        WORKSHOP_ROOM,
+        0.8,
+        vec![exit(WORKSHOP_ROOM_DOOR, EMBERWICK, CARPENTER_DOOR)],
+        vec![Npc {
+            name: "Carpenter Alder",
+            glyph: 'C',
+            color: (188, 168, 138),
+            pos: at(6, 4),
+            quest: None,
+            idle: &["Measure twice, saw once, sweep thrice. Nobody warns you about the sweeping."],
+        }],
+        vec![],
+        vec![],
+    )
+}
+
+fn tilly_cottage() -> Zone {
+    room(
+        TILLY_COTTAGE,
+        "Tilly's Cottage",
+        88,
+        COTTAGE_ROOM,
+        0.85,
+        vec![exit(COTTAGE_ROOM_DOOR, EMBERWICK, TILLY_DOOR)],
+        vec![Npc {
+            name: "Hen-keeper Tilly",
+            glyph: 'T',
+            color: (170, 190, 160),
+            pos: at(7, 4),
+            quest: None,
+            idle: &["The chickens have opinions about the rain. Strong ones. Don't ask Henrietta."],
+        }],
+        vec![Critter::new(CritterKind::Chicken, at(3, 3))],
+        vec![],
+    )
+}
+
+fn storehouse() -> Zone {
+    room(
+        STOREHOUSE,
+        "The Old Storehouse",
+        99,
+        STORE_ROOM,
+        0.7,
+        vec![exit(STORE_ROOM_DOOR, EMBERWICK, STOREHOUSE_DOOR)],
+        vec![],
+        vec![Critter::new(CritterKind::Cat, at(8, 3))],
+        vec![],
+    )
+}
+
+fn echo_cave() -> Zone {
+    room(
+        ECHO_CAVE,
+        "The Echo Cave",
+        111,
+        CAVE_ROOM,
+        0.35,
+        vec![exit(CAVE_ROOM_EXIT, WHISPERING_WOODS, CAVE_MOUTH)],
+        vec![],
+        vec![Critter::new(CritterKind::Frog, at(4, 5))],
+        vec![Sign {
+            pos: at(10, 6),
+            text: "Someone has carved: HELLO. Below it, smaller: hello. Below that, tiny: hello.",
+        }],
+    )
+}
+
+fn great_library() -> Zone {
+    room(
+        GREAT_LIBRARY,
+        "The Great Library",
+        122,
+        LIBRARY_ROOM,
+        0.75,
+        vec![
+            exit(LIBRARY_ROOM_DOORS[0], HEARTHSPIRE, LIBRARY_DOORS[0]),
+            exit(LIBRARY_ROOM_DOORS[1], HEARTHSPIRE, LIBRARY_DOORS[1]),
+        ],
+        vec![Npc {
+            name: "Under-librarian Twill",
+            glyph: 'U',
+            color: (188, 168, 138),
+            pos: at(13, 8),
+            quest: None,
+            idle: &["Shhh — not for quiet. The books are napping. They dream in fine print."],
+        }],
+        vec![Critter::new(CritterKind::Cat, at(20, 4))],
+        vec![],
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::{HashSet, VecDeque};
@@ -533,6 +899,67 @@ mod tests {
             assert!(
                 seen.iter().all(|&(x, _)| x < gate_x),
                 "the gate in {} can be skirted",
+                zone.name
+            );
+        }
+    }
+
+    #[test]
+    fn every_door_tile_leads_somewhere() {
+        // A door you can't walk through is a broken promise.
+        for zone in zones() {
+            for y in 0..H {
+                for x in 0..W {
+                    if zone.tile(x, y) == Tile::Door {
+                        assert!(
+                            zone.warp_at(x, y).is_some(),
+                            "the door at {:?} in {} opens onto nothing",
+                            (x, y),
+                            zone.name
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn every_warp_lands_on_reachable_ground_and_has_a_way_back() {
+        let all = zones();
+        let seen: Vec<_> = all.iter().map(reachable).collect();
+        for (i, zone) in all.iter().enumerate() {
+            for warp in &zone.warps {
+                let dest = &all[warp.to_zone];
+                assert!(
+                    seen[warp.to_zone].contains(&warp.to_pos),
+                    "warp from {} lands at {:?} in {}, which can't be walked from its spawn",
+                    zone.name,
+                    warp.to_pos,
+                    dest.name
+                );
+                assert!(
+                    dest.warps.iter().any(|w| w.to_zone == i),
+                    "{} has a way in from {} but no way back",
+                    dest.name,
+                    zone.name
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn every_zone_keeps_its_own_hour() {
+        for zone in zones() {
+            assert!(
+                (0.0..=1.0).contains(&zone.daylight),
+                "{} has daylight {} outside 0..=1",
+                zone.name,
+                zone.daylight
+            );
+            assert_eq!(
+                zone.interior,
+                zone.weather.is_none(),
+                "{}: only interiors go without weather",
                 zone.name
             );
         }

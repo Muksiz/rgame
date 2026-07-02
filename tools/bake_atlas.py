@@ -252,6 +252,63 @@ FERRIS = """
 ................
 """
 
+CAT = """
+................
+................
+................
+....t...t.......
+....tt.tt.......
+....ttttt.......
+....tktkt.......
+....ttttt.......
+....twwtt.tt....
+...ttwwttttt....
+...tttttttt.....
+...tttttttt.....
+....tt..tt......
+................
+................
+................
+"""
+
+BOOKSHELF = """
+LLLLLLLLLLLLLLLL
+LbbbbbbbbbbbbbbL
+Lb1e21g3e12g3ebL
+Lb1e21g3e12g3ebL
+Lb1e21g3e12g3ebL
+LbbbbbbbbbbbbbbL
+Lbg31e2g13ge21bL
+Lbg31e2g13ge21bL
+Lbg31e2g13ge21bL
+LbbbbbbbbbbbbbbL
+Lb2ge13g21e3g1bL
+Lb2ge13g21e3g1bL
+Lb2ge13g21e3g1bL
+LbbbbbbbbbbbbbbL
+LLLLLLLLLLLLLLLL
+LLLLLLLLLLLLLLLL
+"""
+
+VOID = """
+vvvvvvvvvvvvvvvv
+vvvvvvvvvvvvvvvv
+vvvvvVvvvvvvvvvv
+vvvvvvvvvvvvvvvv
+vvvvvvvvvvvvVvvv
+vvvvvvvvvvvvvvvv
+vvVvvvvvvvvvvvvv
+vvvvvvvvvvvvvvvv
+vvvvvvvvvVvvvvvv
+vvvvvvvvvvvvvvvv
+vvvvVvvvvvvvvvvv
+vvvvvvvvvvvvvvvv
+vvvvvvvvvvvvvVvv
+vvvvvvvvvvvvvvvv
+vvvvvvvVvvvvvvvv
+vvvvvvvvvvvvvvvv
+"""
+
 PALETTE = {
     "w": (240, 238, 230, 255),
     "o": (222, 120, 80, 255),
@@ -264,6 +321,13 @@ PALETTE = {
     "p": (232, 168, 200, 255),
     "L": (214, 188, 148, 255),
     "b": (124, 94, 62, 255),
+    "t": (214, 164, 110, 255),
+    "1": (188, 92, 84, 255),
+    "2": (108, 140, 178, 255),
+    "3": (128, 166, 106, 255),
+    "e": (222, 198, 152, 255),
+    "v": (18, 16, 22, 255),
+    "V": (26, 23, 32, 255),
 }
 
 # NPC terminal colors, in quest order 1..12 (from src/world/zones.rs).
@@ -283,6 +347,11 @@ NPC_COLORS = [
 ]
 # Body/hair variety per NPC: (body col, body row, hair col, hair row) on the
 # characters sheet. Bodies live at cols 0-1; hair/hats at cols 19-22 & 28-31.
+# Flavor villagers who live inside the enterable houses: same recipe as the
+# quest NPCs, their own colors and hair so nobody looks like anyone's twin.
+VILLAGER_COLORS = [(188, 168, 138), (170, 190, 160), (208, 178, 188)]
+VILLAGER_LOOKS = [(1, 3, 22, 0), (0, 2, 29, 0), (1, 1, 30, 0)]
+
 NPC_LOOKS = [
     (0, 0, 20, 0),
     (1, 0, 21, 8),
@@ -314,6 +383,11 @@ def main(sheet_path, chars_path):
         elif hc is not None:
             spr = over(spr, cell(chars, hc, hr))
         return spr
+
+    def villager(i):
+        bc, br, hc, hr = VILLAGER_LOOKS[i]
+        spr = over(cell(chars, bc, br), tint(shirt, VILLAGER_COLORS[i]))
+        return over(spr, cell(chars, hc, hr))
 
     player = over(over(cell(chars, 0, 0), cell(chars, 10, 0)), cell(chars, 20, 0))
 
@@ -373,6 +447,21 @@ def main(sheet_path, chars_path):
         ("BUTTERFLY_B", from_art(BUTTERFLY_B, PALETTE)),
         ("BIRD_A", from_art(BIRD_A, PALETTE)),
         ("BIRD_B", from_art(BIRD_B, PALETTE)),
+        # indoors: furniture overlays for the enterable houses
+        ("VOID", from_art(VOID, PALETTE)),
+        ("RUG", cell(sheet, 27, 25)),
+        ("TABLE", cell(sheet, 26, 4)),
+        ("STOOL", cell(sheet, 19, 5)),
+        ("BED_HEAD", cell(sheet, 14, 1)),
+        ("BED_FOOT", cell(sheet, 14, 3)),
+        ("HEARTH_A", cell(sheet, 13, 0)),
+        ("HEARTH_B", cell(sheet, 14, 0)),
+        ("BARREL", cell(sheet, 22, 0)),
+        ("CRATE", cell(sheet, 26, 0)),
+        ("SHELF", cell(sheet, 31, 0)),
+        ("BOOKSHELF", from_art(BOOKSHELF, PALETTE)),
+        ("CAT", from_art(CAT, PALETTE)),
+        *[(f"VILLAGER_{i + 1}", villager(i)) for i in range(3)],
     ]
 
     rows = (len(cells) + COLS - 1) // COLS

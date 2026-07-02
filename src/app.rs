@@ -118,6 +118,12 @@ impl App {
         &self.zones[self.zone_idx]
     }
 
+    /// Time of day is a property of *place*, not of a ticking clock: petal-lit
+    /// morning in Emberwick, dusk in the woods, lamplight indoors.
+    pub fn daylight(&self) -> f32 {
+        self.zone().daylight
+    }
+
     /// The next quest on the road: the first one not yet completed.
     pub fn active_quest(&self) -> Option<&'static Quest> {
         QUESTS.iter().find(|q| !self.completed.contains(&q.id))
@@ -316,8 +322,9 @@ impl App {
     fn try_move(&mut self, dx: i32, dy: i32) {
         let target = (self.player.0 + dx, self.player.1 + dy);
 
-        // Stepping off the west edge walks back toward the previous zone.
-        if target.0 < 0 {
+        // Stepping off the west edge walks back toward the previous zone
+        // (interiors have no edges worth walking to — only their door).
+        if target.0 < 0 && !self.zone().interior {
             if self.zone_idx > 0 {
                 self.zone_idx -= 1;
                 let gate = self.zone().gate.unwrap_or(self.zone().spawn);
@@ -331,6 +338,17 @@ impl App {
             return;
         }
         if !in_bounds(target) {
+            return;
+        }
+
+        // Doorways: step through, and the world changes around you.
+        if let Some(warp) = self.zone().warp_at(target.0, target.1) {
+            self.zone_idx = warp.to_zone;
+            self.player = warp.to_pos;
+            if self.zone().interior {
+                let name = self.zone().name;
+                self.toast(format!("You step inside — {name}."));
+            }
             return;
         }
 
@@ -650,6 +668,21 @@ mod tests {
         app.player = (x, y);
         app.try_move(1, 0);
         assert_eq!(app.player, (x, y), "trees are for hugging, not phasing");
+    }
+
+    #[test]
+    fn doors_lead_inside_and_back_again() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        let warp = app.zones[0].warps[0]; // the bakery's front door
+        app.player = (warp.at.0, warp.at.1 + 1);
+        app.try_move(0, -1);
+        assert_eq!(app.zone_idx, warp.to_zone, "the door led nowhere");
+        assert_eq!(app.player, warp.to_pos);
+        assert!(app.zone().interior, "houses should be interiors");
+        app.try_move(0, 1); // step back onto the room's own door
+        assert_eq!(app.zone_idx, 0, "no way back out of the bakery");
+        assert_eq!(app.player, (warp.at.0, warp.at.1 + 1));
     }
 
     #[test]

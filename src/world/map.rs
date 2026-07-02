@@ -38,6 +38,20 @@ pub enum Tile {
     Lantern,
     Gate,
     Sign,
+    /// The darkness outside an interior's walls — nothing there, on purpose.
+    Void,
+    Rug,
+    Bookshelf,
+    /// A shop shelf stocked with wares (loaves, jars, good intentions).
+    Shelf,
+    Table,
+    Stool,
+    BedHead,
+    BedFoot,
+    /// An indoor fireplace/oven, always cosily lit.
+    Hearth,
+    Barrel,
+    Crate,
 }
 
 impl Tile {
@@ -52,6 +66,7 @@ impl Tile {
                 | Tile::Sand
                 | Tile::Floor
                 | Tile::Door
+                | Tile::Rug
         )
     }
 }
@@ -63,12 +78,15 @@ pub enum Border {
     Forest,
     Meadow,
     Cliffs,
+    /// Interiors: past the walls there is only warm, harmless darkness.
+    Void,
 }
 
 impl Border {
     pub fn tile(self, x: i32, y: i32, seed: u32) -> Tile {
         let h = hash2(x, y, seed) % 100;
         match self {
+            Border::Void => Tile::Void,
             Border::Forest => match h {
                 0..=79 => Tile::Tree,
                 80..=89 => Tile::Bush,
@@ -97,6 +115,15 @@ pub enum Weather {
     Mist,
 }
 
+/// Stepping onto `at` whisks the player to `to_pos` in zone `to_zone` — how
+/// doors lead into houses and back out again.
+#[derive(Clone, Copy)]
+pub struct Warp {
+    pub at: (i32, i32),
+    pub to_zone: usize,
+    pub to_pos: (i32, i32),
+}
+
 pub struct Zone {
     pub id: usize,
     pub name: &'static str,
@@ -106,9 +133,16 @@ pub struct Zone {
     pub gate: Option<(i32, i32)>,
     pub locked_msg: &'static str,
     pub unlock_msg: &'static str,
-    pub weather: Weather,
+    /// Every place keeps its own sky: weather never changes within a zone,
+    /// and interiors (`None`) have no sky at all.
+    pub weather: Option<Weather>,
+    /// Fixed time of day for this place, 0.0 = deep night .. 1.0 = high noon.
+    pub daylight: f32,
+    /// True for rooms behind doors: no sky, no borders worth wandering to.
+    pub interior: bool,
     pub border: Border,
     pub seed: u32,
+    pub warps: Vec<Warp>,
     pub npcs: Vec<Npc>,
     pub critters: Vec<Critter>,
     pub signs: Vec<Sign>,
@@ -129,6 +163,10 @@ impl Zone {
 
     pub fn sign_at(&self, x: i32, y: i32) -> Option<&Sign> {
         self.signs.iter().find(|s| s.pos == (x, y))
+    }
+
+    pub fn warp_at(&self, x: i32, y: i32) -> Option<Warp> {
+        self.warps.iter().copied().find(|w| w.at == (x, y))
     }
 }
 
@@ -309,6 +347,17 @@ pub fn char_tile(c: char) -> Option<Tile> {
         'L' => Tile::Lantern,
         'G' => Tile::Gate,
         '!' => Tile::Sign,
+        'v' => Tile::Void,
+        'R' => Tile::Rug,
+        'B' => Tile::Bookshelf,
+        'S' => Tile::Shelf,
+        't' => Tile::Table,
+        's' => Tile::Stool,
+        'n' => Tile::BedHead,
+        'u' => Tile::BedFoot,
+        'h' => Tile::Hearth,
+        'o' => Tile::Barrel,
+        'x' => Tile::Crate,
         _ => return None,
     })
 }

@@ -15,6 +15,7 @@ pub enum CritterKind {
     Sheep,
     Frog,
     Moth,
+    Cat,
 }
 
 impl CritterKind {
@@ -24,6 +25,7 @@ impl CritterKind {
             CritterKind::Sheep => 'S',
             CritterKind::Frog => 'f',
             CritterKind::Moth => 'm',
+            CritterKind::Cat => 'k',
         }
     }
 
@@ -33,6 +35,7 @@ impl CritterKind {
             CritterKind::Sheep => (240, 238, 230),
             CritterKind::Frog => (120, 190, 90),
             CritterKind::Moth => (210, 205, 230),
+            CritterKind::Cat => (214, 164, 110),
         }
     }
 }

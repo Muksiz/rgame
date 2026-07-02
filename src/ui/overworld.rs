@@ -5,7 +5,7 @@ use ratatui::style::{Color, Style};
 
 use crate::app::App;
 use crate::content::quests::QUESTS;
-use crate::ui::{daylight, effects, put_str, shade};
+use crate::ui::{effects, put_str, shade};
 use crate::world::camera;
 use crate::world::map::{Tile, hash2};
 
@@ -28,15 +28,11 @@ pub fn draw(frame: &mut Frame, app: &App) {
         height: 1,
     };
 
-    let dl = daylight(app.tick);
+    let dl = app.daylight();
     draw_map(frame.buffer_mut(), map_area, app, dl);
-    effects::weather(
-        frame.buffer_mut(),
-        map_area,
-        app.zone().weather,
-        app.tick,
-        dl,
-    );
+    if let Some(weather) = app.zone().weather {
+        effects::weather(frame.buffer_mut(), map_area, weather, app.tick, dl);
+    }
     draw_top_bar(frame.buffer_mut(), top, app, dl);
     draw_bottom_bar(frame.buffer_mut(), bottom, app);
 }
@@ -45,7 +41,9 @@ fn draw_map(buf: &mut Buffer, area: Rect, app: &App, dl: f32) {
     let (vw, vh) = (area.width as i32, area.height as i32);
     let (ox, oy) = camera::viewport_origin(app.player, vw, vh);
     let zone = app.zone();
-    let lantern_lit = zone.id == 0 && app.completed.contains(&1);
+    // Emberwick's festival lantern waits for quest 1; every other lantern
+    // (the Library's lamps) burns on its own.
+    let lantern_lit = zone.id != 0 || app.completed.contains(&1);
 
     for row in 0..vh {
         for col in 0..vw {
@@ -92,8 +90,8 @@ fn draw_map(buf: &mut Buffer, area: Rect, app: &App, dl: f32) {
     for npc in &zone.npcs {
         put(buf, npc.pos.0, npc.pos.1, npc.glyph, npc.color, true);
         // Quest markers hover above heads: `!` = has a quest for you,
-        // `?` = waiting on your rune.
-        if npc.quest == active {
+        // `?` = waiting on your rune. (Flavor folk never get a marker.)
+        if npc.quest.is_some() && npc.quest == active {
             let accepted = active.map(|id| app.accepted.contains(&id)).unwrap_or(false);
             let bob = (app.tick / 8).is_multiple_of(2);
             if accepted {
@@ -322,5 +320,42 @@ fn tile_visual(
         }
         Tile::Gate => ('≡', (152, 122, 80), (40, 36, 26)),
         Tile::Sign => ('§', (206, 192, 148), grass_bg),
+        Tile::Void => {
+            // The dark beyond the walls; the rare mote keeps it soft, not empty.
+            if h.is_multiple_of(31) {
+                ('·', (34, 30, 42), (16, 14, 20))
+            } else {
+                (' ', (16, 14, 20), (16, 14, 20))
+            }
+        }
+        Tile::Rug => {
+            let ch = if h.is_multiple_of(5) { '░' } else { ' ' };
+            (ch, (172, 96, 80), (122, 58, 48))
+        }
+        Tile::Bookshelf => {
+            let c = [
+                (188, 92, 84),
+                (108, 140, 178),
+                (128, 166, 106),
+                (222, 198, 152),
+            ][(h % 4) as usize];
+            ('≡', c, (74, 54, 34))
+        }
+        Tile::Shelf => ('¤', (226, 178, 90), (74, 54, 34)),
+        Tile::Table => ('π', (172, 134, 88), (54, 44, 32)),
+        Tile::Stool => ('o', (150, 116, 74), (54, 44, 32)),
+        Tile::BedHead => ('∩', (238, 232, 220), (110, 74, 48)),
+        Tile::BedFoot => ('=', (200, 122, 72), (110, 74, 48)),
+        Tile::Hearth => {
+            let f = ((tick / 4) % 3) as usize;
+            let (ch, fg) = [
+                ('▲', (244, 168, 58)),
+                ('♦', (240, 120, 50)),
+                ('▲', (250, 204, 94)),
+            ][f];
+            (ch, fg, (50, 46, 48))
+        }
+        Tile::Barrel => ('O', (162, 122, 76), (54, 44, 32)),
+        Tile::Crate => ('□', (176, 138, 90), (54, 44, 32)),
     }
 }

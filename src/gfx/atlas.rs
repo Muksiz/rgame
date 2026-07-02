@@ -57,6 +57,20 @@ pub const BUTTERFLY_A: u16 = 58;
 pub const BUTTERFLY_B: u16 = 59;
 pub const BIRD_A: u16 = 60;
 pub const BIRD_B: u16 = 61;
+pub const VOID: u16 = 62;
+pub const RUG: u16 = 63;
+pub const TABLE: u16 = 64;
+pub const STOOL: u16 = 65;
+pub const BED_HEAD: u16 = 66;
+pub const BED_FOOT: u16 = 67;
+pub const HEARTH_A: u16 = 68;
+pub const HEARTH_B: u16 = 69;
+pub const BARREL: u16 = 70;
+pub const CRATE: u16 = 71;
+pub const SHELF: u16 = 72;
+pub const BOOKSHELF: u16 = 73;
+pub const CAT: u16 = 74;
+pub const VILLAGER_1: u16 = 75;
 
 static ATLAS_PNG: &[u8] = include_bytes!("../../assets/atlas.png");
 

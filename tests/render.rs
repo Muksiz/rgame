@@ -31,7 +31,8 @@ fn every_screen_renders_at_every_size() {
 
     render_all_sizes(&app); // Title
 
-    for zone in 0..4 {
+    // Every zone, interiors included — each keeps its own hour and weather.
+    for zone in 0..app.zones.len() {
         app.zone_idx = zone;
         app.player = app.zones[zone].spawn;
         app.screen = Screen::World;

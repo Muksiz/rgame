@@ -1,8 +1,9 @@
 //! Dev tool: render a frame of the overworld as plain text, without a TTY.
 //!
-//!     cargo run --example snapshot -- [zone 0-3] [x] [y] [width] [height]
+//!     cargo run --example snapshot -- [zone] [x] [y] [width] [height]
 //!
-//! Handy for eyeballing map layouts while tuning the zones.
+//! Zones 0-3 are the overworld; 4+ are the interiors behind doors (see
+//! `world::zones`). Handy for eyeballing map layouts while tuning the zones.
 
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
@@ -28,7 +29,7 @@ fn main() {
         app.player = (x, y);
     }
     app.screen = Screen::World;
-    app.tick = 1200; // mid-morning
+    app.tick = 1200; // animations mid-sway; time of day is fixed per zone
 
     let backend = TestBackend::new(w, h);
     let mut terminal = Terminal::new(backend).unwrap();

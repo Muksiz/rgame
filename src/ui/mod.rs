@@ -15,16 +15,9 @@ use ratatui::widgets::{Block, BorderType, Clear, Paragraph, Wrap};
 
 use crate::app::{App, EPILOGUE, Screen};
 
-/// One full day/night cycle, in ticks (~50ms each) — four minutes.
-const DAY_TICKS: u64 = 4800;
-
-/// 0.0 = deepest night, 1.0 = high noon. The game starts at dawn.
-pub fn daylight(tick: u64) -> f32 {
-    let phase = (tick % DAY_TICKS) as f32 / DAY_TICKS as f32;
-    0.5 + 0.5 * (std::f32::consts::TAU * phase).sin()
-}
-
 /// Apply the time of day to a color: darker at night, with a soft blue cast.
+/// Time of day is fixed per zone (`Zone::daylight`) — every place keeps its
+/// own hour, from Emberwick's bright morning to the misty Hearthspire night.
 pub fn shade(c: (u8, u8, u8), daylight: f32) -> Color {
     let bright = 0.45 + 0.55 * daylight;
     let night = 1.0 - daylight;
