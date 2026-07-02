@@ -11,7 +11,8 @@ use crate::ui::{art, centered, panel, put_str};
 use crate::world::map::hash2;
 
 const SPINNER: [char; 6] = ['✶', '✸', '✹', '✺', '✹', '✸'];
-const WEAVING: [&str; 4] = [
+/// Shared with the graphical frontend, so both fronts mumble the same spells.
+pub const WEAVING: [&str; 4] = [
     "weaving the runes…",
     "coaxing the borrow spirit…",
     "warming the type glyphs…",
