@@ -4,8 +4,16 @@ The long walk from "cozy quest corridor" to a full-fledged game in the spirit
 of old Pokémon and Zelda. Each step multiplies the value of the world that
 already exists; polish comes last because the tone is already carrying a lot.
 
-Ordering: **interiors → items & gates → grass encounters → side content →
-NPC life → audio & polish.**
+Ordering: **interiors ✅ → items & gates ✅ → grass encounters ✅ →
+side content (begun) → NPC life → audio & polish.**
+
+**Where things stand** (July 2026): steps 1–3 are shipped — every door
+opens, each place keeps its own fixed hour and weather, quests leave real
+keepsakes that gate the world, and the tall grass hides sixteen wild runes
+that fill the Grimoire. Step 4 has its first piece: the Great Library's
+shelves hold real books about Rust, its features and its history. Along the
+way, Fern became **Wren** (too close to Ferris), and the rune collection is
+deliberately the **Grimoire** — in-world names over franchise-adjacent ones.
 
 ---
 
@@ -62,7 +70,7 @@ Still open for later passes: more runes per zone, encounter art in the gfx
 build (a proper grass-rustle transition), and rare runes that only stir at
 particular spots.
 
-## 4. Side quests, secrets, and collectibles
+## 4. Side quests, secrets, and collectibles ◐ (next up)
 
 `active_quest()` stays strictly linear for the main road, but old Pokémon
 always had optional stuff off the critical path:
@@ -109,5 +117,12 @@ always had optional stuff off the critical path:
   tiles are added.
 - Extend the render matrix (`tests/render.rs`) and the world invariant
   tests (`world/zones.rs`) with every new screen, zone, or warp.
+- New persistent state goes in `SaveData` behind `#[serde(default)]`, and
+  anything derivable (like item ownership) is derived, not stored — an old
+  `save.json` must always keep loading.
+- Autosave stays a milestone thing (quest pass, gate, quit) — frequent
+  actions must not write to the cwd, or unit tests start littering the repo.
+- Names stay in-world and original: the Grimoire, keepsakes, fizzles —
+  nothing borrowed from the franchises that inspired the shape.
 - Tone is spec: cozy, gentle, no fail states, the compiler is the politest
   grump.
