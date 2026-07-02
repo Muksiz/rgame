@@ -38,7 +38,7 @@ Invariants (tested): every Door tile has a warp; every warp lands on ground
 reachable from the destination zone's spawn; every way in has a way back.
 
 Possible garnish later: a fade-to-black on transit (trivial in
-`gfx/frame.rs`, `ui::shade`-to-black in the TUI).
+`gfx/frame.rs`).
 
 ## 2. Items, inventory, and ability gates ✅
 

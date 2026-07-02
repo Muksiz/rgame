@@ -286,24 +286,18 @@ fn emberwick() -> Zone {
         npcs: vec![
             Npc {
                 name: "Elder Rowan",
-                glyph: 'R',
-                color: (216, 186, 130),
                 pos: (86, 31),
                 quest: Some(1),
                 idle: &["The lantern has hung dark for years. Tonight, maybe, it glows again."],
             },
             Npc {
                 name: "Baker Poppy",
-                glyph: 'P',
-                color: (234, 156, 146),
                 pos: (66, 25),
                 quest: Some(2),
                 idle: &["Smell that? Honey-oat loaves. The recipe is older than the village."],
             },
             Npc {
                 name: "Well-keeper Bram",
-                glyph: 'B',
-                color: (150, 184, 214),
                 pos: (112, 27),
                 quest: Some(3),
                 idle: &["Deepest well in the valley, this. Probably. Nobody's ever checked."],
@@ -406,24 +400,18 @@ fn whispering_woods() -> Zone {
         npcs: vec![
             Npc {
                 name: "Wren",
-                glyph: 'F',
-                color: (152, 214, 122),
                 pos: (49, 20),
                 quest: Some(4),
                 idle: &["When I grow up I'm going to walk to BOTH ends of the road."],
             },
             Npc {
                 name: "Forager Maren",
-                glyph: 'M',
-                color: (206, 130, 170),
                 pos: (101, 46),
                 quest: Some(5),
                 idle: &["Rule one of foraging: when in doubt, don't. Rule two: see rule one."],
             },
             Npc {
                 name: "Shepherd Ambrose",
-                glyph: 'A',
-                color: (196, 186, 156),
                 pos: (172, 28),
                 quest: Some(6),
                 idle: &["*yaaawn* ...I wasn't sleeping. I was counting very slowly."],
@@ -506,24 +494,18 @@ fn silverford() -> Zone {
         npcs: vec![
             Npc {
                 name: "Ferryman Wick",
-                glyph: 'W',
-                color: (126, 168, 190),
                 pos: (136, 45),
                 quest: Some(7),
                 idle: &["River's high today. River's always high today, if you ask the river."],
             },
             Npc {
                 name: "Fisher Juniper",
-                glyph: 'J',
-                color: (142, 196, 196),
                 pos: (148, 22),
                 quest: Some(8),
                 idle: &["The trick to fishing is patience. The other trick is bait. Mostly bait."],
             },
             Npc {
                 name: "Hermit Morrow",
-                glyph: 'O',
-                color: (176, 156, 208),
                 pos: (118, 57),
                 quest: Some(9),
                 idle: &["The river brings me letters. I write back, but slowly."],
@@ -605,8 +587,6 @@ fn hearthspire() -> Zone {
         npcs: vec![
             Npc {
                 name: "Archivist Elm",
-                glyph: 'E',
-                color: (188, 176, 146),
                 pos: (68, 48),
                 quest: Some(10),
                 idle: &[
@@ -615,16 +595,12 @@ fn hearthspire() -> Zone {
             },
             Npc {
                 name: "The Stone Golem",
-                glyph: 'G',
-                color: (168, 168, 180),
                 pos: (172, 24),
                 quest: Some(11),
                 idle: &["...zzz... shelf... twelve... zzz..."],
             },
             Npc {
                 name: "Sage Alderly",
-                glyph: 'S',
-                color: (226, 204, 152),
                 pos: (208, 35),
                 quest: Some(12),
                 idle: &["Every book comes home eventually. Some just take the scenic route."],
@@ -715,8 +691,6 @@ fn sorrel_cottage() -> Zone {
         vec![exit(COTTAGE_ROOM_DOOR, EMBERWICK, SORREL_DOOR)],
         vec![Npc {
             name: "Granny Sorrel",
-            glyph: 'N',
-            color: (208, 178, 188),
             pos: at(8, 3),
             quest: None,
             idle: &["Sit down, sit down. The kettle's just... well, it's thinking about boiling."],
@@ -736,8 +710,6 @@ fn carpenter_house() -> Zone {
         vec![exit(WORKSHOP_ROOM_DOOR, EMBERWICK, CARPENTER_DOOR)],
         vec![Npc {
             name: "Carpenter Alder",
-            glyph: 'C',
-            color: (188, 168, 138),
             pos: at(6, 4),
             quest: None,
             idle: &["Measure twice, saw once, sweep thrice. Nobody warns you about the sweeping."],
@@ -757,8 +729,6 @@ fn tilly_cottage() -> Zone {
         vec![exit(COTTAGE_ROOM_DOOR, EMBERWICK, TILLY_DOOR)],
         vec![Npc {
             name: "Hen-keeper Tilly",
-            glyph: 'T',
-            color: (170, 190, 160),
             pos: at(7, 4),
             quest: None,
             idle: &["The chickens have opinions about the rain. Strong ones. Don't ask Henrietta."],
@@ -812,8 +782,6 @@ fn great_library() -> Zone {
         ],
         vec![Npc {
             name: "Under-librarian Twill",
-            glyph: 'U',
-            color: (188, 168, 138),
             pos: at(13, 8),
             quest: None,
             idle: &[

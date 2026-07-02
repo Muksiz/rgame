@@ -1,6 +1,6 @@
 //! Text on the framebuffer: the classic public-domain 8×8 bitmap font, with a
-//! gentle fallback so the game's typographic flourishes survive the trip from
-//! the terminal (— becomes -, ◆ becomes a real drawn diamond elsewhere, etc.).
+//! gentle fallback so the prose's typographic flourishes survive the 8×8 grid
+//! (— becomes -, ◆ becomes a real drawn diamond elsewhere, etc.).
 
 use font8x8::{BASIC_FONTS, UnicodeFonts};
 

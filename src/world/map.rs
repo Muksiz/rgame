@@ -72,7 +72,7 @@ impl Tile {
 }
 
 /// What the world looks like past the edges of the authored map. The renderer
-/// samples this for out-of-bounds cells so huge terminals never see black bars.
+/// samples this for out-of-bounds cells so an oversized view never shows bars.
 #[derive(Clone, Copy)]
 pub enum Border {
     Forest,

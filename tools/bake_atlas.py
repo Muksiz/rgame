@@ -31,7 +31,7 @@ def over(base, top):
 
 
 def tint(sprite, rgb):
-    """Recolor a sprite by luminance so it matches the NPC's terminal color."""
+    """Recolor a sprite by luminance to give each NPC their own tunic color."""
     out = Image.new("RGBA", sprite.size, (0, 0, 0, 0))
     for xy in [(x, y) for y in range(sprite.height) for x in range(sprite.width)]:
         r, g, b, a = sprite.getpixel(xy)
@@ -330,7 +330,7 @@ PALETTE = {
     "V": (26, 23, 32, 255),
 }
 
-# NPC terminal colors, in quest order 1..12 (from src/world/zones.rs).
+# NPC tunic colors, in quest order 1..12 (canonical here; tints the sprites).
 NPC_COLORS = [
     (216, 186, 130),
     (234, 156, 146),

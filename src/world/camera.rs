@@ -1,7 +1,7 @@
 use crate::world::map::{MAP_H, MAP_W};
 
 /// Top-left world coordinate of the viewport. Follows the player, clamps to the
-/// map, and when the terminal is *larger* than the map on an axis it centers the
+/// map, and when the view is *larger* than the map on an axis it centers the
 /// map instead (the renderer fills the outside with border scenery, so no bars).
 pub fn viewport_origin(player: (i32, i32), view_w: i32, view_h: i32) -> (i32, i32) {
     (
@@ -31,7 +31,7 @@ mod tests {
 
     #[test]
     fn centers_map_when_view_is_larger() {
-        // 300-wide terminal on a 240-wide map: origin goes negative, map centered.
+        // 300-wide view on a 240-wide map: origin goes negative, map centered.
         assert_eq!(axis_origin(10, 300, MAP_W), -30);
     }
 }
