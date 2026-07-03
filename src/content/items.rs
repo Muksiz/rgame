@@ -5,9 +5,9 @@
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Item {
-    /// Bram's storm-lantern (quest 3) — lights the way into dark places.
+    /// Bram's storm-lantern (quest 6) — lights the way into dark places.
     StormLantern,
-    /// Juniper's spare rod (quest 8) — lets you fish any reedy bank.
+    /// Juniper's spare rod (quest 17) — lets you fish any reedy bank.
     FishingRod,
 }
 
@@ -41,8 +41,8 @@ pub static CATCHES: &[&str] = &[
 /// The keepsake a quest's NPC hands over with their thanks, if any.
 pub fn reward(quest_id: u8) -> Option<Item> {
     match quest_id {
-        3 => Some(Item::StormLantern),
-        8 => Some(Item::FishingRod),
+        6 => Some(Item::StormLantern),
+        17 => Some(Item::FishingRod),
         _ => None,
     }
 }
@@ -60,9 +60,9 @@ mod tests {
     fn rewards_come_from_completed_quests() {
         let mut done = std::collections::BTreeSet::new();
         assert!(satchel(&done).is_empty());
-        done.extend([1, 2, 3]);
+        done.extend([1, 2, 3, 4, 5, 6]);
         assert_eq!(satchel(&done), vec![Item::StormLantern]);
-        done.insert(8);
+        done.insert(17);
         assert_eq!(satchel(&done), vec![Item::StormLantern, Item::FishingRod]);
     }
 }

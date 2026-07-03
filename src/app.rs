@@ -1188,7 +1188,7 @@ impl App {
             }
             DialogueKind::Success(qid) => {
                 self.screen = Screen::World;
-                if qid == 12 {
+                if qid == QUESTS.len() as u8 {
                     self.screen = Screen::Epilogue { page: 0 };
                 } else if self.zone_cleared(self.zone_idx) && self.zone().gate.is_some() {
                     let msg = self.zone().unlock_msg;
@@ -1420,7 +1420,7 @@ mod tests {
     fn zones_gate_until_their_quests_are_done() {
         let mut app = App::new();
         assert!(!app.zone_cleared(0));
-        app.completed.extend([1, 2, 3]);
+        app.completed.extend([1, 2, 3, 4, 5, 6, 7]);
         assert!(app.zone_cleared(0));
         assert!(!app.zone_cleared(1));
     }
@@ -1588,7 +1588,7 @@ mod tests {
         app.screen = Screen::World;
         assert!(app.banner.is_none());
         // Cross Emberwick's gate (with its quests done) into the woods.
-        app.completed.extend([1, 2, 3]);
+        app.completed.extend([1, 2, 3, 4, 5, 6, 7]);
         let gate = app.zone().gate.unwrap();
         app.player = (gate.0 - 1, gate.1);
         app.on_key(Key::Right);
@@ -1645,7 +1645,7 @@ mod tests {
             zones::WHISPERING_WOODS,
             "walked into pitch darkness without a lantern"
         );
-        app.completed.insert(3); // Bram hands over the storm-lantern
+        app.completed.insert(6); // Bram hands over the storm-lantern
         app.try_move(0, -1);
         assert_eq!(app.zone_idx, zones::ECHO_CAVE);
     }
@@ -1675,7 +1675,7 @@ mod tests {
         app.player = spot.expect("Silverford has a quiet riverbank somewhere");
         app.on_key(Key::Char('e'));
         assert_eq!(app.fish, 0, "fished without a rod");
-        app.completed.insert(8); // Juniper's spare rod
+        app.completed.insert(17); // Juniper's spare rod
         app.on_key(Key::Char('e'));
         assert_eq!(app.fish, 1);
         assert!(app.toast.is_some(), "the catch deserves a mention");
@@ -1786,7 +1786,7 @@ mod tests {
             zones::STOREHOUSE,
             "walked into a pitch-dark cellar without a light"
         );
-        app.completed.insert(3); // Bram's storm-lantern
+        app.completed.insert(6); // Bram's storm-lantern
         app.try_move(0, -1);
         assert_eq!(app.zone_idx, zones::STOREHOUSE_CELLAR);
 

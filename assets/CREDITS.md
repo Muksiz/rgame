@@ -28,9 +28,21 @@ character cells remain in the atlas so existing sprite ids never shift.
 (`Actor/Character`, `Actor/CharacterAnimated`, `Actor/Animal`, `Actor/Boss`,
 `Actor/Monster`, `Items`, `FX`, and its `LICENSE.txt`) — raw source material
 for future features (wild-rune encounter art, journal/keepsake icons, casting
-FX) so pulling a new sprite into the atlas is a crop, not a re-download. Not
-baked into `atlas.png` itself; `tools/bake_atlas.py` still only reads the
-flat `ninja_adventure/<Character>/Idle.png` layout above.
+FX) so pulling a new sprite into the atlas is a crop, not a re-download.
+`tools/bake_atlas.py` reads the flat `ninja_adventure/<Character>/Idle.png`
+layout above; eleven characters (Tansy, Fitch, Hobb, Reed, Pip, Briar, Yew,
+Sable, Fenn, Sil, Faye — the beginner-quest expansion's cast, added as a tail
+block in the atlas so no earlier id shifts) instead carry a plain
+`SpriteSheet.png` copied straight out of `pack/Actor/Character/<Name>/`,
+which the bake script's `na_idles()` reads just as well (its top row is the
+same four idle facings).
+
+The village buildings — the perspective-drawn cottages, barn, shed, market
+stall and plaza fountain — are from **"Zelda-like tilesets and sprites"** by
+**ArMM1998** (https://opengameart.org/content/zelda-like-tilesets-and-sprites,
+**CC0**): `zelda_like/Overworld.png` is the pack's overworld sheet, unmodified;
+`tools/bake_atlas.py` crops each building prefab out of it (and pastes the
+sheet's arched-door piece onto the doorless ones) at bake time.
 
 The critter, Ferris, bookshelf, chest, runestone and moon-mint sprites in
 the atlas are original pixel art for this project (same CC0 spirit — do

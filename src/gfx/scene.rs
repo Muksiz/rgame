@@ -98,10 +98,38 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
             }
             match tile {
                 Tile::Water | Tile::WaterRock => shoreline(fb, zone, wx, wy, px, py, dl, app.tick),
-                Tile::Path => path_rim(fb, zone, wx, wy, px, py, dl, (104, 84, 56)),
-                Tile::Plaza => path_rim(fb, zone, wx, wy, px, py, dl, (96, 94, 88)),
+                Tile::Path => {
+                    path_rim(fb, zone, wx, wy, px, py, dl, (104, 84, 56));
+                    building_shadow(fb, zone, wx, wy, px, py, dl);
+                }
+                Tile::Plaza => {
+                    path_rim(fb, zone, wx, wy, px, py, dl, (96, 94, 88));
+                    building_shadow(fb, zone, wx, wy, px, py, dl);
+                }
                 Tile::Cliff => path_rim(fb, zone, wx, wy, px, py, dl, (88, 92, 88)),
-                Tile::Roof => roof_detail(fb, zone, wx, wy, px, py, dl),
+                Tile::Roof => {
+                    roof_detail(fb, zone, wx, wy, px, py, dl, (150, 84, 58), (118, 62, 42));
+                    roof_peak(fb, zone, wx, wy, px, py, dl, (150, 84, 58));
+                }
+                Tile::RoofSlate => {
+                    roof_detail(fb, zone, wx, wy, px, py, dl, (94, 104, 118), (62, 70, 82));
+                    roof_peak(fb, zone, wx, wy, px, py, dl, (94, 104, 118));
+                }
+                Tile::RoofCream => {
+                    roof_detail(
+                        fb,
+                        zone,
+                        wx,
+                        wy,
+                        px,
+                        py,
+                        dl,
+                        (176, 148, 108),
+                        (142, 116, 82),
+                    );
+                    roof_peak(fb, zone, wx, wy, px, py, dl, (176, 148, 108));
+                }
+                Tile::Grass | Tile::Sand => building_shadow(fb, zone, wx, wy, px, py, dl),
                 Tile::Floor => {
                     floor_rim(fb, zone, wx, wy, px, py, dl);
                     sunbeam(fb, zone, wx, wy, px, py, dl, app.tick);
@@ -485,8 +513,24 @@ fn tile_sprites(
             };
             (wall_base(zone_id, h), decor)
         }
+        // A building prefab cell: the atlas cell rides in the tile itself
+        // (see the Tile::Facade docs), drawn over whatever grows beneath so
+        // the roofline's transparent corners show grass, not void.
+        Tile::Facade(cell) | Tile::FacadeDoor(cell) => (ground, Some(cell)),
+        // Alternate exterior wall builds: sprigs of ivy here and there, same
+        // as plain Wall — just a different building material underneath.
+        Tile::WallStone => (atlas::WALL_STONE, h.is_multiple_of(7).then_some(atlas::IVY)),
+        Tile::WallPlaster => (
+            atlas::WALL_PLASTER,
+            h.is_multiple_of(7).then_some(atlas::IVY),
+        ),
         Tile::Roof => (atlas::ROOF, None),
+        Tile::RoofSlate => (atlas::ROOF_SLATE, None),
+        Tile::RoofCream => (atlas::ROOF_CREAM, None),
         Tile::Door => (wall_base(zone_id, h), Some(atlas::DOOR)),
+        // A facade's shut door: always the same weathered arch, regardless of
+        // the wall it's set in — nobody's meant to look closely, just walk by.
+        Tile::DoorClosed => (atlas::WALL, Some(atlas::DOOR_ARCH)),
         Tile::Floor => (interior_floor(zone_id, h), None),
         Tile::Fence => {
             // Fences follow their run: rails along a row, posts-and-rails up
@@ -680,7 +724,20 @@ fn tile_sprites(
         Tile::Herb => (ground, Some(atlas::HERB)),
         Tile::Chest => (furniture_base(zone, x, y), Some(atlas::CHEST)),
         Tile::Runestone => (furniture_base(zone, x, y), Some(atlas::RUNESTONE)),
-        Tile::Window => (wall_base(zone_id, h), Some(atlas::WINDOW)),
+        Tile::Window => {
+            // Interior windows keep the hand-pixeled glow (it feeds the
+            // sunbeam light-shaft effect); exterior windows get some variety.
+            let sprite = if interior {
+                atlas::WINDOW
+            } else {
+                match h % 3 {
+                    0 => atlas::WINDOW_ROUND,
+                    1 => atlas::WINDOW_SQUARE,
+                    _ => atlas::WINDOW,
+                }
+            };
+            (wall_base(zone_id, h), Some(sprite))
+        }
         Tile::Painting => {
             // The gallery hangs a mix: framed canvases, a map, a mirror.
             let id = match h % 7 {
@@ -1107,8 +1164,16 @@ fn floor_rim(
     }
 }
 
+/// Any of the roof tiles, regardless of which building's palette it wears —
+/// so a slate roof's eave doesn't cut a false edge against its own ridge.
+fn is_roof(tile: Tile) -> bool {
+    matches!(tile, Tile::Roof | Tile::RoofSlate | Tile::RoofCream)
+}
+
 /// Shingle lines across roof tiles, and a darker eave along the roof's edge,
-/// so houses read as buildings instead of orange slabs.
+/// so houses read as buildings instead of flat color slabs. `shingle`/`eave`
+/// are matched to whichever roof palette (amber/slate/cream) called this.
+#[allow(clippy::too_many_arguments)]
 fn roof_detail(
     fb: &mut Frame,
     zone: &crate::world::map::Zone,
@@ -1117,23 +1182,101 @@ fn roof_detail(
     px: i32,
     py: i32,
     dl: f32,
+    shingle: (u8, u8, u8),
+    eave: (u8, u8, u8),
 ) {
     let t = TILE as i32;
     for row in [3, 7, 11, 15] {
-        fb.fill_a(px, py + row, t, 1, shade((150, 84, 58), dl), 110);
+        fb.fill_a(px, py + row, t, 1, shade(shingle, dl), 110);
     }
-    let eave = shade((118, 62, 42), dl);
-    if zone.tile(wx, wy - 1) != Tile::Roof {
+    let eave = shade(eave, dl);
+    if !is_roof(zone.tile(wx, wy - 1)) {
         fb.fill(px, py, t, 1, eave);
     }
-    if zone.tile(wx, wy + 1) != Tile::Roof {
+    if !is_roof(zone.tile(wx, wy + 1)) {
         fb.fill(px, py + t - 1, t, 1, eave);
     }
-    if zone.tile(wx - 1, wy) != Tile::Roof {
+    if !is_roof(zone.tile(wx - 1, wy)) {
         fb.fill(px, py, 1, t, eave);
     }
-    if zone.tile(wx + 1, wy) != Tile::Roof {
+    if !is_roof(zone.tile(wx + 1, wy)) {
         fb.fill(px + t - 1, py, 1, t, eave);
+    }
+}
+
+fn lighten(c: (u8, u8, u8)) -> (u8, u8, u8) {
+    (
+        c.0.saturating_add(46),
+        c.1.saturating_add(46),
+        c.2.saturating_add(46),
+    )
+}
+
+/// A roofline's exposed top edge rises above its own tile in a triangular
+/// ridge — tallest at the middle of the contiguous run, tapering to nothing
+/// at its ends — so the building reads as having real height instead of
+/// being a flat painted rectangle. Purely a paint trick: it overdraws into
+/// the tile row above (already drawn, since rows paint top-to-bottom), and
+/// doesn't touch collision, so nothing about walkability changes.
+#[allow(clippy::too_many_arguments)]
+fn roof_peak(
+    fb: &mut Frame,
+    zone: &crate::world::map::Zone,
+    wx: i32,
+    wy: i32,
+    px: i32,
+    py: i32,
+    dl: f32,
+    color: (u8, u8, u8),
+) {
+    if is_roof(zone.tile(wx, wy - 1)) {
+        return; // not the roof's top edge — another roof row already covers it
+    }
+    let exposed = |x: i32| is_roof(zone.tile(x, wy)) && !is_roof(zone.tile(x, wy - 1));
+    let mut left = wx;
+    while exposed(left - 1) {
+        left -= 1;
+    }
+    let mut right = wx;
+    while exposed(right + 1) {
+        right += 1;
+    }
+    let span = (right - left + 1) as f32;
+    let half = (span / 2.0).max(1.0);
+    let dist = (wx as f32 - (left + right) as f32 / 2.0).abs();
+    let rise = (8.0 * (1.0 - dist / half).clamp(0.0, 1.0)).round() as i32;
+    if rise <= 0 {
+        return;
+    }
+    let t = TILE as i32;
+    let hi = shade(lighten(color), dl);
+    let base = shade(color, dl);
+    for dy in 0..rise {
+        let c = if dy == 0 { hi } else { base };
+        fb.fill(px, py - rise + dy, t, 1, c);
+    }
+}
+
+/// A soft shadow on the ground where it meets a building wall, so the
+/// structure looks like it's actually sitting on the earth rather than
+/// pasted over it.
+fn building_shadow(
+    fb: &mut Frame,
+    zone: &crate::world::map::Zone,
+    wx: i32,
+    wy: i32,
+    px: i32,
+    py: i32,
+    dl: f32,
+) {
+    let walled = |t: Tile| {
+        matches!(
+            t,
+            Tile::Wall | Tile::WallStone | Tile::WallPlaster | Tile::Door | Tile::DoorClosed
+        )
+    };
+    if walled(zone.tile(wx, wy - 1)) {
+        fb.fill_a(px, py, TILE as i32, 3, shade((20, 24, 16), dl), 90);
     }
 }
 
@@ -1223,30 +1366,57 @@ fn facing_cell(step: (i32, i32)) -> u16 {
 }
 
 /// An NPC's idle cell, facing down (add `facing_cell` for the other ways):
-/// named folk get a fixed sprite, the remaining quest-givers follow their
-/// quest id, and any future stranger falls back to a townsfolk look. Nothing
-/// here ever lands on a char-select sprite (Boy, Child, ManGreen, Woman —
-/// members 0, 4, 6, 16), so no NPC mirrors a traveller the player can be.
+/// every named quest-giver and side character has a fixed sprite, and any
+/// future stranger falls back to a townsfolk look. Nothing here ever lands
+/// on a char-select sprite (Boy, Child, ManGreen, Woman — members 0, 4, 6,
+/// 16), so no NPC mirrors a traveller the player can be.
+///
+/// Quest ids no longer line up with atlas member order (the beginner-quest
+/// expansion inserted new quests between the originals without renumbering
+/// the atlas), so every NPC is matched by name rather than derived from
+/// `npc.quest`.
 fn npc_sprite(npc: &Npc) -> u16 {
-    // Well-keeper Bram, Ferryman Wick, Shepherd Ambrose — plain townsfolk the
-    // fallback borrows, none of them a face from the char-select screen.
-    const TOWNSFOLK: [u16; 3] = [3, 7, 18];
-    let member = match npc.name {
-        // Child, ManGreen and Woman are the player's to wear now, so the three
-        // NPCs who used to own those sprites take the spare villager looks.
-        "Wren" => 19,             // was Child
-        "Shepherd Ambrose" => 18, // was ManGreen
-        "Hen-keeper Tilly" => 20, // was Woman
-        "Granny Sorrel" => 13,
-        "Old Nettle" => 14,
-        "Carpenter Alder" => 15,
-        "Under-librarian Twill" => 17,
-        _ => match npc.quest {
-            Some(id) if (1..=12).contains(&id) => id as u16,
-            _ => TOWNSFOLK[npc.name.bytes().map(usize::from).sum::<usize>() % 3],
-        },
-    };
-    atlas::CAST + member * atlas::CAST_FACINGS
+    // Any future nameless stranger borrows one of these, none of them a face
+    // from the char-select screen.
+    const TOWNSFOLK: [u16; 3] = [
+        atlas::CAST_VILLAGER_M,
+        atlas::CAST_VILLAGER2,
+        atlas::CAST_VILLAGER3,
+    ];
+    match npc.name {
+        "Elder Rowan" => atlas::CAST_MASTER,
+        "Baker Poppy" => atlas::CAST_OLDMAN2,
+        "Well-keeper Bram" => atlas::CAST_VILLAGER_M,
+        "Forager Maren" => atlas::CAST_VILLAGE6,
+        "Ferryman Wick" => atlas::CAST_VILLAGER2,
+        "Fisher Juniper" => atlas::CAST_EGGBOY,
+        "Hermit Morrow" => atlas::CAST_MONK,
+        "Archivist Elm" => atlas::CAST_INSPECTOR,
+        "The Stone Golem" => atlas::CAST_STATUE,
+        "Sage Alderly" => atlas::CAST_OLDMAN3,
+        "Granny Sorrel" => atlas::CAST_OLDWOMAN,
+        "Old Nettle" => atlas::CAST_GREENMAN,
+        "Carpenter Alder" => atlas::CAST_HUNTER,
+        "Under-librarian Twill" => atlas::CAST_NOBLE,
+        // Child, ManGreen and Woman are the player's to wear now, so the two
+        // NPCs who used to own those sprites take spare villager looks.
+        "Shepherd Ambrose" => atlas::CAST_VILLAGER3, // was ManGreen
+        "Wren" => atlas::CAST_VILLAGER4,             // was Child
+        "Hen-keeper Tilly" => atlas::CAST_PRINCESS,  // was Woman
+        // The beginner-quest expansion's cast, its own tail block in the atlas.
+        "Tansy" => atlas::CAST_TANSY,
+        "Watchman Fitch" => atlas::CAST_FITCH,
+        "Toll-keeper Hobb" => atlas::CAST_HOBB,
+        "Cartographer Reed" => atlas::CAST_REED,
+        "Pip" => atlas::CAST_PIP,
+        "Basket-weaver Briar" => atlas::CAST_BRIAR,
+        "Hollow-keeper Yew" => atlas::CAST_YEW,
+        "Woodward Sable" => atlas::CAST_SABLE,
+        "Dockhand Fenn" => atlas::CAST_FENN,
+        "Net-mender Sil" => atlas::CAST_SIL,
+        "Scribe Faye" => atlas::CAST_FAYE,
+        _ => TOWNSFOLK[npc.name.bytes().map(usize::from).sum::<usize>() % 3],
+    }
 }
 
 // ── HUD bars ───────────────────────────────────────────────────────────────

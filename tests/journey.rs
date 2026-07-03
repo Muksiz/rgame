@@ -72,7 +72,7 @@ fn the_whole_journey_can_be_walked() {
     assert!(matches!(app.screen, Screen::World));
     assert!(!app.player_name.is_empty(), "the traveller should be named");
 
-    for quest in &QUESTS {
+    for (i, quest) in QUESTS.iter().enumerate() {
         // Walk (well, arrive) at the quest giver and hear them out.
         assert_eq!(
             app.zone_idx, quest.zone,
@@ -128,16 +128,18 @@ fn the_whole_journey_can_be_walked() {
         assert!(app.completed.contains(&quest.id));
 
         // End of a zone: cross the gate east (or arrive at the epilogue).
-        if quest.id == 12 {
+        let is_finale = i + 1 == QUESTS.len();
+        if is_finale {
             assert!(
                 matches!(app.screen, Screen::Epilogue { .. }),
-                "finishing quest 12 should roll the epilogue"
+                "finishing quest {} should roll the epilogue",
+                quest.id
             );
             for _ in 0..10 {
                 key(&mut app, Key::Enter);
             }
             assert!(matches!(app.screen, Screen::World));
-        } else if quest.id % 3 == 0 {
+        } else if QUESTS[i + 1].zone != quest.zone {
             let gate = app.zone().gate.unwrap();
             let before = app.zone_idx;
             app.player = (gate.0 - 1, gate.1);
@@ -155,5 +157,5 @@ fn the_whole_journey_can_be_walked() {
         playdir.join("save.json").exists(),
         "the journey was never saved"
     );
-    assert_eq!(app.completed.len(), 12);
+    assert_eq!(app.completed.len(), QUESTS.len());
 }

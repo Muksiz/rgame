@@ -32,8 +32,19 @@ pub enum Tile {
     Plaza,
     Sand,
     Wall,
+    /// Quarried grey stone, for a sturdier-looking building than plain timber.
+    WallStone,
+    /// Smooth painted plaster, for a brighter-looking building than plain timber.
+    WallPlaster,
     Roof,
+    /// A pale blue-grey slate roof, an alternative to the everyday timber roof.
+    RoofSlate,
+    /// A warm cream tile roof, an alternative to the everyday timber roof.
+    RoofCream,
     Door,
+    /// A shut door on a building nobody can actually walk into — dressing for
+    /// a facade, not a warp. Looks like a door, behaves like a wall.
+    DoorClosed,
     Floor,
     Fence,
     Cliff,
@@ -79,6 +90,14 @@ pub enum Tile {
     Piano,
     /// A tall case clock, ticking away the reading hours.
     Clock,
+    /// One cell of a multi-tile building prefab drawn in 3/4 perspective
+    /// (the Stardew/old-Zelda look). Carries its own atlas cell — the one
+    /// deliberate exception to "tile appearance lives in tile_sprites()",
+    /// because a prefab's cells are all different by construction. Solid.
+    Facade(u16),
+    /// The walkable doorway cell of a building prefab; carries a `Warp`
+    /// like any other door.
+    FacadeDoor(u16),
 }
 
 impl Tile {
@@ -95,6 +114,7 @@ impl Tile {
                 | Tile::Floor
                 | Tile::Door
                 | Tile::Rug
+                | Tile::FacadeDoor(_)
         )
     }
 }
@@ -325,6 +345,32 @@ impl MapBuilder {
         }
     }
 
+    /// Stamp a multi-tile building prefab: atlas cells `base..` (row-major,
+    /// `w`×`h`, as baked by tools/bake_atlas.py) become solid `Facade` tiles,
+    /// except the `door` cell (relative coords), which becomes a walkable
+    /// `FacadeDoor` — pair it with a `Warp` at the same spot.
+    pub fn prefab(
+        &mut self,
+        x: i32,
+        y: i32,
+        base: u16,
+        size: (i32, i32),
+        door: Option<(i32, i32)>,
+    ) {
+        let (w, h) = size;
+        for dy in 0..h {
+            for dx in 0..w {
+                let cell = base + (dy * w + dx) as u16;
+                let tile = if door == Some((dx, dy)) {
+                    Tile::FacadeDoor(cell)
+                } else {
+                    Tile::Facade(cell)
+                };
+                self.set(x + dx, y + dy, tile);
+            }
+        }
+    }
+
     /// Make sure a spot (and a ring around it) is standable: anything that
     /// blocks walking becomes grass; paths, plazas and flowers are left alone.
     pub fn clearing(&mut self, x: i32, y: i32, r: i32) {
@@ -353,7 +399,20 @@ fn step_range(a: i32, b: i32, step: i32) -> Vec<i32> {
 }
 
 fn tile_seed(tile: Tile) -> u32 {
-    tile as u32 * 0x9E37
+    // A stable per-kind seed so each scattered tile gets its own pattern.
+    // (`as u32` stopped working when Tile grew data-carrying variants; the
+    // values below are the discriminants the cast used to produce, so every
+    // scatter pattern in the world stays exactly where it was.)
+    let kind = match tile {
+        Tile::TallGrass => 1,
+        Tile::Flower => 2,
+        Tile::Tree => 3,
+        Tile::Bush => 4,
+        Tile::Reed => 7,
+        Tile::Rock => 23,
+        _ => 0,
+    };
+    kind * 0x9E37
 }
 
 pub fn char_tile(c: char) -> Option<Tile> {
@@ -369,8 +428,13 @@ pub fn char_tile(c: char) -> Option<Tile> {
         ':' => Tile::Path,
         '_' => Tile::Sand,
         '#' => Tile::Wall,
+        'k' => Tile::WallStone,
+        'p' => Tile::WallPlaster,
         'r' => Tile::Roof,
+        'q' => Tile::RoofSlate,
+        'y' => Tile::RoofCream,
         '+' => Tile::Door,
+        'd' => Tile::DoorClosed,
         '.' => Tile::Floor,
         'f' => Tile::Fence,
         '^' => Tile::Cliff,

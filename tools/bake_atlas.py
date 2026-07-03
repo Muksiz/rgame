@@ -19,6 +19,7 @@ TILE = 16
 COLS = 16  # atlas cells per row
 
 NA_DIR = Path(__file__).resolve().parent.parent / "assets" / "ninja_adventure"
+ZL_DIR = Path(__file__).resolve().parent.parent / "assets" / "zelda_like"
 
 # The cast, in atlas order. The order is historical (player, quest NPCs 1..12,
 # named side folk, then three spares); who actually *wears* each sprite is
@@ -52,11 +53,65 @@ CAST = [
     ("PRINCESS", "Princess"),  # Hen-keeper Tilly
 ]
 
+# The beginner-quest expansion's cast, baked as its own block at the tail of
+# the atlas (see the append-only rule below) rather than folded into CAST, so
+# none of the original members' ids move. Same four-facing Ninja Adventure
+# strip format; these eleven only ship a SpriteSheet.png (no separate
+# Idle.png), which na_idles() already falls back to.
+NEW_CAST = [
+    ("TANSY", "EggGirl"),  # 2 Tansy
+    ("FITCH", "Villager5"),  # 4 Fitch
+    ("HOBB", "OldMan"),  # 5 Hobb
+    ("REED", "Shaman"),  # 7 Reed
+    ("PIP", "Cavegirl2"),  # 8 Pip
+    ("BRIAR", "Cavegirl"),  # 10 Briar
+    ("YEW", "Monk2"),  # 12 Yew
+    ("SABLE", "Caveman"),  # 14 Sable
+    ("FENN", "Eskimo"),  # 15 Fenn
+    ("SIL", "Caveman2"),  # 18 Sil
+    ("FAYE", "Sultan2"),  # 23 Faye
+]
+
 
 def na_tile(sheet_name, c, r):
     """One 16x16 cell from a Ninja Adventure tileset (margin-free grid)."""
     sheet = Image.open(NA_DIR / "tilesets" / f"{sheet_name}.png").convert("RGBA")
     return sheet.crop((c * TILE, r * TILE, c * TILE + TILE, r * TILE + TILE))
+
+
+def zl_prefab(name, px, py, tw, th, keep=None, paste=None):
+    """A multi-tile building prefab from the Zelda-like Overworld sheet
+    (ArMM1998, CC0), sliced into tw x th atlas cells row-major; only the
+    first cell gets the named constant, the rest follow consecutively.
+
+    The sheet's prefabs aren't grid-aligned and sometimes touch their
+    neighbors, so the crop starts at an arbitrary pixel origin (px, py);
+    `keep` (one rel-pixel box (x0, y0, x1, y1), or a list of them) erases
+    every pixel not inside at least one box, and `paste` composites another
+    region of the sheet (sx, sy, w, h, rx, ry) onto the crop — how the
+    doorless barn gets its arched door.
+    """
+    sheet = Image.open(ZL_DIR / "Overworld.png").convert("RGBA")
+    img = sheet.crop((px, py, px + tw * TILE, py + th * TILE)).copy()
+    if keep:
+        boxes = keep if isinstance(keep, list) else [keep]
+        for y in range(img.height):
+            for x in range(img.width):
+                if not any(
+                    x0 <= x < x1 and y0 <= y < y1 for (x0, y0, x1, y1) in boxes
+                ):
+                    img.putpixel((x, y), (0, 0, 0, 0))
+    if paste:
+        sx, sy, w, h, rx, ry = paste
+        img.alpha_composite(sheet.crop((sx, sy, sx + w, sy + h)), (rx, ry))
+    return [
+        (
+            name if r == 0 and c == 0 else None,
+            img.crop((c * TILE, r * TILE, c * TILE + TILE, r * TILE + TILE)),
+        )
+        for r in range(th)
+        for c in range(tw)
+    ]
 
 
 def na_idles(folder):
@@ -855,6 +910,41 @@ def main(sheet_path, chars_path):
         ("COBWEB_B", dcell(7, 1)),
         # The carpenter's anvil, standing among the workshop crates.
         ("ANVIL", cell(sheet, 15, 0)),
+        # ── new quest-giver cast, appended (see NEW_CAST above; keeps every
+        # id baked before this line unchanged) ──
+        *[
+            (f"CAST_{name}" if d == 0 else None, frame)
+            for name, folder in NEW_CAST
+            for d, frame in enumerate(na_idles(folder))
+        ],
+        # ── village building expansion: more roof/wall/door/window variety,
+        # cropped from parts of the Kenney sheet the original bake never
+        # touched. Appended so nothing above shifts.
+        ("WALL_STONE", cell(sheet, 6, 2)),
+        ("WALL_PLASTER", cell(sheet, 7, 2)),
+        ("ROOF_SLATE", cell(sheet, 32, 22)),
+        ("ROOF_CREAM", cell(sheet, 38, 22)),
+        ("DOOR_ARCH", cell(sheet, 37, 0)),
+        ("DOOR_DOUBLE_L", cell(sheet, 34, 0)),
+        ("DOOR_DOUBLE_R", cell(sheet, 35, 0)),
+        ("WINDOW_ROUND", cell(sheet, 44, 0)),
+        ("WINDOW_SQUARE", cell(sheet, 48, 0)),
+        # ── whole-building prefabs (Zelda-like sheet by ArMM1998, CC0) ──
+        # Drawn in 3/4 perspective — sloped roofs, real front walls — and
+        # placed in the world as Tile::Facade runs (see MapBuilder::prefab).
+        # The cottage, its shut-door twin (a pasted arch over the open
+        # doorway), the barn with and without a pasted door, a small shed,
+        # the market stall, and the plaza fountain.
+        *zl_prefab("HOUSE_A", 96, 0, 5, 5),
+        *zl_prefab("HOUSE_A_SHUT", 96, 0, 5, 5, paste=(256, 64, 16, 32, 32, 44)),
+        *zl_prefab("HOUSE_B", 173, 0, 5, 5),
+        *zl_prefab("HOUSE_B_DOOR", 173, 0, 5, 5, paste=(256, 64, 16, 32, 32, 44)),
+        *zl_prefab("SHED", 200, 86, 3, 3, keep=(8, 0, 40, 46)),
+        *zl_prefab("STALL", 287, 360, 5, 5, keep=(0, 0, 76, 80)),
+        # The three fountains in the sheet touch each other with no gap;
+        # x=399 is the waist between the first and second, so the crop stops
+        # a pixel short of it.
+        *zl_prefab("FOUNTAIN", 351, 136, 3, 4, keep=(0, 2, 48, 55)),
     ]
 
     rows = (len(cells) + COLS - 1) // COLS

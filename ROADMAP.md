@@ -1,131 +1,151 @@
-# Rune & Road — Roadmap
+# Rune & Road — Roadmap II
 
-The long walk from "cozy quest corridor" to a full-fledged game in the spirit
-of old Pokémon and Zelda. Each step multiplies the value of the world that
-already exists; polish comes last because the tone is already carrying a lot.
+## Jani's notes
 
-Ordering: **interiors ✅ → items & gates ✅ → grass encounters ✅ →
-side content ✅ → NPC life ✅ → audio & polish ✅.**
+Playtest findings, jotted here between sessions — anything from a one-pixel
+nit to "this feels wrong". These take priority over everything below: fix
+first, then return to the roadmap. Remove a note once it's done.
 
-**Where things stand** (July 2026): every door opens, quests leave real
-keepsakes that gate the world, the tall grass hides wild runes that fill the
-Grimoire, and the world keeps secrets off the main road: side quests in world
-flags, eight hidden runestones, a locked cellar, and a Library of real books
-about Rust.
-
-On top of that foundation the world now **lives**: a real day/night clock
-turns morning → midday → evening → night in real time, dimming and brightening
-the whole outdoors while each place keeps its own weather; scattered
-**campfires** let you rest to a scrap of Rust lore and wake at the next turn of
-the day, with the folk of the world asleep by night. You **choose your
-traveller** — a look and a name — before setting out. The **Great Library**
-grew into three sunlit halls (stacks, grand entrance, a showcase gallery of
-plants, art and curios) behind tall windows that pour light onto the floor,
-with a book for every shelf. Wild-rune encounters are gentler now (rarer, and
-never re-asking a question you've answered true). NPCs sleep at night, glance
-about by day, and thank you once their errand is done; arriving somewhere new
-raises a **sliding place-name banner**, and the rest menu carries an
-**options** toggle for text speed.
-
-Under the hood: the framebuffer is sized to the window so the picture fills
-the screen edge-to-edge with **no black bars** — ultrawide and superultrawide
-included — and letter-key input is read from the OS text stream, so the game
-follows the player's **keyboard layout** (Dvorak, AZERTY, …). Movement is
-arrow keys and vim `H J K L`; `e`, Enter and Space are one and the same
-"confirm".
-
-Along the way, Fern became **Wren** (too close to Ferris), the rune collection
-is deliberately the **Grimoire** — in-world names over franchise-adjacent ones
-— and the original Ratatui TUI frontend was retired: the sprite-rendered
-Macroquad build is the game now (`cargo run`).
+*(nothing right now)*
 
 ---
 
-## 1. Interiors and warps ✅
+The first roadmap (interiors → items & gates → grass encounters → side
+content → NPC life → audio & polish) is **done**: every door opens, keepsakes
+gate the world, the tall grass hides wild runes, the world keeps secrets off
+the main road, a real day/night clock turns over four zones of weather and
+music, and the whole thing fills any window edge-to-edge. That version of the
+game is the foundation this file stands on.
 
-*Done.* Every door leads somewhere: the five Emberwick houses (Poppy's
-Bakery, Granny Sorrel's and Tilly's cottages, Alder's workshop, the old
-storehouse), the Echo Cave behind its rocky mouth, and the Great Library —
-so the epilogue's destination is a real place. Interiors are ordinary
-`Zone`s (indices 4+): a furnished room stamped into a map of `Tile::Void`,
-entered via `Warp { at, to_zone, to_pos }` on each `Door` tile.
+This roadmap deliberately makes the world **deeper instead of wider**. No
+fifth region, no new core mechanic — instead, the places and people that
+already exist start behaving like they were here before you arrived and will
+still be here after you leave. Each step multiplies the value of the day/night
+clock, the interiors, and the cast that roadmap one built.
 
-Invariants (tested): every Door tile has a warp; every warp lands on ground
-reachable from the destination zone's spawn; every way in has a way back.
+Ordering: **NPC daily schedules → a companion at your heels → the world map →
+foley & jingles.** Schedules come first because everything else reads off a
+world where people go places; sound comes last because it polishes whatever
+exists by then, same as last time.
 
-## 2. Items, inventory, and ability gates ✅
+---
 
-*Done.* Keepsakes are real (`content/items.rs`): Bram's storm-lantern
-(quest 3) and Juniper's spare rod (quest 8), handed over in the success
-dialogue and listed in the journal's satchel. Owning one is *derived* from
-completed quests — no extra save state, and old saves get their items for
-free. Two gates use them: the Echo Cave's mouth refuses entry without the
-storm-lantern, and any reedy bank becomes a fishing spot with the rod. The
-storehouse cellar is dark, and the lantern is the way in.
+## 1. NPC daily schedules
 
-## 3. Tall-grass encounters — wild runes and the Grimoire ✅
+The clock already turns morning → midday → evening → night, and the cast
+already sleeps after dark. Now they *live* by it: each named NPC gets an
+anchor spot per `DayPhase` — Poppy at her ovens in the bakery kitchen at
+morning, in the doorway at midday, on the square bench at evening; Alder at
+the workshop bench by day and his porch at dusk; Bram walking the well road.
+Interiors are ordinary zones, so a schedule can move someone *indoors* — which
+finally gives the furnished rooms their owners.
 
-*Done.* Stepping through `Tile::TallGrass` rolls (deterministically, via
-`hash2` over a step counter) for a **wild rune encounter**: a three-option
-Rust question themed on its zone's lessons (`content/wilds.rs`, 16 runes).
-Answer true and the rune is inscribed in your **Grimoire** (`g`). Cozy,
-no-fail: fleeing is always free, a wrong answer just fizzles. Encounters are
-deliberately uncommon, and a rune already in the Grimoire never stirs again —
-so the grass is a place to wander, not a gauntlet.
+- **Positions are derived, never stored**: a pure
+  `schedule(npc, phase) -> (zone, pos)` in the content layer, same spirit as
+  item ownership. Old saves stay valid for free.
+- **The active quest pins its giver**: while an NPC's errand is the active
+  quest, they wait at their canonical spot all day ("she's been watching the
+  road for you") — the linear quest flow and the journey test stay intact.
+- If the player is standing in the zone when the phase turns, the NPC ambles
+  toward the new anchor for real (BFS path, cosmetic, abandoned at the zone
+  edge); otherwise they're simply there next time you arrive.
+- Dialogue can lean on place: a line variant for "at work" vs "at rest" where
+  it's cheap, so catching Poppy on the bench feels different from the bakery.
 
-## 4. Side quests, secrets, and collectibles ✅
+Invariants (to test): every anchor is standable and BFS-reachable in its
+zone; talk-reach works at every anchor; the active quest's giver is always at
+their canonical spot; nothing about schedules touches `SaveData`.
 
-*Done.* Everything off the main road lives in a `flags: BTreeSet<String>` on
-`App`/`SaveData` (behind `#[serde(default)]`): Granny Sorrel's moon-mint
-favor, Old Nettle hidden in the deep woods with the cellar key, the locked
-chest, eight hidden runestones (seven standing, one in the chest), interior
-notes on tables and crates, and the Great Library's readable shelves
-(`content/books.rs`, now twenty-four unique books).
+## 2. A companion at your heels
 
-## 5. NPC life and dialogue depth ✅
+A small friend who walks the road with you — earned, in keeping with the
+world, through a gentle side quest (a stray curled behind the storehouse who
+needs feeding thrice before it trusts you; flags, like moon-mint). Once won,
+it follows a tile behind you, forever.
 
-*Done.* NPCs turn to face a visitor within talking reach and glance about on
-their own unhurried beat by day; at night they are drawn asleep (a little
-drifting `z`) and give out no errands. Dialogue varies by state: once an
-NPC's quest is complete they switch to a warmer, grateful line
-("water's running clear again since you sorted the well…"). A tiny scripted
-cutscene primitive remains a nice-to-have, but quest payoffs already stage
-themselves through the success/keepsake dialogue.
+- **Follow mechanic**: a short breadcrumb queue of the player's recent tiles;
+  the companion occupies no collision tile, draws in the world layer, and
+  warps through doors with you. Standing still, it sits; at a campfire rest
+  it curls up in the ember-light; in tall grass only its ears show.
+- **Ownership is a flag**, position is ephemeral — never saved, recomputed at
+  the player's side on load, like `walked_at`.
+- Hand-pixeled in the existing `from_art` style (the atlas already has
+  critters to match), two or three frames of idle/walk. Possibly a choice of
+  friend, like the traveller's look at char-select.
+- It reacts: a startled hop when a wild rune stirs, a slow blink at NPCs, a
+  little `z` beside yours when the folk of the world sleep.
 
-## 6. Presentation polish ✅
+Invariants (to test): the companion is never left standing in a wall or lost
+across a warp; render matrix covers world-with-companion; save round-trips
+with and without the flag.
 
-*Done.*
+## 3. The world map
 
-- **Day/night clock** — morning/midday/evening/night turn in real time and
-  drive the sky over every outdoor zone (interiors keep their own steady
-  lamplight). The HUD shows the current phase; a sun/dusk/moon icon tracks it.
-- **Campfires** — scattered rest points; `e` fades the screen to embers, tells
-  a scrap of Rust lore (`content/lore.rs`), and rolls the clock to the next
-  rest (daytime → night, night → a fresh morning).
-- **Character choice** — pick a look and type a name before the first step;
-  both persist in the save.
-- **The Great Library** — three connected chambers, tall sunlit windows that
-  cast light onto the floor, a showcase gallery (plants, framed art, curios),
-  and enough books that no shelf repeats.
-- **Zone-entry banners** — a place-name plate slides in when you arrive.
-- **Options** — a text-speed toggle lives in the rest menu (Slow/Normal/Fast),
-  saved with the rest of your progress.
-- **Fills the window** — the framebuffer matches the window's shape, so
-  ultrawide and superultrawide displays fill edge-to-edge with no black bars,
-  and the map borders pad the view with scenery rather than cutting to black.
-- **Layout-aware input** — letter keys come from the OS text stream, following
-  the player's keyboard layout; movement is arrows + vim keys, and
-  `e`/Enter/Space are one unified confirm.
-- **Audio** — a CC0 chiptune loop per overworld zone (interiors stay quiet), a
-  title theme looping through the title/char-select screens, and one-shot SFX
-  for cast/pass/fizzle, all by Juhani Junkala (`assets/CREDITS.md`). Sound
-  lives entirely in the `src/main.rs` shell, loaded via macroquad's `audio`
-  feature and driven by diffing `App::screen` and `App::zone_idx` across
-  frames — the lib and tests stay window- and sound-free.
+Press `m` (or find it in the rest menu): a parchment-styled map screen of the
+whole journey. The zones are procedural but *deterministic*, so the map can be
+honest — a downsampled rendering of the real tile maps (a pixel per couple of
+tiles, terrain quantized to a parchment palette), the four zones laid along
+the road west to east with the gates drawn as the seams they are.
 
-Still open for a later pass:
+- **Discovery, not spoilers**: zones you haven't entered yet are blank
+  parchment ("uncharted"); visited zones need a tiny `visited.<zone>` flag,
+  set on first entry (gate crossings already autosave, so it piggybacks on an
+  existing milestone).
+- Marks worth drawing: you (a blinking dot), place-name labels in the bitmap
+  font, campfires you've rested at, doors you've opened. Found runestones may
+  glint on it; unfound ones stay its secret. Gentle — a keepsake of where
+  you've been, not a checklist.
+- One more `Screen` variant through `App::on_key`, one more scene in
+  `examples/snapshot.rs`, one more row in the render matrix — same drill as
+  the grimoire.
 
-- Save slots.
+Invariants (to test): the map screen renders for every combination of
+visited-zone flags; `m` round-trips back to the world; snapshot scene added.
+
+## 4. Foley & jingles
+
+The world has music; now it gets *sounds*. The shell derives all audio by
+diffing `App` state across frames, which was fine for screens and zones but
+too coarse for footsteps — so the lib grows a small, testable event queue:
+`App` pushes semantic events (`Stepped(Terrain)`, `DoorUsed`, `ChestOpened`,
+`QuestPassed`, `RuneCaught`, `StoneFound`, `MenuMoved`, …) and `main.rs`
+drains them into sounds each frame. The lib and tests stay silent and
+window-free; the tests can finally *assert* that walking on wood sounds
+different from grass, without hearing a thing.
+
+- **Footsteps by terrain** — soft grass, firmer path, wooden floors, cave
+  stone; quiet, every other step, mixed well under the music.
+- **The world's small noises** — door creaks on warp, the cellar chest's
+  groan, a coin-ish chime when a keepsake changes hands (Kenney *RPG Audio*).
+- **Jingles at the milestones** — a short fanfare on quest pass, a soft
+  sparkle when a rune joins the Grimoire, a gleam for a found runestone, and
+  the gentlest possible "no harm done" for a fizzle (Kenney *Music Jingles*).
+- **Menus blip** (Kenney *UI Audio*), the encounter gets its sting and the
+  campfire its rest theme (the unused Junkala tracks — 3 left in each pack).
+- **A sound option** joins text speed in the rest menu (off/quiet/full),
+  saved behind `#[serde(default)]` like everything else.
+
+All sources are already vetted CC0 on the asset shelf in `CLAUDE.md`; each
+gets its line in `assets/CREDITS.md` when it lands.
+
+---
+
+## The shelf — considered, wanted, not this roadmap
+
+Ideas weighed for this cycle and deliberately deferred, so they aren't
+re-litigated from scratch next time:
+
+- **A fifth region** with an advanced quest arc (traits & generics,
+  lifetimes, iterators & closures) — flavors sketched: a harbor town on a
+  grey sea, deep mines under Hearthspire, a misty archipelago.
+- **Castable grimoire runes** — caught runes as gentle overworld magic.
+- **Gardening on the clock** and **cooking at Poppy's ovens**.
+- **Coins & a trading post.**
+- **Dynamic weather fronts & seasons**; **festival days**; a **fellow
+  traveler** you keep crossing on the road.
+- **Visible wild-rune forms** in encounters (Ninja Adventure monster strips,
+  already vendored) and item icons in the journal satchel.
+- **Save slots** and a home shelf displaying runestones and keepsakes.
 
 ---
 
@@ -135,14 +155,17 @@ Still open for a later pass:
   `App::on_tick` — the black-box tests must be able to play it.
 - All randomness derives from `hash2(x, y, seed)` — playthroughs stay
   deterministic and testable.
-- Tile appearance lives in one place: `tile_sprites()` in `gfx/scene.rs`.
-- Extend the render matrix (`tests/render.rs`) and the world invariant
-  tests (`world/zones.rs`) with every new screen, zone, or warp.
-- New persistent state goes in `SaveData` behind `#[serde(default)]`, and
-  anything derivable (like item ownership) is derived, not stored — an old
+- Anything derivable is derived, never stored: item ownership from
+  `completed`, NPC positions from the phase, the companion's spot from yours.
+  New persistent state goes in `SaveData` behind `#[serde(default)]` — an old
   `save.json` must always keep loading.
+- Tile appearance lives in one place: `tile_sprites()` in `gfx/scene.rs`.
+- Extend the render matrix (`tests/render.rs`) and the world invariant tests
+  (`world/zones.rs`) with every new screen, schedule anchor, or warp.
 - Autosave stays a milestone thing (quest pass, gate, quit) — frequent
   actions must not write to the cwd, or unit tests start littering the repo.
+- Sound lives entirely in the `src/main.rs` shell; the lib emits events, the
+  shell plays them. Tests assert events, never audio.
 - Names stay in-world and original: the Grimoire, keepsakes, fizzles —
   nothing borrowed from the franchises that inspired the shape.
 - Tone is spec: cozy, gentle, no fail states, the compiler is the politest

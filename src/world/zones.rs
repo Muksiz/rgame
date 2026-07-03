@@ -1,10 +1,6 @@
 use crate::world::entity::{Critter, CritterKind, Npc, Sign};
 use crate::world::map::{Border, MAP_H, MAP_W, MapBuilder, Tile, Warp, Weather, Zone};
 
-const HOUSE: &str = concat!("rrrrrrrrr\n", "#.......#\n", "#.......#\n", "####+####",);
-
-const HOUSE_SMALL: &str = concat!("rrrrrrr\n", "#.....#\n", "###+###",);
-
 const WELL: &str = concat!(" %%% \n", "%%~%%\n", " %%% ",);
 
 const LIBRARY: &str = concat!(
@@ -236,26 +232,38 @@ fn emberwick() -> Zone {
         (239, 36),
     ]);
 
-    // Houses along the road, each with a lane down to it.
-    b.stamp(62, 18, HOUSE); // the bakery
-    b.stamp(90, 14, HOUSE_SMALL);
-    b.stamp(126, 20, HOUSE);
-    b.stamp(74, 46, HOUSE_SMALL);
-    b.stamp(132, 46, HOUSE);
+    // Houses along the road, each with a lane down to it. All of them are
+    // perspective-drawn prefabs (see MapBuilder::prefab); the enterable ones
+    // put their walkable doorway exactly where the old stamps kept theirs,
+    // so every Warp constant below still holds.
+    use crate::gfx::atlas;
+    let door = Some(atlas::HOUSE_DOOR_AT);
+    b.prefab(64, 17, atlas::HOUSE_A, atlas::HOUSE_SIZE, door); // the bakery
+    b.prefab(91, 12, atlas::HOUSE_A, atlas::HOUSE_SIZE, door); // Granny Sorrel's
+    b.prefab(128, 19, atlas::HOUSE_A, atlas::HOUSE_SIZE, door); // Alder's workshop
+    b.prefab(75, 44, atlas::HOUSE_A, atlas::HOUSE_SIZE, door); // Tilly's cottage
+    b.prefab(134, 45, atlas::HOUSE_B_DOOR, atlas::HOUSE_SIZE, door); // the storehouse
     b.road(&[(66, 23), (66, 29)]);
     b.road(&[(130, 26), (130, 39)]);
-    b.road(&[(77, 45), (77, 42)]);
 
-    // Festival square: cobbles, the unlit lantern, a cosy campfire, and a
-    // couple of market stalls under striped awnings.
-    b.rect(80, 32, 13, 6, Tile::Plaza);
+    // Homes nobody needs to enter — doors shut, curtains drawn — plus the
+    // old lean-to shed behind the storehouse, to make Emberwick feel like a
+    // village rather than five quest-relevant houses in a field.
+    b.prefab(150, 14, atlas::HOUSE_A_SHUT, atlas::HOUSE_SIZE, None);
+    b.prefab(196, 20, atlas::HOUSE_A_SHUT, atlas::HOUSE_SIZE, None);
+    b.prefab(105, 52, atlas::HOUSE_A_SHUT, atlas::HOUSE_SIZE, None);
+    b.prefab(160, 43, atlas::HOUSE_B, atlas::HOUSE_SIZE, None);
+    b.prefab(143, 46, atlas::SHED, atlas::SHED_SIZE, None);
+
+    // Festival square, now a proper market: cobbles, the unlit lantern, a
+    // cosy campfire, the big blue-awninged market stall, and a round
+    // fountain burbling at the east end.
+    b.rect(80, 30, 15, 8, Tile::Plaza);
+    b.prefab(80, 30, atlas::STALL, atlas::STALL_SIZE, None);
+    b.prefab(89, 32, atlas::FOUNTAIN, atlas::FOUNTAIN_SIZE, None);
     b.set(86, 34, Tile::Lantern);
     b.set(90, 36, Tile::Campfire);
-    for x in [82, 89] {
-        b.set(x, 33, Tile::Awning);
-        b.set(x, 34, Tile::Stall);
-    }
-    for x in [79, 93] {
+    for x in [79, 95] {
         for y in [32, 34, 36] {
             b.set(x, y, Tile::Flower);
         }
@@ -295,6 +303,10 @@ fn emberwick() -> Zone {
     b.clearing(86, 31, 1);
     b.clearing(66, 25, 1);
     b.clearing(112, 27, 1);
+    b.clearing(84, 36, 1); // Tansy, by the market stalls
+    b.clearing(222, 36, 1); // Watchman Fitch, by the east archway
+    b.clearing(104, 22, 1); // Toll-keeper Hobb, just shy of the well
+    b.clearing(116, 22, 1); // Cartographer Reed, just past the well
 
     // Granny Sorrel's lane, and a clear doorstep in front of every front door.
     b.road(&[(93, 18), (93, 29)]);
@@ -342,21 +354,80 @@ fn emberwick() -> Zone {
                 ],
             },
             Npc {
+                name: "Tansy",
+                pos: (84, 36),
+                quest: Some(2),
+                idle: &[
+                    "Nine more apples came in this morning and my sign won't say so. Rude, honestly.",
+                    "Twenty-one apples, seven pears, and the sign finally agrees with me. You're good at this.",
+                ],
+            },
+            Npc {
                 name: "Baker Poppy",
                 pos: (66, 25),
-                quest: Some(2),
+                quest: Some(3),
                 idle: &[
                     "Smell that? Honey-oat loaves. The recipe is older than the village.",
                     "The ledger balances to the last crumb now, thanks to you. Here — mind the heat — a loaf for the road.",
                 ],
             },
             Npc {
+                name: "Watchman Fitch",
+                pos: (222, 36),
+                quest: Some(4),
+                idle: &[
+                    "Everyone pays the toll. Well. Almost everyone. It's complicated.",
+                    "The gate-rune waves the right folk through now, free and fair. Pigeon's still recovering from the shock of my smiling.",
+                ],
+            },
+            Npc {
+                name: "Toll-keeper Hobb",
+                pos: (104, 22),
+                quest: Some(5),
+                idle: &[
+                    "Four coins, four slots, thirty years running. Some things shouldn't wobble.",
+                    "Carved in proper now — const, not chalk. I could kiss you, but I won't. Have a good day instead.",
+                ],
+            },
+            Npc {
                 name: "Well-keeper Bram",
                 pos: (112, 27),
-                quest: Some(3),
+                quest: Some(6),
                 idle: &[
                     "Deepest well in the valley, this. Probably. Nobody's ever checked.",
                     "Water's running clear and cold again since you sorted the well. The whole lane's grateful — and the storm-lantern's yours to keep.",
+                ],
+            },
+            Npc {
+                name: "Cartographer Reed",
+                pos: (116, 22),
+                quest: Some(7),
+                idle: &[
+                    "A landmark's just two numbers that agree to travel together. Simple, once it works.",
+                    "Every pin sits true now. This map's the first thing I've trusted in months — thank you.",
+                ],
+            },
+            // Market folk — no errands, just the pleasant noise of a square.
+            Npc {
+                name: "Greengrocer Marla",
+                pos: (85, 33),
+                quest: None,
+                idle: &[
+                    "Apples from the east orchard, pears from the west. The stall knows the difference even when I don't.",
+                ],
+            },
+            Npc {
+                name: "Old Tam",
+                pos: (93, 34),
+                quest: None,
+                idle: &["I remember when this fountain was a bucket. Progress! Mostly wetter."],
+            },
+            Npc {
+                name: "Juno",
+                pos: (87, 36),
+                quest: None,
+                idle: &[
+                    "If you put a leaf in the fountain it sails ALL the way around before it sinks. I've timed it.",
                 ],
             },
         ],
@@ -440,6 +511,10 @@ fn whispering_woods() -> Zone {
     b.clearing(49, 20, 1);
     b.clearing(101, 46, 1);
     b.clearing(172, 28, 1);
+    b.clearing(53, 20, 1); // Pip, playing near Wren's clearing
+    b.clearing(105, 46, 1); // Basket-weaver Briar, past the mushroom hollow
+    b.clearing(200, 29, 1); // Hollow-keeper Yew, along the meadow road
+    b.clearing(225, 31, 1); // Woodward Sable, near the mossy gate
 
     // Old Nettle's hollow, deep in the woods where no road goes: a winding
     // thread of gaps in the trees, findable but never signposted.
@@ -483,18 +558,36 @@ fn whispering_woods() -> Zone {
         warps: vec![enter(CAVE_MOUTH, ECHO_CAVE, CAVE_ROOM_EXIT)],
         npcs: vec![
             Npc {
+                name: "Pip",
+                pos: (53, 20),
+                quest: Some(8),
+                idle: &[
+                    "The trick is patience. They won't be caught in a hurry, fireflies.",
+                    "Jar's full and glowing! Best night-light I've ever had. Thank you, truly.",
+                ],
+            },
+            Npc {
                 name: "Wren",
                 pos: (49, 20),
-                quest: Some(4),
+                quest: Some(9),
                 idle: &[
                     "When I grow up I'm going to walk to BOTH ends of the road.",
                     "You made the spell WORK! I've been showing everyone. Even the stump. The stump was very impressed, I could tell.",
                 ],
             },
             Npc {
+                name: "Basket-weaver Briar",
+                pos: (105, 46),
+                quest: Some(10),
+                idle: &[
+                    "Four baskets, four sizes, every stall the same. Counting's the whole trick.",
+                    "The right basket, every time now — no more guessing which one's which. Take an apple, go on.",
+                ],
+            },
+            Npc {
                 name: "Forager Maren",
                 pos: (101, 46),
-                quest: Some(5),
+                quest: Some(11),
                 idle: &[
                     "Rule one of foraging: when in doubt, don't. Rule two: see rule one.",
                     "Not one bad mushroom in the whole basket now — your sorting saw to that. The hollow smells like supper.",
@@ -503,10 +596,28 @@ fn whispering_woods() -> Zone {
             Npc {
                 name: "Shepherd Ambrose",
                 pos: (172, 28),
-                quest: Some(6),
+                quest: Some(12),
                 idle: &[
                     "*yaaawn* ...I wasn't sleeping. I was counting very slowly.",
                     "Every last sheep home and counted, and I owe the nap I'm about to take entirely to you. *yaaawn*",
+                ],
+            },
+            Npc {
+                name: "Hollow-keeper Yew",
+                pos: (200, 29),
+                quest: Some(13),
+                idle: &[
+                    "Some years three good gathering days, some years thirty. Never know till the season's out.",
+                    "A winter's worth of acorns, properly counted, safely kept. The hollow thanks you. So do I.",
+                ],
+            },
+            Npc {
+                name: "Woodward Sable",
+                pos: (225, 31),
+                quest: Some(14),
+                idle: &[
+                    "Some evenings I find the old bell. Some evenings, nothing. Both are true, is the trouble.",
+                    "Honest runework, that. Nothing pretending to be something it isn't. I'll remember that, one way or another.",
                 ],
             },
             // Hidden in the deep woods; her dialogue lives in content/sides.rs.
@@ -576,6 +687,8 @@ fn silverford() -> Zone {
     b.clearing(136, 45, 1);
     b.clearing(148, 22, 1);
     b.clearing(118, 57, 1);
+    b.clearing(130, 42, 1); // Dockhand Fenn, on the lane down to the ferry
+    b.clearing(152, 25, 1); // Net-mender Sil, just downstream of the fishing spot
 
     // A runestone half-sunk at the far end of Morrow's beach.
     b.set(124, 59, Tile::Runestone);
@@ -599,9 +712,18 @@ fn silverford() -> Zone {
         warps: vec![],
         npcs: vec![
             Npc {
+                name: "Dockhand Fenn",
+                pos: (130, 42),
+                quest: Some(15),
+                idle: &[
+                    "Every crate, logged twice. In, then out. Doesn't sound like much until the rune won't do it.",
+                    "Both entries in the ledger now, word for word. Proper paper trail. Wick's just down at the landing, if the ferry's your business.",
+                ],
+            },
+            Npc {
                 name: "Ferryman Wick",
                 pos: (136, 45),
-                quest: Some(7),
+                quest: Some(16),
                 idle: &[
                     "River's high today. River's always high today, if you ask the river.",
                     "Token's sorted, planks are down, and the ferry runs on time — well, on river-time. Cross whenever you like now.",
@@ -610,16 +732,25 @@ fn silverford() -> Zone {
             Npc {
                 name: "Fisher Juniper",
                 pos: (148, 22),
-                quest: Some(8),
+                quest: Some(17),
                 idle: &[
                     "The trick to fishing is patience. The other trick is bait. Mostly bait.",
                     "Keep the spare rod — you've the patience for it. Reedy banks all down the river are yours to try.",
                 ],
             },
             Npc {
+                name: "Net-mender Sil",
+                pos: (152, 25),
+                quest: Some(18),
+                idle: &[
+                    "The tide chart only wants the first three days. The rest is just noise, far as I'm concerned.",
+                    "A tidy little slice, and not a splinter more. That's how I like my logs, and my nets.",
+                ],
+            },
+            Npc {
                 name: "Hermit Morrow",
                 pos: (118, 57),
-                quest: Some(9),
+                quest: Some(19),
                 idle: &[
                     "The river brings me letters. I write back, but slowly.",
                     "The letter reached the end of its sentence at last, thanks to you. The river seems pleased. So am I.",
@@ -682,6 +813,7 @@ fn hearthspire() -> Zone {
     b.clearing(68, 48, 1);
     b.clearing(172, 24, 1);
     b.clearing(206, 35, 1);
+    b.clearing(213, 35, 1); // Scribe Faye, at the desk near the Library forecourt
 
     // A lone runestone up in the northern crags, with just enough of a
     // scramble cleared through the rocks to reach it.
@@ -715,7 +847,7 @@ fn hearthspire() -> Zone {
             Npc {
                 name: "Archivist Elm",
                 pos: (68, 48),
-                quest: Some(10),
+                quest: Some(20),
                 idle: &[
                     "I catalogue everything. Even this conversation. Especially this conversation.",
                     "The lost book is catalogued and shelved, and I've noted your name beside it. In triplicate. It seemed important.",
@@ -724,7 +856,7 @@ fn hearthspire() -> Zone {
             Npc {
                 name: "The Stone Golem",
                 pos: (172, 24),
-                quest: Some(11),
+                quest: Some(21),
                 idle: &[
                     "...zzz... shelf... twelve... zzz...",
                     "...mmh? Oh. Shelf twelve. Sorted. Good. *the golem settles back into a contented, gravelly doze* ...thank... you...",
@@ -733,10 +865,19 @@ fn hearthspire() -> Zone {
             Npc {
                 name: "Sage Alderly",
                 pos: (208, 35),
-                quest: Some(12),
+                quest: Some(22),
                 idle: &[
                     "Every book comes home eventually. Some just take the scenic route.",
-                    "The spellbooks are all sorted and the Library's doors stand open to you. Rest your feet a while — you've walked the whole road.",
+                    "The spellbooks are all sorted at last — and there's a certain rune-smith I owe my thanks to as well.",
+                ],
+            },
+            Npc {
+                name: "Scribe Faye",
+                pos: (213, 35),
+                quest: Some(23),
+                idle: &[
+                    "A library's only as good as its catalogue. Mine has... gaps. Had gaps.",
+                    "Every page accounted for, every record true. You've done more for this library in an afternoon than most manage in a year.",
                 ],
             },
         ],
@@ -1138,7 +1279,7 @@ mod tests {
         for zone in zones() {
             for y in 0..H {
                 for x in 0..W {
-                    if zone.tile(x, y) == Tile::Door {
+                    if matches!(zone.tile(x, y), Tile::Door | Tile::FacadeDoor(_)) {
                         assert!(
                             zone.warp_at(x, y).is_some(),
                             "the door at {:?} in {} opens onto nothing",

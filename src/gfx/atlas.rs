@@ -273,6 +273,47 @@ pub const URN: u16 = 298;
 pub const COBWEB_A: u16 = 299;
 pub const COBWEB_B: u16 = 300;
 pub const ANVIL: u16 = 301;
+// The beginner-quest expansion's cast — baked as a tail block (see NEW_CAST
+// in tools/bake_atlas.py) so none of the ids above ever moved.
+pub const CAST_TANSY: u16 = 302;
+pub const CAST_FITCH: u16 = 306;
+pub const CAST_HOBB: u16 = 310;
+pub const CAST_REED: u16 = 314;
+pub const CAST_PIP: u16 = 318;
+pub const CAST_BRIAR: u16 = 322;
+pub const CAST_YEW: u16 = 326;
+pub const CAST_SABLE: u16 = 330;
+pub const CAST_FENN: u16 = 334;
+pub const CAST_SIL: u16 = 338;
+pub const CAST_FAYE: u16 = 342;
+// Village building expansion: more roof/wall/door/window variety, cropped
+// from parts of the Kenney sheet the original bake never touched.
+pub const WALL_STONE: u16 = 346;
+pub const WALL_PLASTER: u16 = 347;
+pub const ROOF_SLATE: u16 = 348;
+pub const ROOF_CREAM: u16 = 349;
+pub const DOOR_ARCH: u16 = 350;
+pub const DOOR_DOUBLE_L: u16 = 351;
+pub const DOOR_DOUBLE_R: u16 = 352;
+pub const WINDOW_ROUND: u16 = 353;
+pub const WINDOW_SQUARE: u16 = 354;
+// Whole-building prefabs (Zelda-like sheet by ArMM1998, CC0): 3/4-perspective
+// buildings sliced into consecutive cells row-major; each constant is the
+// top-left cell, placed in the world via `MapBuilder::prefab` with the
+// matching width/height below.
+pub const HOUSE_A: u16 = 355; // cottage, open doorway (5x5)
+pub const HOUSE_A_SHUT: u16 = 380; // cottage with its door shut (5x5)
+pub const HOUSE_B: u16 = 405; // barn, no entrance (5x5)
+pub const HOUSE_B_DOOR: u16 = 430; // barn with an arched door (5x5)
+pub const SHED: u16 = 455; // little steep-roofed shed (3x3)
+pub const STALL: u16 = 464; // blue-striped market stall (5x5)
+pub const FOUNTAIN: u16 = 489; // round plaza fountain (3x4)
+pub const HOUSE_SIZE: (i32, i32) = (5, 5);
+pub const SHED_SIZE: (i32, i32) = (3, 3);
+pub const STALL_SIZE: (i32, i32) = (5, 5);
+pub const FOUNTAIN_SIZE: (i32, i32) = (3, 4);
+/// Where the walkable doorway cell sits inside HOUSE_A / HOUSE_B_DOOR.
+pub const HOUSE_DOOR_AT: (i32, i32) = (2, 4);
 
 static ATLAS_PNG: &[u8] = include_bytes!("../../assets/atlas.png");
 

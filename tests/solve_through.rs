@@ -1,8 +1,9 @@
 //! The solve-through test: proves every quest is honest.
 //!
-//! For each of the 12 quests it runs the *real* checker (rustc --test) twice:
-//! the untouched template must NOT pass, and the reference solution in
-//! `tests/solutions/` must pass. Compiles 24 files, so it takes a little while.
+//! For each quest it runs the *real* checker (rustc --test) twice: the
+//! untouched template must NOT pass, and the reference solution in
+//! `tests/solutions/` must pass. Compiles two files per quest, so it takes a
+//! little while.
 
 use std::path::Path;
 
