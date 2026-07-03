@@ -1,3 +1,37 @@
+# Jani's notes (please remove this section from the roadmap when done)
+
+## The library
+
+The library should be more detailed and have multiple rooms. I'd like it to also
+have large windows from where the sun can shine. Some bookshelves carry the same books,
+add more books so that the game does not have to compensate by having the same book in
+multiple places. There should also be a room in the library with a showcase of random
+plants, rocks, artwork and such.
+
+## Player's choice
+
+When you begin a new game you should be able to choose your own character and name for the
+character. Have at least a couple of choices for playable character.
+
+## Time of day and Campfires
+
+Bring in the time of day feature. I want morning to be 10 minutes in real life, day to be 20 min
+in real life, evening 10 min of real life, and the night be 15 min in real life.
+
+Scattered campfires as interaction points. When you press e by a campfire the screen fades to
+black and you get a random Rust lore snippet. When you wake up it's night. At night the NPC's
+are sleeping, and when you press e again by the campfire you get a random Rust lore snippet and
+the time switches to morning.
+
+## Other general stuff
+
+The random rune encounters in the grass happen too often currently. They should not happen as
+often as they do now. I also don't want the same grass interaction to happen twice, keep count
+of those I've already answered correctly. A key rule for this project is that the more free sprites/textures
+you can fetch from the internet that fit for this project the better. If you only use the same sprites/textures
+across everything the game becomes pretty blend. Be radical in coming up with new scenes, animations, ideas,
+gameplay.
+
 # Rune & Road — Roadmap
 
 The long walk from "cozy quest corridor" to a full-fledged game in the spirit
