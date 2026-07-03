@@ -106,9 +106,13 @@ pub const AWNING_ORANGE: u16 = 109;
 pub const AWNING_GREEN: u16 = 110;
 pub const IVY: u16 = 111;
 // The animated cast (Ninja Adventure pack): four idle cells per member,
-// facing down, up, left, right. Member 0 is the player; 1..=12 the quest
-// NPCs in quest order; the rest are the named side folk and house villagers
-// (see CAST in tools/bake_atlas.py, and cast_index in gfx/scene.rs).
+// facing down, up, left, right. Atlas order is historical, but who *wears*
+// each sprite is decided in code: the char-select roster (see PLAYABLE) wears
+// members 0, 4, 6, 16 (Boy, Child, ManGreen, Woman) and no NPC touches those,
+// so a chosen traveller never has a twin in the world. Every other member is
+// an NPC — members 18..=20 (Villager3, Villager4, Princess) stand in for Wren,
+// Shepherd Ambrose and Hen-keeper Tilly, whose sprites the roster took over
+// (see CAST in tools/bake_atlas.py, and npc_sprite in gfx/scene.rs).
 pub const CAST: u16 = 112;
 pub const CAST_FACINGS: u16 = 4;
 pub const CAST_BOY: u16 = 112;
@@ -153,19 +157,19 @@ pub const PLAYABLE: [Playable; 4] = [
         cast: CAST_BOY,
     },
     Playable {
-        look: "the wildwood forager",
-        default_name: "Bramble",
-        cast: CAST_CAVEGIRL,
+        look: "the curious sprout",
+        default_name: "Fern",
+        cast: CAST_CHILD,
     },
     Playable {
-        look: "the bucket-hat tinker",
-        default_name: "Pip",
-        cast: CAST_EGGBOY,
+        look: "the greenwood ranger",
+        default_name: "Linden",
+        cast: CAST_MANGREEN,
     },
     Playable {
-        look: "the wandering noble",
-        default_name: "Wisteria",
-        cast: CAST_PRINCESS,
+        look: "the roaming herbalist",
+        default_name: "Hazel",
+        cast: CAST_WOMAN,
     },
 ];
 // Biome grounds (plain + two decorated variants each) and per-biome props,

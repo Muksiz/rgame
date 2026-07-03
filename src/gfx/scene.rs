@@ -999,18 +999,27 @@ fn facing_cell(step: (i32, i32)) -> u16 {
 }
 
 /// An NPC's idle cell, facing down (add `facing_cell` for the other ways):
-/// quest folk by quest id, the named side folk by name, and any future
-/// stranger falls back to one of the flavor-villager looks.
+/// named folk get a fixed sprite, the remaining quest-givers follow their
+/// quest id, and any future stranger falls back to a townsfolk look. Nothing
+/// here ever lands on a char-select sprite (Boy, Child, ManGreen, Woman —
+/// members 0, 4, 6, 16), so no NPC mirrors a traveller the player can be.
 fn npc_sprite(npc: &Npc) -> u16 {
-    let member = match npc.quest {
-        Some(id) if (1..=12).contains(&id) => id as u16,
-        _ => match npc.name {
-            "Granny Sorrel" => 13,
-            "Old Nettle" => 14,
-            "Carpenter Alder" => 15,
-            "Hen-keeper Tilly" => 16,
-            "Under-librarian Twill" => 17,
-            _ => 18 + npc.name.bytes().map(u16::from).sum::<u16>() % 3,
+    // Well-keeper Bram, Ferryman Wick, Shepherd Ambrose — plain townsfolk the
+    // fallback borrows, none of them a face from the char-select screen.
+    const TOWNSFOLK: [u16; 3] = [3, 7, 18];
+    let member = match npc.name {
+        // Child, ManGreen and Woman are the player's to wear now, so the three
+        // NPCs who used to own those sprites take the spare villager looks.
+        "Wren" => 19,             // was Child
+        "Shepherd Ambrose" => 18, // was ManGreen
+        "Hen-keeper Tilly" => 20, // was Woman
+        "Granny Sorrel" => 13,
+        "Old Nettle" => 14,
+        "Carpenter Alder" => 15,
+        "Under-librarian Twill" => 17,
+        _ => match npc.quest {
+            Some(id) if (1..=12).contains(&id) => id as u16,
+            _ => TOWNSFOLK[npc.name.bytes().map(usize::from).sum::<usize>() % 3],
         },
     };
     atlas::CAST + member * atlas::CAST_FACINGS
@@ -1819,4 +1828,28 @@ fn title(fb: &mut Frame, atlas: &Atlas, app: &App, selected: usize) {
         (110, 105, 95),
         1,
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::world::zones::zones;
+
+    // A traveller you pick at char-select must never meet a copy of themselves
+    // wandering the world: no NPC may wear a sprite from the playable roster.
+    #[test]
+    fn no_npc_shares_a_playable_sprite() {
+        let playable: Vec<u16> = atlas::PLAYABLE.iter().map(|p| p.cast).collect();
+        for zone in zones() {
+            for npc in &zone.npcs {
+                let sprite = npc_sprite(npc);
+                assert!(
+                    !playable.contains(&sprite),
+                    "{} in {} wears a playable-only sprite ({sprite})",
+                    npc.name,
+                    zone.name,
+                );
+            }
+        }
+    }
 }
