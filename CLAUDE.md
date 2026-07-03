@@ -56,6 +56,77 @@ Lib + thin bin split: `src/main.rs` is only the Macroquad shell (input → `app:
 
 **Screens** are one enum (`app::Screen`); input dispatch and all state transitions live in `app.rs`, drawing in `gfx/scene.rs`. Dialogue endings carry side effects via `DialogueKind` (Intro → scaffold+accept, Success → gate unlock / epilogue / keepsake handover; Book → a Library shelf reading itself, with a bookshelf portrait).
 
+## Free asset shelf (researched, not yet used)
+
+Vetted free packs for future features, so nobody has to re-research licenses.
+Rule of thumb: this repo is public, so anything committed here must be
+*redistributable* — prefer **CC0**; anything else gets a note in
+`assets/CREDITS.md` when it's actually added.
+
+**Audio** — the remaining roadmap step; nothing in the codebase plays sound yet
+(macroquad has an `audio` feature when the time comes):
+
+- **Ninja Adventure pack — the rest of it** (https://pixel-boy.itch.io/ninja-adventure-asset-pack, CC0).
+  We only vendored the cast + tilesets; the same download also holds **37 music
+  tracks and 100+ SFX**, style-matched by construction and already credited.
+  First stop for zone themes, the encounter sting, campfire rests, and UI blips.
+- **Kenney audio packs** (all CC0): *RPG Audio* (https://kenney.nl/assets/rpg-audio —
+  footsteps, doors, chest creaks, coins: door warps, the cellar chest, keepsake
+  handovers), *UI Audio* (https://kenney.nl/assets/ui-audio — menu/confirm
+  clicks), *Music Jingles* (https://kenney.nl/assets/music-jingles — 85 short
+  fanfares: quest pass, rune caught, runestone found; a soft one for fizzles).
+- **Juhani Junkala chiptunes** (CC0, pro composer): *5 Chiptunes (Action)*
+  (https://opengameart.org/content/5-chiptunes-action) and *4 Chiptunes
+  (Adventure)* (https://opengameart.org/content/4-chiptunes-adventure) —
+  looping title/encounter music if the Ninja Adventure tracks feel too eastern.
+- **CC0 ambience beds** to back each zone's static weather: *JC Sounds — Nature
+  Ambient Pack Vol 1* (https://opengameart.org/content/jc-sounds-nature-ambient-pack-vol-1),
+  *Nature sounds [CC0]* (https://opengameart.org/content/nature-sounds-cc0), and
+  the curated *CC0 Background Ambience* collection
+  (https://opengameart.org/content/cc0-background-ambience) — rain for
+  Silverford, crickets/night birds for the Woods and the night phase, wind for
+  the Hearthspire road.
+
+**Sprites & tiles** — everything below feeds the existing
+`tools/bake_atlas.py` → `atlas.png` pipeline (append at the end, ids never shift):
+
+- **Kenney *Roguelike Indoors*** (https://kenney.nl/assets/roguelike-indoors,
+  CC0, 480 tiles) — same sheet family we already bake from, so it drops in
+  seamlessly: furniture and props to make each interior distinct (bakery ovens,
+  workshop clutter, Library desks).
+- **Kenney *Roguelike Caves & Dungeons***
+  (https://kenney.nl/assets/roguelike-caves-dungeons, CC0, 520 tiles) — ores,
+  rocks, skulls, wall types for the Echo Cave and the storehouse cellar.
+- **Ninja Adventure — monsters, items, FX** (same pack/download as above, CC0):
+  30+ animated monsters (visible wild-rune forms in `Screen::Encounter`), 60+
+  item icons (journal satchel/keepsake art), spell-effect strips (casting
+  sparkle, fizzle puff).
+- **"Zelda-like tilesets and sprites" by ArMM1998**
+  (https://opengameart.org/content/zelda-like-tilesets-and-sprites, CC0,
+  16×16) — overworld/cave/interior tiles plus NPCs in exactly the
+  old-Zelda shape this game grows toward; good quarry for a future
+  fourth-zone biome or dungeon-style interior.
+- **Kenney *Input Prompts Pixel 16×***
+  (https://kenney.nl/assets/input-prompts-pixel — 16×16 keyboard-key glyphs,
+  CC0) — drawn key hints (`e`, arrows, `g`) in the HUD/dialogue instead of
+  text-only prompts.
+- **Kenney *Pixel UI Pack*** (https://kenney.nl/assets/pixel-ui-pack, CC0,
+  750 pieces) — panel/border chrome if the journal, grimoire, or options menu
+  ever outgrow the hand-drawn boxes.
+
+**Fonts** (current text is `font8x8` in `gfx/font.rs`):
+
+- **monogram by datagoblin** (https://datagoblin.itch.io/monogram, **CC0**) —
+  monospace bitmap font shipping as PNG+JSON, so it can be embedded the same
+  way as `font8x8`; a friendlier dialogue face, with an extended charset.
+- **m5x7 / m3x6 by Daniel Linssen** (https://managore.itch.io/m5x7, free,
+  attribution appreciated — credit if used) — compact display faces for
+  banners/titles.
+
+**Checked and ruled out** (so we don't look twice): Kenmi's *Cute Fantasy RPG*
+(free tier is non-commercial and forbids redistribution — incompatible with a
+public repo); pimen's spell-effect packs (no clear license on the pages).
+
 ## Gotchas
 
 - The game writes `quests/` and `save.json` into the **cwd** (both gitignored). Tests that touch them (`tests/journey.rs`) chdir into a temp dir; keep that test alone in its file since cwd is process-global.
