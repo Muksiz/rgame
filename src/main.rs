@@ -122,15 +122,47 @@ fn cue_for(screen: &Screen) -> Cue {
 }
 
 /// Pick a crisp integer pixel-scale and the framebuffer size that fills a
-/// window of `(sw, sh)` edge-to-edge with no letterbox. The scale is chosen so
-/// the game keeps roughly its native ~270px logical height; the framebuffer
-/// then grows in whichever direction the window is wider, so ultrawide and
+/// window of `(sw, sh)` edge-to-edge with no letterbox. The scale is the
+/// largest at which the native 480×270 layout still fits the window in *both*
+/// directions, so the minimum-size clamps below never push the picture past
+/// the window edges (rounding the scale up used to crop the HUD's top/bottom
+/// bars on heights like a fractionally-scaled 1440p); the framebuffer then
+/// grows in whichever direction the window is wider, so ultrawide and
 /// superultrawide displays simply see more of the world instead of black bars.
 fn fit(sw: f32, sh: f32) -> (i32, usize, usize) {
-    let scale = (sh / FB_H as f32).round().max(1.0) as i32;
+    let scale = (sw / FB_W as f32).min(sh / FB_H as f32).floor().max(1.0) as i32;
     let fb_w = ((sw / scale as f32).ceil() as usize).max(FB_W);
     let fb_h = ((sh / scale as f32).ceil() as usize).max(FB_H);
     (scale, fb_w, fb_h)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every window at least as large as the native 480×270 layout must be
+    /// covered edge-to-edge (no letterbox) with the whole picture on-screen:
+    /// overhang stays under one pixel-scale step, so the HUD's top/bottom
+    /// bars can never land outside the window. Sweeps sizes up to 4K,
+    /// including the fractional-DPI heights (e.g. 3440×1440 at 150% → a
+    /// 2293×960 logical window) that the old round-up scale used to crop.
+    #[test]
+    fn fit_never_crops_windows_at_native_size_or_larger() {
+        for sw in (FB_W..=3840).step_by(7) {
+            for sh in (FB_H..=2160).step_by(7) {
+                let (scale, fb_w, fb_h) = fit(sw as f32, sh as f32);
+                let (dw, dh) = (fb_w * scale as usize, fb_h * scale as usize);
+                assert!(fb_w >= FB_W && fb_h >= FB_H, "{sw}x{sh} shrank the layout");
+                assert!(dw >= sw && dh >= sh, "{sw}x{sh} left a letterbox");
+                assert!(
+                    dw - sw < scale as usize && dh - sh < scale as usize,
+                    "{sw}x{sh} at scale {scale} overhangs by {}x{}",
+                    dw - sw,
+                    dh - sh,
+                );
+            }
+        }
+    }
 }
 
 #[macroquad::main(conf)]
