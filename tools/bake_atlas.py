@@ -32,7 +32,7 @@ CAST = [
     ("OLDMAN2", "OldMan2"),  # 2 Baker Poppy (the beret! the stripes!)
     ("VILLAGER_M", "Villager"),  # 3 Well-keeper Bram
     ("CHILD", "Child"),  # char-select: "the curious sprout"
-    ("CAVEGIRL", "Cavegirl"),  # 5 Forager Maren (leaves in her hair)
+    ("VILLAGE6", "Village6"),  # 5 Forager Maren (red headscarf, warm smile)
     ("MANGREEN", "ManGreen"),  # char-select: "the greenwood ranger"
     ("VILLAGER2", "Villager2"),  # 7 Ferryman Wick
     ("EGGBOY", "EggBoy"),  # 8 Fisher Juniper (bucket hat)

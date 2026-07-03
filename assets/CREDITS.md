@@ -24,6 +24,14 @@ strip (plus the player's walk strip), unmodified, and
 each overworld zone its own biome ground and props. The older Kenney-composed
 character cells remain in the atlas so existing sprite ids never shift.
 
+`ninja_adventure/pack/` vendors the rest of that same download unmodified
+(`Actor/Character`, `Actor/CharacterAnimated`, `Actor/Animal`, `Actor/Boss`,
+`Actor/Monster`, `Items`, `FX`, and its `LICENSE.txt`) — raw source material
+for future features (wild-rune encounter art, journal/keepsake icons, casting
+FX) so pulling a new sprite into the atlas is a crop, not a re-download. Not
+baked into `atlas.png` itself; `tools/bake_atlas.py` still only reads the
+flat `ninja_adventure/<Character>/Idle.png` layout above.
+
 The critter, Ferris, bookshelf, chest, runestone and moon-mint sprites in
 the atlas are original pixel art for this project (same CC0 spirit — do
 what you like with them).

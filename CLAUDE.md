@@ -105,10 +105,12 @@ collection. Both packs still have unused tracks (3 left in *Action*, 3 in
   workshop benches, cottage beds, the Library's piano/clock/gallery) and the
   Echo Cave/cellar stone. Plenty of both sheets remains unbaked — more
   furniture, ores, mine props — so they stay first quarry for interior work.
-- **Ninja Adventure — monsters, items, FX** (same pack/download as above, CC0):
-  30+ animated monsters (visible wild-rune forms in `Screen::Encounter`), 60+
-  item icons (journal satchel/keepsake art), spell-effect strips (casting
-  sparkle, fizzle puff).
+- **Ninja Adventure — monsters, items, FX** (same pack/download as above, CC0,
+  **now vendored raw** in `assets/ninja_adventure/pack/` — see
+  `assets/CREDITS.md`): 30+ animated monsters (visible wild-rune forms in
+  `Screen::Encounter`), 60+ item icons (journal satchel/keepsake art),
+  spell-effect strips (casting sparkle, fizzle puff). Cropping one into the
+  atlas is now a `tools/bake_atlas.py` edit, not a re-download.
 - **"Zelda-like tilesets and sprites" by ArMM1998**
   (https://opengameart.org/content/zelda-like-tilesets-and-sprites, CC0,
   16×16) — overworld/cave/interior tiles plus NPCs in exactly the
