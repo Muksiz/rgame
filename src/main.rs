@@ -149,8 +149,15 @@ async fn main() {
     let mut tick_acc = 0.0f32;
     let mut held: Option<(mq::KeyCode, f32)> = None;
     let mut fullscreen = false;
+    // Cooldown that throttles held vim-key (H J K L) walking. The characters
+    // arrive on the OS text stream, so their repeat rate is whatever the OS
+    // key-repeat is set to — potentially far faster than the arrow keys, which
+    // are gated below to `REPEAT_EVERY`. This clamps them to the same cadence.
+    let mut vim_walk_cd = 0.0f32;
 
     while !app.should_quit {
+        vim_walk_cd = (vim_walk_cd - mq::get_frame_time()).max(0.0);
+
         // Alt+Enter toggles fullscreen — a shell-level window concern that
         // never reaches the game state, so the Enter it rides on is swallowed
         // here instead of being read as a confirm.
@@ -167,8 +174,19 @@ async fn main() {
         // positions. This drives the vim movement keys, the command letters,
         // and typing a name.
         while let Some(c) = mq::get_char_pressed() {
-            if c.is_ascii_alphabetic() || c == '-' || c == '\'' {
-                app.on_key(Key::Char(c.to_ascii_lowercase()));
+            let c = c.to_ascii_lowercase();
+            // Held vim keys walk the world; cap their pace to the arrow-key
+            // repeat cadence so a fast OS key-repeat can't sprint the player.
+            // The first step of a press moves at once (the cooldown is spent),
+            // then further steps wait out `REPEAT_EVERY`.
+            if matches!(c, 'h' | 'j' | 'k' | 'l') && matches!(app.screen, Screen::World) {
+                if vim_walk_cd > 0.0 {
+                    continue;
+                }
+                vim_walk_cd = REPEAT_EVERY;
+                app.on_key(Key::Char(c));
+            } else if c.is_ascii_alphabetic() || c == '-' || c == '\'' {
+                app.on_key(Key::Char(c));
             }
         }
         // Discrete presses of the non-character keys go straight to on_key.
