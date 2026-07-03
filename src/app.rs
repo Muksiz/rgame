@@ -1217,8 +1217,8 @@ impl App {
             return;
         };
         match code {
-            Key::Up => *scroll = scroll.saturating_sub(1),
-            Key::Down => *scroll = scroll.saturating_add(1),
+            Key::Up | Key::Char('k') => *scroll = scroll.saturating_sub(1),
+            Key::Down | Key::Char('j') => *scroll = scroll.saturating_add(1),
             Key::PageUp => *scroll = scroll.saturating_sub(10),
             Key::PageDown => *scroll = scroll.saturating_add(10),
             Key::Enter | Key::Esc | Key::Char(' ') | Key::Char('e') => {
@@ -1595,6 +1595,28 @@ mod tests {
         app.on_key(Key::Esc);
         assert!(matches!(app.screen, Screen::World));
         assert!(app.grimoire.is_empty());
+    }
+
+    #[test]
+    fn a_fizzled_cast_scrolls_its_errors_with_vim_keys() {
+        let mut app = App::new();
+        app.screen = Screen::CastResult {
+            quest: 1,
+            outcome: Outcome::CompileFail {
+                stderr: "error: line one\nerror: line two\n".into(),
+            },
+            scroll: 0,
+        };
+        // j scrolls down, k scrolls back up — just like the arrows.
+        app.on_key(Key::Char('j'));
+        app.on_key(Key::Char('j'));
+        assert!(matches!(app.screen, Screen::CastResult { scroll: 2, .. }));
+        app.on_key(Key::Char('k'));
+        assert!(matches!(app.screen, Screen::CastResult { scroll: 1, .. }));
+        // k saturates at the top rather than underflowing.
+        app.on_key(Key::Char('k'));
+        app.on_key(Key::Char('k'));
+        assert!(matches!(app.screen, Screen::CastResult { scroll: 0, .. }));
     }
 
     #[test]
