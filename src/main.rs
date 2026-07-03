@@ -13,8 +13,11 @@ use rgame::checker::Outcome;
 use rgame::gfx::{self, Atlas, FB_H, FB_W, Frame};
 
 const TICK_SECS: f32 = 0.05;
-/// Held movement keys repeat after this long, every `REPEAT_EVERY`.
-const REPEAT_AFTER: f32 = 0.22;
+/// Held movement keys repeat after this long, every `REPEAT_EVERY`. The delay
+/// is kept short so walking picks up quickly once a key is held, while still
+/// leaving a hair of margin over a deliberate single tap so one press steps one
+/// tile.
+const REPEAT_AFTER: f32 = 0.13;
 const REPEAT_EVERY: f32 = 0.09;
 
 fn conf() -> mq::Conf {
@@ -147,17 +150,14 @@ async fn main() {
     let mut fb_dims = (fb.w, fb.h);
 
     let mut tick_acc = 0.0f32;
-    let mut held: Option<(mq::KeyCode, f32)> = None;
+    // The physical key currently held to walk, the game key it sends, and its
+    // repeat timer. Arrows and vim keys both feed this one mechanism, so they
+    // start walking after the same `REPEAT_AFTER` and step at the same
+    // `REPEAT_EVERY` — the OS key-repeat settings never enter into it.
+    let mut held: Option<(mq::KeyCode, Key, f32)> = None;
     let mut fullscreen = false;
-    // Cooldown that throttles held vim-key (H J K L) walking. The characters
-    // arrive on the OS text stream, so their repeat rate is whatever the OS
-    // key-repeat is set to — potentially far faster than the arrow keys, which
-    // are gated below to `REPEAT_EVERY`. This clamps them to the same cadence.
-    let mut vim_walk_cd = 0.0f32;
 
     while !app.should_quit {
-        vim_walk_cd = (vim_walk_cd - mq::get_frame_time()).max(0.0);
-
         // Alt+Enter toggles fullscreen — a shell-level window concern that
         // never reaches the game state, so the Enter it rides on is swallowed
         // here instead of being read as a confirm.
@@ -169,22 +169,29 @@ async fn main() {
             mq::set_fullscreen(fullscreen);
         }
 
+        // Physical keys newly pressed this frame (never OS auto-repeats —
+        // macroquad only records a press when its `repeat` flag is false). This
+        // lets a held vim key drive walking off physical key state, the same way
+        // the arrows do, so its start delay and pace are ours rather than the
+        // OS's.
+        let pressed = mq::get_keys_pressed();
+
         // Character keys come from the OS text stream, so they respect the
         // active keyboard layout (Dvorak, AZERTY, …) instead of raw QWERTY
         // positions. This drives the vim movement keys, the command letters,
         // and typing a name.
         while let Some(c) = mq::get_char_pressed() {
             let c = c.to_ascii_lowercase();
-            // Held vim keys walk the world; cap their pace to the arrow-key
-            // repeat cadence so a fast OS key-repeat can't sprint the player.
-            // The first step of a press moves at once (the cooldown is spent),
-            // then further steps wait out `REPEAT_EVERY`.
+            // A held vim key streams repeated chars at the OS rate; ignore those
+            // and let the timer below walk instead. Only a genuine new press
+            // (one that shows up in `pressed`) starts a walk — binding the
+            // physical key that produced it so the repeat tracks the real hold
+            // whatever the layout.
             if matches!(c, 'h' | 'j' | 'k' | 'l') && matches!(app.screen, Screen::World) {
-                if vim_walk_cd > 0.0 {
-                    continue;
+                if let Some(&mk) = pressed.iter().find(|k| !MOVEMENT.contains(*k)) {
+                    app.on_key(Key::Char(c));
+                    held = Some((mk, Key::Char(c), 0.0));
                 }
-                vim_walk_cd = REPEAT_EVERY;
-                app.on_key(Key::Char(c));
             } else if c.is_ascii_alphabetic() || c == '-' || c == '\'' {
                 app.on_key(Key::Char(c));
             }
@@ -194,17 +201,16 @@ async fn main() {
             if mq::is_key_pressed(mk) {
                 app.on_key(code);
                 if MOVEMENT.contains(&mk) {
-                    held = Some((mk, 0.0));
+                    held = Some((mk, code, 0.0));
                 }
             }
         }
-        // Hold-to-walk: repeat the movement key while it stays down.
-        if let Some((mk, ref mut t)) = held {
+        // Hold-to-walk: repeat the held movement key while it stays down.
+        if let Some((mk, code, ref mut t)) = held {
             if mq::is_key_down(mk) && matches!(app.screen, Screen::World) {
                 *t += mq::get_frame_time();
                 if *t >= REPEAT_AFTER {
                     *t -= REPEAT_EVERY;
-                    let code = KEYMAP.iter().find(|(m, _)| *m == mk).unwrap().1;
                     app.on_key(code);
                 }
             } else {
