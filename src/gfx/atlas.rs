@@ -107,8 +107,10 @@ pub const AWNING_GREEN: u16 = 110;
 pub const IVY: u16 = 111;
 // The animated cast (Ninja Adventure pack): four idle cells per member,
 // facing down, up, left, right. Member 0 is the player; 1..=12 the quest
-// NPCs in quest order; the rest are the named side folk and house villagers
-// (see CAST in tools/bake_atlas.py, and cast_index in gfx/scene.rs).
+// NPCs in quest order; 13..=17 the named side folk; 18..=20 (Villager3,
+// Villager4, Princess) belong to the char-select roster and are worn by no
+// NPC, so a chosen traveller never has a twin in the world
+// (see CAST in tools/bake_atlas.py, and npc_sprite in gfx/scene.rs).
 pub const CAST: u16 = 112;
 pub const CAST_FACINGS: u16 = 4;
 pub const CAST_BOY: u16 = 112;
@@ -153,14 +155,14 @@ pub const PLAYABLE: [Playable; 4] = [
         cast: CAST_BOY,
     },
     Playable {
-        look: "the wildwood forager",
-        default_name: "Bramble",
-        cast: CAST_CAVEGIRL,
+        look: "the meadow rambler",
+        default_name: "Clover",
+        cast: CAST_VILLAGER3,
     },
     Playable {
-        look: "the bucket-hat tinker",
-        default_name: "Pip",
-        cast: CAST_EGGBOY,
+        look: "the roving apprentice",
+        default_name: "Marigold",
+        cast: CAST_VILLAGER4,
     },
     Playable {
         look: "the wandering noble",

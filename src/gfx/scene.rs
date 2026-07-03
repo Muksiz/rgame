@@ -1000,8 +1000,13 @@ fn facing_cell(step: (i32, i32)) -> u16 {
 
 /// An NPC's idle cell, facing down (add `facing_cell` for the other ways):
 /// quest folk by quest id, the named side folk by name, and any future
-/// stranger falls back to one of the flavor-villager looks.
+/// stranger falls back to one of a few townsfolk looks. The fallback stays
+/// clear of the playable-only sprites (members 18-20, worn by the roster in
+/// `atlas::PLAYABLE`) so no NPC ever mirrors a traveller the player can be.
 fn npc_sprite(npc: &Npc) -> u16 {
+    // Well-keeper Bram, Ferryman Wick, Hen-keeper Tilly — plain townsfolk the
+    // fallback borrows, none of them a face from the char-select screen.
+    const TOWNSFOLK: [u16; 3] = [3, 7, 16];
     let member = match npc.quest {
         Some(id) if (1..=12).contains(&id) => id as u16,
         _ => match npc.name {
@@ -1010,7 +1015,7 @@ fn npc_sprite(npc: &Npc) -> u16 {
             "Carpenter Alder" => 15,
             "Hen-keeper Tilly" => 16,
             "Under-librarian Twill" => 17,
-            _ => 18 + npc.name.bytes().map(u16::from).sum::<u16>() % 3,
+            _ => TOWNSFOLK[npc.name.bytes().map(usize::from).sum::<usize>() % 3],
         },
     };
     atlas::CAST + member * atlas::CAST_FACINGS
@@ -1819,4 +1824,28 @@ fn title(fb: &mut Frame, atlas: &Atlas, app: &App, selected: usize) {
         (110, 105, 95),
         1,
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::world::zones::zones;
+
+    // A traveller you pick at char-select must never meet a copy of themselves
+    // wandering the world: no NPC may wear a sprite from the playable roster.
+    #[test]
+    fn no_npc_shares_a_playable_sprite() {
+        let playable: Vec<u16> = atlas::PLAYABLE.iter().map(|p| p.cast).collect();
+        for zone in zones() {
+            for npc in &zone.npcs {
+                let sprite = npc_sprite(npc);
+                assert!(
+                    !playable.contains(&sprite),
+                    "{} in {} wears a playable-only sprite ({sprite})",
+                    npc.name,
+                    zone.name,
+                );
+            }
+        }
+    }
 }

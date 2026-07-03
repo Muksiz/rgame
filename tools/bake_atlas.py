@@ -43,9 +43,11 @@ CAST = [
     ("HUNTER", "Hunter"),  # Carpenter Alder
     ("WOMAN", "Woman"),  # Hen-keeper Tilly
     ("NOBLE", "Noble"),  # Under-librarian Twill
-    ("VILLAGER3", "Villager3"),  # the flavor villagers in the houses
-    ("VILLAGER4", "Villager4"),
-    ("PRINCESS", "Princess"),
+    # Char-select roster only (see PLAYABLE in src/gfx/atlas.rs): worn by no
+    # NPC, so a chosen traveller never runs into a copy of themselves.
+    ("VILLAGER3", "Villager3"),  # "the meadow rambler"
+    ("VILLAGER4", "Villager4"),  # "the roving apprentice"
+    ("PRINCESS", "Princess"),  # "the wandering noble"
 ]
 
 
