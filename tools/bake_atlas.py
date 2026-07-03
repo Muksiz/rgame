@@ -20,18 +20,20 @@ COLS = 16  # atlas cells per row
 
 NA_DIR = Path(__file__).resolve().parent.parent / "assets" / "ninja_adventure"
 
-# The cast, in atlas order (index 0 is the player; 1..12 the quest NPCs in
-# quest order; then the named side folk; then the flavor house villagers).
-# Each Ninja Adventure strip holds one 16x16 frame per facing, in the order
-# down, up, left, right — which is also the order the cells are baked in.
+# The cast, in atlas order. The order is historical (player, quest NPCs 1..12,
+# named side folk, then three spares); who actually *wears* each sprite is
+# decided in code — the char-select roster in src/gfx/atlas.rs and npc_sprite
+# in src/gfx/scene.rs — so trust the per-line notes, not the position. Each
+# Ninja Adventure strip holds one 16x16 frame per facing, in the order down,
+# up, left, right — which is also the order the cells are baked in.
 CAST = [
-    ("BOY", "Boy"),  # the player
+    ("BOY", "Boy"),  # char-select: "the young traveller"
     ("MASTER", "Master"),  # 1 Elder Rowan
     ("OLDMAN2", "OldMan2"),  # 2 Baker Poppy (the beret! the stripes!)
     ("VILLAGER_M", "Villager"),  # 3 Well-keeper Bram
-    ("CHILD", "Child"),  # 4 Wren
+    ("CHILD", "Child"),  # char-select: "the curious sprout"
     ("CAVEGIRL", "Cavegirl"),  # 5 Forager Maren (leaves in her hair)
-    ("MANGREEN", "ManGreen"),  # 6 Shepherd Ambrose
+    ("MANGREEN", "ManGreen"),  # char-select: "the greenwood ranger"
     ("VILLAGER2", "Villager2"),  # 7 Ferryman Wick
     ("EGGBOY", "EggBoy"),  # 8 Fisher Juniper (bucket hat)
     ("MONK", "Monk"),  # 9 Hermit Morrow
@@ -41,13 +43,13 @@ CAST = [
     ("OLDWOMAN", "OldWoman"),  # Granny Sorrel
     ("GREENMAN", "Greenman"),  # Old Nettle
     ("HUNTER", "Hunter"),  # Carpenter Alder
-    ("WOMAN", "Woman"),  # Hen-keeper Tilly
+    ("WOMAN", "Woman"),  # char-select: "the roaming herbalist"
     ("NOBLE", "Noble"),  # Under-librarian Twill
-    # Char-select roster only (see PLAYABLE in src/gfx/atlas.rs): worn by no
-    # NPC, so a chosen traveller never runs into a copy of themselves.
-    ("VILLAGER3", "Villager3"),  # "the meadow rambler"
-    ("VILLAGER4", "Villager4"),  # "the roving apprentice"
-    ("PRINCESS", "Princess"),  # "the wandering noble"
+    # The three NPCs whose sprites the char-select roster took over now wear
+    # these spare villager looks (see npc_sprite in src/gfx/scene.rs).
+    ("VILLAGER3", "Villager3"),  # Shepherd Ambrose
+    ("VILLAGER4", "Villager4"),  # Wren
+    ("PRINCESS", "Princess"),  # Hen-keeper Tilly
 ]
 
 
