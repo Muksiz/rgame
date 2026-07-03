@@ -148,8 +148,20 @@ async fn main() {
 
     let mut tick_acc = 0.0f32;
     let mut held: Option<(mq::KeyCode, f32)> = None;
+    let mut fullscreen = false;
 
     while !app.should_quit {
+        // Alt+Enter toggles fullscreen — a shell-level window concern that
+        // never reaches the game state, so the Enter it rides on is swallowed
+        // here instead of being read as a confirm.
+        let alt = mq::is_key_down(mq::KeyCode::LeftAlt) || mq::is_key_down(mq::KeyCode::RightAlt);
+        let toggle_fullscreen = alt
+            && (mq::is_key_pressed(mq::KeyCode::Enter) || mq::is_key_pressed(mq::KeyCode::KpEnter));
+        if toggle_fullscreen {
+            fullscreen = !fullscreen;
+            mq::set_fullscreen(fullscreen);
+        }
+
         // Character keys come from the OS text stream, so they respect the
         // active keyboard layout (Dvorak, AZERTY, …) instead of raw QWERTY
         // positions. This drives the vim movement keys, the command letters,
