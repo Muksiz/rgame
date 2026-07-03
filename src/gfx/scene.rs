@@ -1961,29 +1961,22 @@ fn char_select(fb: &mut Frame, atlas: &Atlas, app: &App, idx: usize, name: &str)
     // The chosen look's label.
     font::text_center(fb, cx, py + 100, roster[idx].look, WARM, 1);
 
-    // The name field, with a soft blinking cursor.
-    let shown = if name.is_empty() {
-        roster[idx].default_name
-    } else {
-        name
-    };
-    let name_color = if name.is_empty() { DIM } else { GOLD };
+    // The name field, with a soft blinking cursor. Empty until the player
+    // types — no borrowed placeholder name, just an inviting blank and cursor.
     let label = "Name: ";
-    let full = format!("{label}{shown}");
+    let full = format!("{label}{name}");
     let fw = font::text_width(&full, 1);
     let nx = cx - fw / 2;
     let ny = py + 122;
     font::text(fb, nx, ny, label, (150, 150, 170), 1);
-    let vx = font::text(
-        fb,
-        nx + font::text_width(label, 1),
-        ny,
-        shown,
-        name_color,
-        1,
-    );
+    let vx = font::text(fb, nx + font::text_width(label, 1), ny, name, GOLD, 1);
     if (app.tick / 8).is_multiple_of(2) {
         fb.fill(vx + 1, ny, 5, 8, WARM);
+    }
+
+    // A gentle nudge (e.g. trying to set off unnamed) borrows the toast line.
+    if let Some((msg, _)) = &app.toast {
+        font::text_center(fb, cx, fb.height() - 36, msg, (255, 224, 150), 1);
     }
 
     font::text_center(

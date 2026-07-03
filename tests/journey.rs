@@ -65,6 +65,9 @@ fn the_whole_journey_can_be_walked() {
     key(&mut app, Key::Enter); // A new journey -> the character chooser
     assert!(matches!(app.screen, Screen::CharSelect { .. }));
     key(&mut app, Key::Right); // pick a different look, just to exercise it
+    for c in ['j', 'a', 'n', 'i'] {
+        key(&mut app, Key::Char(c)); // a blank name won't set off, so name yourself
+    }
     key(&mut app, Key::Enter); // accept the name and set off
     assert!(matches!(app.screen, Screen::World));
     assert!(!app.player_name.is_empty(), "the traveller should be named");

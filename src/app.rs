@@ -539,10 +539,17 @@ impl App {
                 name.pop();
             }
             // Enter commits; here `e`/space are letters you might be typing, so
-            // only Enter sets you off.
+            // only Enter sets you off. A blank name won't do — the road needs
+            // something to call you.
             Key::Enter => {
-                let (idx, name) = (*idx, name.clone());
-                self.begin_journey(idx, name);
+                let (idx, name) = (*idx, name.trim().to_string());
+                if name.is_empty() {
+                    self.toast(
+                        "A nameless hero? The ballads would be awfully short. Type a name first.",
+                    );
+                } else {
+                    self.begin_journey(idx, name);
+                }
             }
             Key::Esc => self.screen = Screen::Title { selected: 0 },
             Key::Char(c)
@@ -566,12 +573,7 @@ impl App {
     /// Emberwick morning.
     fn begin_journey(&mut self, idx: usize, name: String) {
         self.player_char = idx.min(PLAYABLE.len() - 1);
-        let name = name.trim().to_string();
-        self.player_name = if name.is_empty() {
-            self.player_look().default_name.to_string()
-        } else {
-            name
-        };
+        self.player_name = name.trim().to_string();
         self.zone_idx = 0;
         self.player = self.zones[0].spawn;
         self.completed.clear();
@@ -1343,12 +1345,23 @@ mod tests {
     }
 
     #[test]
-    fn an_unnamed_traveller_gets_their_looks_default_name() {
+    fn setting_off_unnamed_is_gently_refused() {
         let mut app = App::new();
         app.new_game();
-        // Straight to Enter without typing: the chosen look lends its name.
+        // Enter with a blank name: no journey begins, just a funny nudge.
         app.on_key(Key::Enter);
-        assert_eq!(app.player_name(), PLAYABLE[0].default_name);
+        assert!(
+            matches!(app.screen, Screen::CharSelect { .. }),
+            "a nameless traveller shouldn't set off"
+        );
+        assert!(app.toast.is_some(), "the empty name should draw a nudge");
+        // Type a name, and now Enter sets you on the road.
+        for c in ['a', 'r', 'a'] {
+            app.on_key(Key::Char(c));
+        }
+        app.on_key(Key::Enter);
+        assert!(matches!(app.screen, Screen::World));
+        assert_eq!(app.player_name(), "Ara");
     }
 
     #[test]

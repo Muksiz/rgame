@@ -141,34 +141,30 @@ pub const CAST_PRINCESS: u16 = 192;
 /// their idle facings, turning to look where they go.
 pub const PLAYER_WALK: u16 = 196;
 
-/// The characters a new traveller may choose to play as: a display look, a
-/// suggested name, and the cast member whose four idle facings they wear.
-/// The first (the Boy) is the one with a full stride animation.
+/// The characters a new traveller may choose to play as: a display look and
+/// the cast member whose four idle facings they wear. The name is the player's
+/// to invent — no suggestions here. The first (the Boy) is the one with a full
+/// stride animation.
 pub struct Playable {
     pub look: &'static str,
-    pub default_name: &'static str,
     pub cast: u16,
 }
 
 pub const PLAYABLE: [Playable; 4] = [
     Playable {
         look: "the young traveller",
-        default_name: "Rue",
         cast: CAST_BOY,
     },
     Playable {
         look: "the curious sprout",
-        default_name: "Fern",
         cast: CAST_CHILD,
     },
     Playable {
         look: "the greenwood ranger",
-        default_name: "Linden",
         cast: CAST_MANGREEN,
     },
     Playable {
         look: "the roaming herbalist",
-        default_name: "Hazel",
         cast: CAST_WOMAN,
     },
 ];
