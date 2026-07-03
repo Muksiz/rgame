@@ -12,6 +12,10 @@ use crate::gfx::shade;
 use crate::world::camera;
 use crate::world::entity::{CritterKind, Npc};
 use crate::world::map::{Tile, Weather, Zone, hash2};
+use crate::world::zones::{
+    BAKERY, CARPENTER_HOUSE, ECHO_CAVE, GREAT_LIBRARY, SORREL_COTTAGE, STOREHOUSE,
+    STOREHOUSE_CELLAR, TILLY_COTTAGE,
+};
 
 /// How many whole tiles it takes to cover a framebuffer of size `px`. The
 /// view grows with the window, so ultrawide screens simply see more world.
@@ -274,10 +278,10 @@ fn tile_sprites(
 ) -> (u16, Option<u16>) {
     let h = hash2(x, y, zone.seed);
     let (zone_id, interior) = (zone.id, zone.interior);
-    // Indoors (the cave, mostly) freestanding things sit on bare earth, not
-    // grass; outdoors they sit on whatever the biome grows.
+    // Indoors freestanding things sit on bare earth (cave stone, cellar
+    // dirt); outdoors they sit on whatever the biome grows.
     let ground = if interior {
-        atlas::PATH
+        interior_earth(zone_id, h)
     } else {
         ground_base(zone, h)
     };
@@ -413,6 +417,31 @@ fn tile_sprites(
             (ground_base(zone, h), Some(id))
         }
         Tile::Bridge => (atlas::BRIDGE, None),
+        // Under the ground, "path" is the floor itself: cave stone strewn
+        // with what grows and glitters in the dark, cellar earth kept
+        // tidier (it is somebody's pantry, after all).
+        Tile::Path if zone_id == ECHO_CAVE => {
+            let decor = match h % 31 {
+                0 => Some(atlas::CRYSTAL_VIOLET),
+                1 => Some(atlas::CRYSTAL_AMBER),
+                2 => Some(atlas::SHROOMS_PALE),
+                3 => Some(atlas::SHROOMS_TALL),
+                4 | 5 => Some(atlas::CAVE_ROCKS),
+                6 => Some(atlas::STAL_SMALL),
+                7 => Some(atlas::OLD_BONES),
+                _ => None,
+            };
+            (interior_earth(zone_id, h), decor)
+        }
+        Tile::Path if zone_id == STOREHOUSE_CELLAR => {
+            let decor = match h % 43 {
+                0 => Some(atlas::COBWEB_B),
+                1 => Some(atlas::SHROOMS_PALE),
+                2 => Some(atlas::PEBBLE),
+                _ => None,
+            };
+            (interior_earth(zone_id, h), decor)
+        }
         Tile::Path => (
             if h.is_multiple_of(9) {
                 atlas::PATH_ALT
@@ -430,14 +459,35 @@ fn tile_sprites(
             None,
         ),
         Tile::Sand => (atlas::SAND, None),
-        Tile::Wall => (
-            atlas::WALL,
-            // Outside walls grow a sprig of ivy here and there.
-            (!interior && h.is_multiple_of(7)).then_some(atlas::IVY),
-        ),
+        Tile::Wall => {
+            let decor = if !interior {
+                // Outside walls grow a sprig of ivy here and there.
+                h.is_multiple_of(7).then_some(atlas::IVY)
+            } else {
+                // Inside, each room dresses its own walls: cobwebs gather in
+                // the cellar and the old storehouse, the lived-in houses hang
+                // little framed pictures on the back wall — the one you see
+                // face-on, with floor at its feet. The Library hangs its own.
+                let back_wall = matches!(zone.tile(x, y + 1), Tile::Floor | Tile::Rug);
+                match zone_id {
+                    STOREHOUSE_CELLAR => h.is_multiple_of(5).then_some(atlas::COBWEB_A),
+                    STOREHOUSE => (back_wall && h.is_multiple_of(4)).then_some(atlas::COBWEB_A),
+                    BAKERY | SORREL_COTTAGE | CARPENTER_HOUSE | TILLY_COTTAGE if back_wall => {
+                        match h % 11 {
+                            0 => Some(atlas::FRAME_TEAL),
+                            1 => Some(atlas::FRAME_AMBER),
+                            2 => Some(atlas::FRAME_SMALL),
+                            _ => None,
+                        }
+                    }
+                    _ => None,
+                }
+            };
+            (wall_base(zone_id, h), decor)
+        }
         Tile::Roof => (atlas::ROOF, None),
-        Tile::Door => (atlas::WALL, Some(atlas::DOOR)),
-        Tile::Floor => (atlas::FLOOR, None),
+        Tile::Door => (wall_base(zone_id, h), Some(atlas::DOOR)),
+        Tile::Floor => (interior_floor(zone_id, h), None),
         Tile::Fence => {
             // Fences follow their run: rails along a row, posts-and-rails up
             // a column, and a stout post at corners, junctions and ends.
@@ -463,6 +513,17 @@ fn tile_sprites(
                 _ => None,
             };
             (atlas::STONE, overlay)
+        }
+        Tile::Rock if zone_id == ECHO_CAVE => {
+            // The cave's rocky bounds: stalagmites among the fallen stone.
+            let id = match h % 8 {
+                0 | 1 => atlas::STAL_TALL_A,
+                2 => atlas::STAL_TALL_B,
+                3 => atlas::CAVE_ROCKS_MOSS,
+                4 => atlas::STAL_SMALL,
+                _ => atlas::CAVE_ROCKS,
+            };
+            (ground, Some(id))
         }
         Tile::Rock => {
             let id = match (zone_id, h % 8) {
@@ -502,7 +563,12 @@ fn tile_sprites(
             } else {
                 atlas::CAMPFIRE_B
             };
-            (paved_base(zone, x, y, atlas::PATH_ALT), Some(flame))
+            let base = if interior {
+                ground
+            } else {
+                paved_base(zone, x, y, atlas::PATH_ALT)
+            };
+            (base, Some(flame))
         }
         Tile::Lantern => {
             let id = if !lantern_lit {
@@ -512,7 +578,12 @@ fn tile_sprites(
             } else {
                 atlas::TORCH_LIT_B
             };
-            (paved_base(zone, x, y, atlas::PATH), Some(id))
+            let base = if interior {
+                interior_floor(zone_id, h)
+            } else {
+                paved_base(zone, x, y, atlas::PATH)
+            };
+            (base, Some(id))
         }
         Tile::Gate => (atlas::PATH, Some(atlas::GATE)),
         Tile::Sign => (ground, Some(atlas::SIGN)),
@@ -520,29 +591,117 @@ fn tile_sprites(
         // Rugs are drawn edge-aware by `rug_detail`, so any patch of them
         // reads as one carpet instead of a grid of doormats.
         Tile::Rug => (atlas::FLOOR, None),
-        Tile::Bookshelf => (atlas::FLOOR, Some(atlas::BOOKSHELF)),
-        Tile::Shelf => (atlas::FLOOR, Some(atlas::SHELF)),
-        Tile::Table => (atlas::FLOOR, Some(atlas::TABLE)),
-        Tile::Stool => (atlas::FLOOR, Some(atlas::STOOL)),
-        Tile::BedHead => (atlas::FLOOR, Some(atlas::BED_HEAD)),
-        Tile::BedFoot => (atlas::FLOOR, Some(atlas::BED_FOOT)),
-        Tile::Hearth => {
-            let flame = if (tick / 6).is_multiple_of(2) {
-                atlas::HEARTH_A
+        Tile::Bookshelf => (interior_floor(zone_id, h), Some(atlas::BOOKSHELF)),
+        Tile::Shelf => {
+            // The bakery's shelves are its shop counter, stocked with wares;
+            // everywhere else a shelf is just a shelf.
+            let id = if zone_id == BAKERY {
+                [
+                    atlas::COUNTER_PLATES,
+                    atlas::COUNTER_JARS,
+                    atlas::COUNTER_JUGS,
+                    atlas::COUNTER_BOTTLES,
+                ][(h % 4) as usize]
             } else {
-                atlas::HEARTH_B
+                atlas::SHELF
             };
-            (atlas::FLOOR, Some(flame))
+            (interior_floor(zone_id, h), Some(id))
         }
-        Tile::Barrel => (furniture_base(zone, x, y), Some(atlas::BARREL)),
-        Tile::Crate => (furniture_base(zone, x, y), Some(atlas::CRATE)),
+        Tile::Table => {
+            // Round café tables in the bakery and cottages, a cluttered
+            // workbench in Alder's workshop, plain boards elsewhere.
+            let id = match zone_id {
+                BAKERY | SORREL_COTTAGE | TILLY_COTTAGE => atlas::TABLE_ROUND,
+                CARPENTER_HOUSE => [
+                    atlas::BENCH_JUGS,
+                    atlas::BENCH_PLATES,
+                    atlas::BENCH_WOOD,
+                    atlas::BENCH_JARS,
+                ][(h % 4) as usize],
+                STOREHOUSE => atlas::BENCH_WOOD,
+                _ => atlas::TABLE,
+            };
+            (interior_floor(zone_id, h), Some(id))
+        }
+        Tile::Stool => (interior_floor(zone_id, h), Some(atlas::STOOL)),
+        Tile::BedHead => {
+            let id = match zone_id {
+                SORREL_COTTAGE => atlas::BED_STRIPE_HEAD,
+                TILLY_COTTAGE => atlas::BED_CREAM_HEAD,
+                _ => atlas::BED_HEAD,
+            };
+            (interior_floor(zone_id, h), Some(id))
+        }
+        Tile::BedFoot => {
+            let id = match zone_id {
+                SORREL_COTTAGE => atlas::BED_STRIPE_FOOT,
+                TILLY_COTTAGE => atlas::BED_CREAM_FOOT,
+                _ => atlas::BED_FOOT,
+            };
+            (interior_floor(zone_id, h), Some(id))
+        }
+        Tile::Hearth => {
+            // The bakery cooks on a proper range; every other hearth is an
+            // open fire, cosily flickering.
+            if zone_id == BAKERY {
+                let id = if h.is_multiple_of(2) {
+                    atlas::STOVE_A
+                } else {
+                    atlas::STOVE_B
+                };
+                (interior_floor(zone_id, h), Some(id))
+            } else {
+                let flame = if (tick / 6).is_multiple_of(2) {
+                    atlas::HEARTH_A
+                } else {
+                    atlas::HEARTH_B
+                };
+                (interior_floor(zone_id, h), Some(flame))
+            }
+        }
+        Tile::Barrel => {
+            // Down in the cellar the "barrels" are Granny-era preserve urns.
+            let id = if zone_id == STOREHOUSE_CELLAR {
+                atlas::URN
+            } else {
+                atlas::BARREL
+            };
+            (furniture_base(zone, x, y), Some(id))
+        }
+        Tile::Crate => {
+            // One of the workshop's crates is no crate at all — it's the anvil.
+            let id = if zone_id == CARPENTER_HOUSE && h.is_multiple_of(4) {
+                atlas::ANVIL
+            } else {
+                atlas::CRATE
+            };
+            (furniture_base(zone, x, y), Some(id))
+        }
         Tile::Herb => (ground, Some(atlas::HERB)),
         Tile::Chest => (furniture_base(zone, x, y), Some(atlas::CHEST)),
         Tile::Runestone => (furniture_base(zone, x, y), Some(atlas::RUNESTONE)),
-        Tile::Window => (atlas::WALL, Some(atlas::WINDOW)),
-        Tile::Painting => (atlas::WALL, Some(atlas::PAINTING)),
-        Tile::Plant => (atlas::FLOOR, Some(atlas::PLANT)),
-        Tile::Pedestal => (atlas::FLOOR, Some(atlas::PEDESTAL)),
+        Tile::Window => (wall_base(zone_id, h), Some(atlas::WINDOW)),
+        Tile::Painting => {
+            // The gallery hangs a mix: framed canvases, a map, a mirror.
+            let id = match h % 7 {
+                0 | 1 => atlas::PAINTING_MEADOW,
+                2 => atlas::PAINTING_MAP,
+                3 => atlas::MIRROR,
+                _ => atlas::PAINTING,
+            };
+            (wall_base(zone_id, h), Some(id))
+        }
+        Tile::Plant => {
+            let id = match h % 3 {
+                0 => atlas::POT_PLANT_A,
+                1 => atlas::POT_PLANT_B,
+                _ => atlas::PLANT,
+            };
+            (interior_floor(zone_id, h), Some(id))
+        }
+        Tile::Pedestal => (interior_floor(zone_id, h), Some(atlas::PEDESTAL)),
+        Tile::Piano => (interior_floor(zone_id, h), Some(atlas::PIANO)),
+        Tile::Clock => (interior_floor(zone_id, h), Some(atlas::CLOCK)),
     }
 }
 
@@ -556,17 +715,76 @@ fn paved_base(zone: &Zone, x: i32, y: i32, default: u16) -> u16 {
 }
 
 /// What freestanding clutter sits on: the biome's ground outdoors, and
-/// indoors whatever the room is floored with — bare earth in the cave and
-/// cellar, boards everywhere else — so a barrel never brings its own square
-/// of wrong floor.
+/// indoors whatever the room is floored with — bare stone or earth in the
+/// cave and cellar, that room's boards everywhere else — so a barrel never
+/// brings its own square of wrong floor.
 fn furniture_base(zone: &Zone, x: i32, y: i32) -> u16 {
+    let h = hash2(x, y, zone.seed);
     if !zone.interior {
-        return ground_base(zone, hash2(x, y, zone.seed));
+        return ground_base(zone, h);
     }
     let earthen = [(-1, 0), (1, 0), (0, -1), (0, 1)]
         .iter()
         .any(|&(dx, dy)| zone.tile(x + dx, y + dy) == Tile::Path);
-    if earthen { atlas::PATH } else { atlas::FLOOR }
+    if earthen {
+        interior_earth(zone.id, h)
+    } else {
+        interior_floor(zone.id, h)
+    }
+}
+
+/// Each room's floor: pale scrubbed planks in the bakery, rough boards in
+/// the workshop and storehouse, warm sandstone under the Library's halls,
+/// homely mid-brown boards everywhere else.
+fn interior_floor(zone_id: usize, h: u32) -> u16 {
+    match zone_id {
+        BAKERY => atlas::FLOOR_LIGHT,
+        CARPENTER_HOUSE | STOREHOUSE => atlas::FLOOR_BOARDS,
+        GREAT_LIBRARY => {
+            if h.is_multiple_of(11) {
+                atlas::SANDSTONE_B
+            } else {
+                atlas::SANDSTONE_A
+            }
+        }
+        _ => atlas::FLOOR,
+    }
+}
+
+/// Bare ground underfoot indoors: speckled cave stone in the Echo Cave,
+/// packed cellar earth below the storehouse, plain trodden dirt elsewhere.
+fn interior_earth(zone_id: usize, h: u32) -> u16 {
+    let family = match zone_id {
+        ECHO_CAVE => [
+            atlas::CAVE_FLOOR_A,
+            atlas::CAVE_FLOOR_B,
+            atlas::CAVE_FLOOR_C,
+        ],
+        STOREHOUSE_CELLAR => [
+            atlas::EARTH_FLOOR_A,
+            atlas::EARTH_FLOOR_B,
+            atlas::EARTH_FLOOR_C,
+        ],
+        _ => return atlas::PATH,
+    };
+    match h % 7 {
+        0 => family[1],
+        1 => family[2],
+        _ => family[0],
+    }
+}
+
+/// What a wall is built of, room by room: quarried stone blocks down in the
+/// cellar (cracked and veined here and there), timber everywhere else.
+fn wall_base(zone_id: usize, h: u32) -> u16 {
+    if zone_id == STOREHOUSE_CELLAR {
+        return match h % 9 {
+            0 => atlas::STONE_WALL_CRACK,
+            1 => atlas::STONE_WALL_VEIN,
+            _ => atlas::STONE_WALL,
+        };
+    }
+    atlas::WALL
 }
 
 /// The zone's ground — what "grass" is there: spring green in the village,
@@ -778,14 +996,20 @@ fn rug_detail(
     dl: f32,
 ) {
     let t = TILE as i32;
-    let weave = shade((156, 72, 60), dl);
+    // The Library lays a deep moss-green carpet; homes keep the warm red.
+    let (warp, weft) = if zone.id == GREAT_LIBRARY {
+        ((74, 112, 84), (60, 94, 70))
+    } else {
+        ((156, 72, 60), (134, 58, 48))
+    };
+    let weave = shade(warp, dl);
     fb.fill(px, py, t, t, weave);
     for k in 0..6 {
         let h = hash2(wx * 7 + k, wy * 3 + k, 0x2A6);
         fb.set(
             px + (h % 16) as i32,
             py + ((h >> 8) % 16) as i32,
-            shade((134, 58, 48), dl),
+            shade(weft, dl),
         );
     }
     let hem = shade((222, 198, 152), dl);

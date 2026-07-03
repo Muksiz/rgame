@@ -984,15 +984,19 @@ fn great_library() -> Zone {
     b.set(ox + 5, oy + 16, Tile::Stool);
     b.set(ox + 9, oy + 15, Tile::Bookshelf);
     b.set(ox + 10, oy + 15, Tile::Bookshelf);
+    // The music corner: an upright piano against the west wall.
+    b.set(ox + 1, oy + 15, Tile::Piano);
 
     // ── Central hall: lamps, a long rug, the librarian, a cat. ──
     b.rect(ox + 17, oy + 15, 6, 5, Tile::Rug);
     for (dx, dy) in [(15, 2), (24, 2), (15, 18), (24, 18)] {
         b.set(ox + dx, oy + dy, Tile::Lantern);
     }
-    // A grand central exhibit for arriving visitors.
+    // A grand central exhibit for arriving visitors, and the hall's tall
+    // case clock ticking between the window bays.
     b.set(ox + 19, oy + 4, Tile::Pedestal);
     b.set(ox + 20, oy + 4, Tile::Pedestal);
+    b.set(ox + 17, oy + 1, Tile::Clock);
 
     // ── East chamber: the showcase gallery — plants, art, curios. ──
     for (dx, dy) in [(29, 3), (36, 3), (29, 9), (34, 12), (30, 16)] {

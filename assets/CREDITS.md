@@ -1,12 +1,20 @@
 # Asset credits
 
-`atlas.png` is baked by `tools/bake_atlas.py` from two spritesheets by
-**Kenney** (www.kenney.nl), both licensed **Creative Commons Zero (CC0)**:
+`atlas.png` is baked by `tools/bake_atlas.py` from four spritesheets by
+**Kenney** (www.kenney.nl), all licensed **Creative Commons Zero (CC0)**:
 
 - *Roguelike/RPG pack* — `kenney/roguelikeSheet_transparent.png`
   https://kenney.nl/assets/roguelike-rpg-pack
 - *Roguelike Characters* — `kenney/roguelikeChar_transparent.png`
   https://kenney.nl/assets/roguelike-characters
+- *Roguelike Indoors* — `kenney/roguelikeIndoor_transparent.png`
+  https://kenney.nl/assets/roguelike-indoors
+  (the furniture that tells each interior apart: counters, stoves, beds,
+  frames, the Library's piano and case clock)
+- *Roguelike Caves & Dungeons* — `kenney/roguelikeDungeon_transparent.png`
+  https://kenney.nl/assets/roguelike-caves-dungeons
+  (the Echo Cave and storehouse cellar: cave floors, stone walls,
+  stalagmites, crystals, mushrooms, cobwebs)
 
 The player and every villager are from the **Ninja Adventure asset pack** by
 **Pixel-boy and AAA** (https://pixel-boy.itch.io/ninja-adventure-asset-pack),

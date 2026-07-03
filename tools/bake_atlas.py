@@ -90,6 +90,11 @@ def cell(sheet, c, r):
     return sheet.crop((x, y, x + TILE, y + TILE))
 
 
+def kenney_sheet(sheet_path, name):
+    """A sibling Kenney sheet living next to the main one (same 1px margins)."""
+    return Image.open(Path(sheet_path).parent / name).convert("RGBA")
+
+
 def over(base, top):
     out = base.copy()
     out.alpha_composite(top)
@@ -575,6 +580,16 @@ NPC_LOOKS = [
 def main(sheet_path, chars_path):
     sheet = Image.open(sheet_path).convert("RGBA")
     chars = Image.open(chars_path).convert("RGBA")
+    # The two later Kenney packs (both CC0, see assets/CREDITS.md): furniture
+    # to tell each interior apart, and proper cave/cellar stone.
+    indoor = kenney_sheet(sheet_path, "roguelikeIndoor_transparent.png")
+    dungeon = kenney_sheet(sheet_path, "roguelikeDungeon_transparent.png")
+
+    def icell(c, r):
+        return cell(indoor, c, r)
+
+    def dcell(c, r):
+        return cell(dungeon, c, r)
 
     shirt = cell(chars, 10, 0)  # plain tunic, used as the tint base
 
@@ -769,6 +784,77 @@ def main(sheet_path, chars_path):
         ("PAINTING", from_art(PAINTING, PALETTE)),
         ("PLANT", from_art(PLANT, PALETTE)),
         ("PEDESTAL", from_art(PEDESTAL, PALETTE)),
+        # ── the interiors pass: every room gets its own furniture and floor ──
+        # (Kenney "Roguelike Indoors" + "Roguelike Caves & Dungeons", CC0.)
+        # Per-room floorboards from the main sheet.
+        ("FLOOR_LIGHT", cell(sheet, 38, 16)),
+        ("FLOOR_BOARDS", cell(sheet, 34, 16)),
+        # The bakery kitchen: marble-top counters stocked with wares, a range.
+        ("COUNTER_PLAIN", icell(3, 12)),
+        ("COUNTER_PLATES", icell(4, 12)),
+        ("COUNTER_JARS", icell(5, 12)),
+        ("COUNTER_JUGS", icell(6, 12)),
+        ("COUNTER_BOTTLES", icell(7, 12)),
+        ("SINK", icell(8, 12)),
+        ("STOVE_A", icell(14, 14)),
+        ("STOVE_B", icell(15, 14)),
+        ("TABLE_ROUND", icell(7, 0)),
+        # The workshop bench family (wood-top counters, cluttered).
+        ("BENCH_WOOD", icell(3, 16)),
+        ("BENCH_PLATES", icell(4, 16)),
+        ("BENCH_JARS", icell(5, 16)),
+        ("BENCH_JUGS", icell(6, 16)),
+        # Cottage comforts: a dresser and each cottage's own made bed
+        # (striped covers at Granny Sorrel's, plain cream at Tilly's).
+        ("DRESSER", icell(2, 12)),
+        ("BED_STRIPE_HEAD", cell(sheet, 15, 1)),
+        ("BED_STRIPE_FOOT", cell(sheet, 15, 3)),
+        ("BED_CREAM_HEAD", cell(sheet, 17, 1)),
+        ("BED_CREAM_FOOT", cell(sheet, 17, 3)),
+        # Wall and showcase decor: little frames, gallery art, grand fixtures.
+        ("FRAME_TEAL", icell(16, 12)),
+        ("FRAME_AMBER", icell(17, 12)),
+        ("FRAME_SMALL", icell(18, 12)),
+        ("PAINTING_MEADOW", icell(19, 12)),
+        ("PAINTING_MAP", icell(20, 12)),
+        ("MIRROR", icell(22, 14)),
+        ("PIANO", icell(23, 8)),
+        ("CLOCK", icell(25, 8)),
+        ("CANDELABRUM", icell(19, 0)),
+        ("POT_PLANT_A", icell(16, 0)),
+        ("POT_PLANT_B", icell(17, 0)),
+        # ── cave & cellar stone (Caves & Dungeons) ──
+        ("CAVE_FLOOR_A", dcell(16, 10)),
+        ("CAVE_FLOOR_B", dcell(17, 10)),
+        ("CAVE_FLOOR_C", dcell(16, 11)),
+        ("EARTH_FLOOR_A", dcell(16, 12)),
+        ("EARTH_FLOOR_B", dcell(17, 12)),
+        ("EARTH_FLOOR_C", dcell(16, 13)),
+        ("SANDSTONE_A", dcell(16, 14)),
+        ("SANDSTONE_B", dcell(17, 14)),
+        ("STONE_WALL", dcell(9, 2)),
+        ("STONE_WALL_CRACK", dcell(9, 3)),
+        ("STONE_WALL_VEIN", dcell(11, 3)),
+        # Stalagmites, fallen rock, and what grows and glitters down there.
+        ("STAL_TALL_A", dcell(5, 0)),
+        ("STAL_TALL_B", dcell(6, 0)),
+        ("STAL_SMALL", dcell(5, 1)),
+        ("CAVE_ROCKS", dcell(0, 1)),
+        ("CAVE_ROCKS_MOSS", dcell(1, 1)),
+        ("CRYSTAL_VIOLET", dcell(14, 12)),
+        ("CRYSTAL_AMBER", dcell(15, 12)),
+        ("CRYSTAL_EMBER", dcell(14, 13)),
+        ("CRYSTAL_MOSS", dcell(15, 13)),
+        ("SHROOMS_PALE", dcell(0, 3)),
+        ("SHROOMS_RED", dcell(1, 3)),
+        ("SHROOMS_TALL", dcell(3, 3)),
+        ("SKULL", dcell(0, 2)),
+        ("OLD_BONES", dcell(2, 2)),
+        ("URN", dcell(14, 15)),
+        ("COBWEB_A", dcell(7, 0)),
+        ("COBWEB_B", dcell(7, 1)),
+        # The carpenter's anvil, standing among the workshop crates.
+        ("ANVIL", cell(sheet, 15, 0)),
     ]
 
     rows = (len(cells) + COLS - 1) // COLS

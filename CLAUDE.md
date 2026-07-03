@@ -90,13 +90,13 @@ Rule of thumb: this repo is public, so anything committed here must be
 **Sprites & tiles** — everything below feeds the existing
 `tools/bake_atlas.py` → `atlas.png` pipeline (append at the end, ids never shift):
 
-- **Kenney *Roguelike Indoors*** (https://kenney.nl/assets/roguelike-indoors,
-  CC0, 480 tiles) — same sheet family we already bake from, so it drops in
-  seamlessly: furniture and props to make each interior distinct (bakery ovens,
-  workshop clutter, Library desks).
-- **Kenney *Roguelike Caves & Dungeons***
-  (https://kenney.nl/assets/roguelike-caves-dungeons, CC0, 520 tiles) — ores,
-  rocks, skulls, wall types for the Echo Cave and the storehouse cellar.
+- ~~Kenney *Roguelike Indoors*~~ and ~~Kenney *Roguelike Caves & Dungeons*~~ —
+  **now vendored and in use** (`assets/kenney/roguelikeIndoor_transparent.png`,
+  `assets/kenney/roguelikeDungeon_transparent.png`, credited in
+  `assets/CREDITS.md`): they drive the per-room interiors (bakery kitchen,
+  workshop benches, cottage beds, the Library's piano/clock/gallery) and the
+  Echo Cave/cellar stone. Plenty of both sheets remains unbaked — more
+  furniture, ores, mine props — so they stay first quarry for interior work.
 - **Ninja Adventure — monsters, items, FX** (same pack/download as above, CC0):
   30+ animated monsters (visible wild-rune forms in `Screen::Encounter`), 60+
   item icons (journal satchel/keepsake art), spell-effect strips (casting

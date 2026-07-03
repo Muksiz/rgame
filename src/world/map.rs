@@ -75,6 +75,10 @@ pub enum Tile {
     Plant,
     /// A plinth bearing a curio — a rock, a relic, a small wonder.
     Pedestal,
+    /// An upright piano against a wall (the Library's music corner).
+    Piano,
+    /// A tall case clock, ticking away the reading hours.
+    Clock,
 }
 
 impl Tile {
