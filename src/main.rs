@@ -56,7 +56,14 @@ const MOVEMENT: &[mq::KeyCode] = &[
 ];
 
 const MUSIC_VOLUME: f32 = 0.5;
+/// Night ambience sits a touch below the daytime loops — quieter is calmer,
+/// and it wants to feel like the world settling rather than a new song
+/// starting.
+const NIGHT_VOLUME: f32 = 0.4;
 const SFX_VOLUME: f32 = 0.7;
+/// The owl is meant to be *far off* — a soft note under the ambience, never a
+/// jump-scare. Kept low on purpose.
+const OWL_VOLUME: f32 = 0.28;
 
 /// One looping chiptune per overworld zone (`assets/audio/music/`), indexed
 /// by `App::zone_idx` — interiors (zone 4+) stay quiet. See
@@ -67,6 +74,21 @@ static ZONE_MUSIC: &[&[u8]] = &[
     include_bytes!("../assets/audio/music/silverford.ogg"),
     include_bytes!("../assets/audio/music/hearthspire.ogg"),
 ];
+
+/// A calmer nature ambience per overworld zone for after dark, same indexing
+/// as `ZONE_MUSIC` — crickets over Emberwick, a living swamp in the Woods,
+/// rain on Silverford, wind off the Hearthspire road. Swapped in for the
+/// daytime loop whenever `App::is_night()`. See `assets/CREDITS.md`.
+static NIGHT_MUSIC: &[&[u8]] = &[
+    include_bytes!("../assets/audio/music/night/emberwick.ogg"),
+    include_bytes!("../assets/audio/music/night/whispering-woods.ogg"),
+    include_bytes!("../assets/audio/music/night/silverford.ogg"),
+    include_bytes!("../assets/audio/music/night/hearthspire.ogg"),
+];
+
+/// A lone owl, hooted at random intervals under the night ambience (never by
+/// day, never indoors). See `assets/CREDITS.md` for licensing.
+static SFX_OWL: &[u8] = include_bytes!("../assets/audio/sfx/owl.ogg");
 
 /// The title/char-select theme — looped while the player is still in the
 /// menus, silent everywhere else. See `assets/CREDITS.md` for licensing.
@@ -125,6 +147,17 @@ async fn main() {
                 .expect("zone music is baked into the binary"),
         );
     }
+    let mut night_music: Vec<Sound> = Vec::with_capacity(NIGHT_MUSIC.len());
+    for bytes in NIGHT_MUSIC {
+        night_music.push(
+            audio::load_sound_from_bytes(bytes)
+                .await
+                .expect("night ambience is baked into the binary"),
+        );
+    }
+    let sfx_owl = audio::load_sound_from_bytes(SFX_OWL)
+        .await
+        .expect("owl sfx is baked into the binary");
     let title_music = audio::load_sound_from_bytes(TITLE_MUSIC)
         .await
         .expect("title music is baked into the binary");
@@ -138,9 +171,15 @@ async fn main() {
         .await
         .expect("fizzle sfx is baked into the binary");
 
-    let mut playing_zone: Option<usize> = None;
+    // The currently-looping overworld track, as (zone index, is_night) — the
+    // night flag is part of the identity so dusk and dawn swap the loop even
+    // without leaving the zone.
+    let mut playing_zone: Option<(usize, bool)> = None;
     let mut playing_title = false;
     let mut cue = Cue::None;
+    // When the next owl hoot is due (`mq::get_time()` seconds); `None` while
+    // it isn't night, so the first night schedules a fresh call.
+    let mut owl_at: Option<f64> = None;
 
     // The texture is recreated whenever the framebuffer's size changes (a
     // window resize), so it always matches the pixels we're pushing.
@@ -242,25 +281,61 @@ async fn main() {
             playing_title = in_menus;
         }
 
-        // Zone music: one loop per overworld zone, swapped on warp. Interiors
-        // (zone_idx 4+) and the title/char-select screens stay quiet.
+        // Zone music: one loop per overworld zone, swapped on warp — and after
+        // dark, swapped for that zone's calmer night ambience. Interiors
+        // (zone_idx 4+) and the title/char-select screens stay quiet. The night
+        // flag rides in the track identity so the loop also swaps when the
+        // day/night clock turns, without any zone change.
         let past_menus = !in_menus;
+        let night = app.is_night();
         let zone_track = (past_menus && !app.zone().interior && app.zone_idx < zone_music.len())
-            .then_some(app.zone_idx);
+            .then_some((app.zone_idx, night));
         if zone_track != playing_zone {
-            if let Some(old) = playing_zone {
-                audio::stop_sound(&zone_music[old]);
+            let track = |&(z, on): &(usize, bool)| -> (&Sound, f32) {
+                if on {
+                    (&night_music[z], NIGHT_VOLUME)
+                } else {
+                    (&zone_music[z], MUSIC_VOLUME)
+                }
+            };
+            if let Some(old) = playing_zone.as_ref() {
+                audio::stop_sound(track(old).0);
             }
-            if let Some(new) = zone_track {
+            if let Some(new) = zone_track.as_ref() {
+                let (sound, volume) = track(new);
                 audio::play_sound(
-                    &zone_music[new],
+                    sound,
                     PlaySoundParams {
                         looped: true,
-                        volume: MUSIC_VOLUME,
+                        volume,
                     },
                 );
             }
             playing_zone = zone_track;
+        }
+
+        // A distant owl, at night only: a soft one-shot fired at randomized
+        // gaps so it never falls into a rhythm. Rescheduled off `mq::get_time`
+        // each time it sounds; cleared the moment it stops being night so the
+        // next nightfall opens with a fresh, unhurried wait.
+        if night {
+            let now = mq::get_time();
+            match owl_at {
+                None => owl_at = Some(now + macroquad::rand::gen_range(6.0, 22.0)),
+                Some(due) if now >= due => {
+                    audio::play_sound(
+                        &sfx_owl,
+                        PlaySoundParams {
+                            looped: false,
+                            volume: OWL_VOLUME,
+                        },
+                    );
+                    owl_at = Some(now + macroquad::rand::gen_range(20.0, 55.0));
+                }
+                _ => {}
+            }
+        } else {
+            owl_at = None;
         }
 
         // Cast/pass/fizzle SFX: one-shot, fired on the frame the screen turns

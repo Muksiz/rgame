@@ -87,13 +87,18 @@ collection. Both packs still have unused tracks (3 left in *Action*, 3 in
   handovers), *UI Audio* (https://kenney.nl/assets/ui-audio — menu/confirm
   clicks), *Music Jingles* (https://kenney.nl/assets/music-jingles — 85 short
   fanfares: quest pass, rune caught, runestone found; a soft one for fizzles).
-- **CC0 ambience beds** to back each zone's static weather: *JC Sounds — Nature
-  Ambient Pack Vol 1* (https://opengameart.org/content/jc-sounds-nature-ambient-pack-vol-1),
+- ~~**CC0 ambience beds** for the night phase~~ — **now vendored and in use**
+  (`assets/audio/music/night/`, credited in `assets/CREDITS.md`): after dark
+  each overworld zone swaps its daytime chiptune for a calm nature loop —
+  crickets over Emberwick, a swamp in the Woods, rain on Silverford, wind off
+  the Hearthspire road, plus a distant owl (`sfx/owl.ogg`) hooted at random
+  gaps. Sourced from OpenGameArt (crickets, swamp, rain, wind) and Wikimedia
+  Commons (the owl — the repo's one CC-BY asset). Plenty more CC0 nature
+  ambience remains for daytime weather beds: *JC Sounds — Nature Ambient Pack
+  Vol 1* (https://opengameart.org/content/jc-sounds-nature-ambient-pack-vol-1),
   *Nature sounds [CC0]* (https://opengameart.org/content/nature-sounds-cc0), and
   the curated *CC0 Background Ambience* collection
-  (https://opengameart.org/content/cc0-background-ambience) — rain for
-  Silverford, crickets/night birds for the Woods and the night phase, wind for
-  the Hearthspire road.
+  (https://opengameart.org/content/cc0-background-ambience).
 
 **Sprites & tiles** — everything below feeds the existing
 `tools/bake_atlas.py` → `atlas.png` pipeline (append at the end, ids never shift):

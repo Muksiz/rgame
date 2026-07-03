@@ -44,8 +44,10 @@ python3 tools/bake_atlas.py assets/kenney/roguelikeSheet_transparent.png assets/
 
 ## Audio
 
-`assets/audio/` holds every sound the game plays, all by **Juhani Junkala**
-(https://juhanijunkala.com), **CC0**:
+`assets/audio/` holds every sound the game plays. The chiptune loops and retro
+SFX below are all by **Juhani Junkala** (https://juhanijunkala.com), **CC0**;
+the night ambiences and the owl come from other artists and are credited under
+their own headings further down.
 
 - `audio/music/` — one loop per overworld zone, from *Chiptune Adventures*
   (https://opengameart.org/content/4-chiptunes-adventure): `emberwick.ogg`
@@ -60,7 +62,35 @@ python3 tools/bake_atlas.py assets/kenney/roguelikeSheet_transparent.png assets/
   (https://opengameart.org/content/512-sound-effects-8-bit-style): a menu
   blip, a fanfare and a soft error tone.
 
-All three packs are vendored only in part — see the "Free asset shelf" section
-of `CLAUDE.md` for the rest (SFX categories, ambience beds) that remain
-unclaimed for a future pass. Loaded and played from `src/main.rs` only, via
-macroquad's `audio` feature — the lib and tests stay sound-free.
+All three Junkala packs are vendored only in part — see the "Free asset shelf"
+section of `CLAUDE.md` for the rest (SFX categories, more ambience beds) that
+remain unclaimed for a future pass.
+
+### Night ambiences
+
+`audio/music/night/` — one calm nature bed per overworld zone, swapped in for
+the daytime loop after dark (`App::is_night()`), same filename per zone. All
+**CC0**, from OpenGameArt:
+
+- `emberwick.ogg` — "Crickets Ambient Noise - loopable" by **Wolfgang_**
+  (https://opengameart.org/content/crickets-ambient-noise-loopable).
+- `whispering-woods.ogg` — "Swamp Environment Audio" by **LokiF**
+  (https://opengameart.org/content/swamp-environment-audio): frogs and water,
+  for the Woods at night.
+- `silverford.ogg` — "AMB Rain Loop 1" by **Kresiek the Furry**
+  (https://opengameart.org/content/amb-rain-loop-1), under Silverford's rain.
+- `hearthspire.ogg` — "Winter Wind" by **wipics**
+  (https://opengameart.org/content/winter-wind), off the mountain road.
+
+### Owl
+
+`audio/sfx/owl.ogg` — the lone night owl, hooted at random intervals under the
+night ambience. A brown hawk-owl (*Ninox scutulata*) call by **Shyamal**, from
+Wikimedia Commons
+(https://commons.wikimedia.org/wiki/File:Brown_hawk_owl.ogg), licensed
+**CC BY 4.0** (https://creativecommons.org/licenses/by/4.0). This is the one
+non-CC0 asset in the repo: attribution-only, so redistributable with this
+credit; no genuinely CC0 owl hoot turned up.
+
+Loaded and played from `src/main.rs` only, via macroquad's `audio` feature —
+the lib and tests stay sound-free.
