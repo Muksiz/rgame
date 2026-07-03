@@ -30,6 +30,15 @@ interiors). `--day t` sets the day/night clock position (0 = dawn; outdoor
 scenes only); `--size WxH` renders at a non-native framebuffer size to preview
 ultrawide.
 
+**Build prerequisite**: macroquad's `audio` feature (on for every build, per
+its Cargo.toml entry) links ALSA on Linux, so `-lasound` must resolve — install
+your distro's ALSA dev package (Fedora: `sudo dnf install alsa-lib-devel`;
+Debian/Ubuntu: `sudo apt install libasound2-dev`) once per machine, including
+CI images, or `cargo build`/`cargo test` fail at the link step, not compile.
+Decoding the vendored OGGs in an unoptimized debug binary also makes the very
+first `cargo run` a couple seconds slower to reach the title screen than a
+`--release` build; that's the ogg decoder, not a hang.
+
 ## Architecture
 
 Lib + thin bin split: `src/main.rs` is only the Macroquad shell (input → `app::Key`, a 50ms tick, a window-sized `Frame`, framebuffer upload). Everything else lives in the lib so integration tests can drive the whole game black-box through `App::on_key` / `App::on_tick` — keep new behavior reachable through those two entry points. Input is the game's own `app::Key` enum; nothing outside `main.rs` knows about macroquad key codes. **Letter keys come from the OS text stream** (`get_char_pressed`), so the game follows the player's keyboard layout (Dvorak, AZERTY, …); only non-character keys (arrows, Enter, Esc, Space, Backspace, PageUp/Down) go through the physical `KEYMAP`. Movement is arrows + vim `H J K L` (no WASD); `e`/Enter/Space are one unified confirm. The `Frame` (`gfx/frame.rs`) carries its own `w`/`h`; `main.rs` resizes it each frame and `gfx/scene.rs` lays everything out from `fb.width()`/`fb.height()`, never fixed constants. A new journey runs through `Screen::CharSelect` (pick a look from `atlas::PLAYABLE` + type a name; both persist in `SaveData`).
@@ -63,22 +72,21 @@ Rule of thumb: this repo is public, so anything committed here must be
 *redistributable* — prefer **CC0**; anything else gets a note in
 `assets/CREDITS.md` when it's actually added.
 
-**Audio** — the remaining roadmap step; nothing in the codebase plays sound yet
-(macroquad has an `audio` feature when the time comes):
+**Audio** — a zone-music loop, a title theme, and cast/pass/fizzle SFX are in
+(`assets/audio/`, `assets/CREDITS.md`), all from Juhani Junkala's CC0 chiptune
+packs (`4-chiptunes-adventure`, `5-chiptunes-action`) and a CC0 retro SFX
+collection. Both packs still have unused tracks (3 left in *Action*, 3 in
+*Adventure*) — first stop for an encounter sting or campfire rest theme:
 
 - **Ninja Adventure pack — the rest of it** (https://pixel-boy.itch.io/ninja-adventure-asset-pack, CC0).
   We only vendored the cast + tilesets; the same download also holds **37 music
   tracks and 100+ SFX**, style-matched by construction and already credited.
-  First stop for zone themes, the encounter sting, campfire rests, and UI blips.
+  First stop for the encounter sting, campfire rests, and UI blips.
 - **Kenney audio packs** (all CC0): *RPG Audio* (https://kenney.nl/assets/rpg-audio —
   footsteps, doors, chest creaks, coins: door warps, the cellar chest, keepsake
   handovers), *UI Audio* (https://kenney.nl/assets/ui-audio — menu/confirm
   clicks), *Music Jingles* (https://kenney.nl/assets/music-jingles — 85 short
   fanfares: quest pass, rune caught, runestone found; a soft one for fizzles).
-- **Juhani Junkala chiptunes** (CC0, pro composer): *5 Chiptunes (Action)*
-  (https://opengameart.org/content/5-chiptunes-action) and *4 Chiptunes
-  (Adventure)* (https://opengameart.org/content/4-chiptunes-adventure) —
-  looping title/encounter music if the Ninja Adventure tracks feel too eastern.
 - **CC0 ambience beds** to back each zone's static weather: *JC Sounds — Nature
   Ambient Pack Vol 1* (https://opengameart.org/content/jc-sounds-nature-ambient-pack-vol-1),
   *Nature sounds [CC0]* (https://opengameart.org/content/nature-sounds-cc0), and

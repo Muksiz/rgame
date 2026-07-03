@@ -5,7 +5,7 @@ of old Pokémon and Zelda. Each step multiplies the value of the world that
 already exists; polish comes last because the tone is already carrying a lot.
 
 Ordering: **interiors ✅ → items & gates ✅ → grass encounters ✅ →
-side content ✅ → NPC life ✅ → audio & polish (audio remains).**
+side content ✅ → NPC life ✅ → audio & polish ✅.**
 
 **Where things stand** (July 2026): every door opens, quests leave real
 keepsakes that gate the world, the tall grass hides wild runes that fill the
@@ -92,9 +92,9 @@ NPC's quest is complete they switch to a warmer, grateful line
 cutscene primitive remains a nice-to-have, but quest payoffs already stage
 themselves through the success/keepsake dialogue.
 
-## 6. Presentation polish (audio remains)
+## 6. Presentation polish ✅
 
-*Mostly done.*
+*Done.*
 
 - **Day/night clock** — morning/midday/evening/night turn in real time and
   drive the sky over every outdoor zone (interiors keep their own steady
@@ -116,13 +116,15 @@ themselves through the success/keepsake dialogue.
 - **Layout-aware input** — letter keys come from the OS text stream, following
   the player's keyboard layout; movement is arrows + vim keys, and
   `e`/Enter/Space are one unified confirm.
+- **Audio** — a CC0 chiptune loop per overworld zone (interiors stay quiet), a
+  title theme looping through the title/char-select screens, and one-shot SFX
+  for cast/pass/fizzle, all by Juhani Junkala (`assets/CREDITS.md`). Sound
+  lives entirely in the `src/main.rs` shell, loaded via macroquad's `audio`
+  feature and driven by diffing `App::screen` and `App::zone_idx` across
+  frames — the lib and tests stay window- and sound-free.
 
 Still open for a later pass:
 
-- **Audio**: a CC0 chiptune loop per zone and SFX for cast/pass/fizzle, kept
-  in the `src/main.rs` shell so tests stay silent and headless. (Deferred: no
-  CC0 audio assets are vendored yet, and the lib/tests must stay window- and
-  sound-free.)
 - Save slots.
 
 ---

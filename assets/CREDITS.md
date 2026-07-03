@@ -33,3 +33,26 @@ To rebake after editing the script:
 ```sh
 python3 tools/bake_atlas.py assets/kenney/roguelikeSheet_transparent.png assets/kenney/roguelikeChar_transparent.png
 ```
+
+## Audio
+
+`assets/audio/` holds every sound the game plays, all by **Juhani Junkala**
+(https://juhanijunkala.com), **CC0**:
+
+- `audio/music/` — one loop per overworld zone, from *Chiptune Adventures*
+  (https://opengameart.org/content/4-chiptunes-adventure): `emberwick.ogg`
+  ("Stage 1"), `whispering-woods.ogg` ("Stage 2"), `silverford.ogg` ("Stage
+  Select"), `hearthspire.ogg` ("Boss Fight" — the Hearthspire Approach is
+  guarded by the Stone Golem, so the fit was too good to pass up). Interiors
+  (zone 4+) stay quiet. `title.ogg` is the "Title Screen" track from *5
+  Chiptunes (Action)* (https://opengameart.org/content/5-chiptunes-action, same
+  artist), looping through the title and char-select screens.
+- `audio/sfx/` — `cast.ogg`, `pass.ogg` and `fizzle.ogg`, trimmed from *The
+  Essential Retro Video Game Sound Effects Collection*
+  (https://opengameart.org/content/512-sound-effects-8-bit-style): a menu
+  blip, a fanfare and a soft error tone.
+
+All three packs are vendored only in part — see the "Free asset shelf" section
+of `CLAUDE.md` for the rest (SFX categories, ambience beds) that remain
+unclaimed for a future pass. Loaded and played from `src/main.rs` only, via
+macroquad's `audio` feature — the lib and tests stay sound-free.

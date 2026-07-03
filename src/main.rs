@@ -5,9 +5,11 @@
 //! cargo run
 //! ```
 
+use macroquad::audio::{self, PlaySoundParams, Sound};
 use macroquad::prelude as mq;
 
 use rgame::app::{App, Key, Screen};
+use rgame::checker::Outcome;
 use rgame::gfx::{self, Atlas, FB_H, FB_W, Frame};
 
 const TICK_SECS: f32 = 0.05;
@@ -50,6 +52,50 @@ const MOVEMENT: &[mq::KeyCode] = &[
     mq::KeyCode::Right,
 ];
 
+const MUSIC_VOLUME: f32 = 0.5;
+const SFX_VOLUME: f32 = 0.7;
+
+/// One looping chiptune per overworld zone (`assets/audio/music/`), indexed
+/// by `App::zone_idx` — interiors (zone 4+) stay quiet. See
+/// `assets/CREDITS.md` for licensing.
+static ZONE_MUSIC: &[&[u8]] = &[
+    include_bytes!("../assets/audio/music/emberwick.ogg"),
+    include_bytes!("../assets/audio/music/whispering-woods.ogg"),
+    include_bytes!("../assets/audio/music/silverford.ogg"),
+    include_bytes!("../assets/audio/music/hearthspire.ogg"),
+];
+
+/// The title/char-select theme — looped while the player is still in the
+/// menus, silent everywhere else. See `assets/CREDITS.md` for licensing.
+static TITLE_MUSIC: &[u8] = include_bytes!("../assets/audio/music/title.ogg");
+
+static SFX_CAST: &[u8] = include_bytes!("../assets/audio/sfx/cast.ogg");
+static SFX_PASS: &[u8] = include_bytes!("../assets/audio/sfx/pass.ogg");
+static SFX_FIZZLE: &[u8] = include_bytes!("../assets/audio/sfx/fizzle.ogg");
+
+/// A one-shot cue, raised on the frame the screen first shows casting/pass/
+/// fizzle and silent otherwise — `on_key`/`on_tick` never touch audio, so the
+/// shell derives cues by diffing `app.screen` across frames.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Cue {
+    None,
+    Casting,
+    Pass,
+    Fizzle,
+}
+
+fn cue_for(screen: &Screen) -> Cue {
+    match screen {
+        Screen::Casting { .. } => Cue::Casting,
+        Screen::CastResult {
+            outcome: Outcome::Pass { .. },
+            ..
+        } => Cue::Pass,
+        Screen::CastResult { .. } => Cue::Fizzle,
+        _ => Cue::None,
+    }
+}
+
 /// Pick a crisp integer pixel-scale and the framebuffer size that fills a
 /// window of `(sw, sh)` edge-to-edge with no letterbox. The scale is chosen so
 /// the game keeps roughly its native ~270px logical height; the framebuffer
@@ -67,6 +113,31 @@ async fn main() {
     let atlas = Atlas::load();
     let mut fb = Frame::new();
     let mut app = App::new();
+
+    let mut zone_music: Vec<Sound> = Vec::with_capacity(ZONE_MUSIC.len());
+    for bytes in ZONE_MUSIC {
+        zone_music.push(
+            audio::load_sound_from_bytes(bytes)
+                .await
+                .expect("zone music is baked into the binary"),
+        );
+    }
+    let title_music = audio::load_sound_from_bytes(TITLE_MUSIC)
+        .await
+        .expect("title music is baked into the binary");
+    let sfx_cast = audio::load_sound_from_bytes(SFX_CAST)
+        .await
+        .expect("cast sfx is baked into the binary");
+    let sfx_pass = audio::load_sound_from_bytes(SFX_PASS)
+        .await
+        .expect("pass sfx is baked into the binary");
+    let sfx_fizzle = audio::load_sound_from_bytes(SFX_FIZZLE)
+        .await
+        .expect("fizzle sfx is baked into the binary");
+
+    let mut playing_zone: Option<usize> = None;
+    let mut playing_title = false;
+    let mut cue = Cue::None;
 
     // The texture is recreated whenever the framebuffer's size changes (a
     // window resize), so it always matches the pixels we're pushing.
@@ -115,6 +186,67 @@ async fn main() {
         while tick_acc >= TICK_SECS {
             tick_acc -= TICK_SECS;
             app.on_tick();
+        }
+
+        // Title theme: loops through the title and char-select screens, then
+        // gives way to zone music once the journey actually starts.
+        let in_menus = matches!(app.screen, Screen::Title { .. } | Screen::CharSelect { .. });
+        if in_menus != playing_title {
+            if in_menus {
+                audio::play_sound(
+                    &title_music,
+                    PlaySoundParams {
+                        looped: true,
+                        volume: MUSIC_VOLUME,
+                    },
+                );
+            } else {
+                audio::stop_sound(&title_music);
+            }
+            playing_title = in_menus;
+        }
+
+        // Zone music: one loop per overworld zone, swapped on warp. Interiors
+        // (zone_idx 4+) and the title/char-select screens stay quiet.
+        let past_menus = !in_menus;
+        let zone_track = (past_menus && !app.zone().interior && app.zone_idx < zone_music.len())
+            .then_some(app.zone_idx);
+        if zone_track != playing_zone {
+            if let Some(old) = playing_zone {
+                audio::stop_sound(&zone_music[old]);
+            }
+            if let Some(new) = zone_track {
+                audio::play_sound(
+                    &zone_music[new],
+                    PlaySoundParams {
+                        looped: true,
+                        volume: MUSIC_VOLUME,
+                    },
+                );
+            }
+            playing_zone = zone_track;
+        }
+
+        // Cast/pass/fizzle SFX: one-shot, fired on the frame the screen turns
+        // into that cue (never re-fired while it holds).
+        let next_cue = cue_for(&app.screen);
+        if next_cue != cue {
+            let sound = match next_cue {
+                Cue::Casting => Some(&sfx_cast),
+                Cue::Pass => Some(&sfx_pass),
+                Cue::Fizzle => Some(&sfx_fizzle),
+                Cue::None => None,
+            };
+            if let Some(sound) = sound {
+                audio::play_sound(
+                    sound,
+                    PlaySoundParams {
+                        looped: false,
+                        volume: SFX_VOLUME,
+                    },
+                );
+            }
+            cue = next_cue;
         }
 
         // Size the framebuffer to the window so the picture fills it entirely —
