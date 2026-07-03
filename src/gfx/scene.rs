@@ -1,21 +1,23 @@
 //! Draws every game screen onto the framebuffer: sprites for the world, the
 //! 8×8 bitmap font for words, 16×16 pixels per tile.
 
-use crate::app::{App, Dialogue, DialogueKind, EPILOGUE, EncounterPhase, Screen};
+use crate::app::{App, DayPhase, Dialogue, DialogueKind, EPILOGUE, EncounterPhase, Screen};
 use crate::checker::{self, Outcome};
 use crate::content::quests::{self, FIZZLE_LINES, PASS_LINES, QUESTS};
-use crate::content::{items, sides, stones, wilds};
+use crate::content::{items, lore, sides, stones, wilds};
 use crate::gfx::atlas::{self, Atlas, TILE};
 use crate::gfx::font::{self, GLYPH};
-use crate::gfx::frame::{FB_H, FB_W, Frame};
+use crate::gfx::frame::Frame;
 use crate::gfx::shade;
 use crate::world::camera;
 use crate::world::entity::{CritterKind, Npc};
 use crate::world::map::{Tile, Weather, Zone, hash2};
 
-/// Visible tiles: 480/16 × ceil(270/16).
-const VIEW_W: i32 = (FB_W / TILE) as i32;
-const VIEW_H: i32 = (FB_H as i32 + TILE as i32 - 1) / TILE as i32;
+/// How many whole tiles it takes to cover a framebuffer of size `px`. The
+/// view grows with the window, so ultrawide screens simply see more world.
+fn tiles_across(px: i32) -> i32 {
+    (px + TILE as i32 - 1) / TILE as i32
+}
 
 const WARM: (u8, u8, u8) = (238, 214, 158);
 const GOLD: (u8, u8, u8) = (255, 226, 150);
@@ -28,7 +30,9 @@ const PANEL_BORDER: (u8, u8, u8) = (196, 164, 110);
 pub fn render(fb: &mut Frame, atlas: &Atlas, app: &App) {
     match &app.screen {
         Screen::Title { selected } => title(fb, atlas, app, *selected),
+        Screen::CharSelect { idx, name } => char_select(fb, atlas, app, *idx, name),
         Screen::Epilogue { page } => epilogue(fb, app, *page),
+        Screen::Resting { lore, t, wake } => resting(fb, app, *lore, *t, *wake),
         _ => {
             world(fb, atlas, app);
             match &app.screen {
@@ -46,7 +50,7 @@ pub fn render(fb: &mut Frame, atlas: &Atlas, app: &App) {
                     outcome,
                     scroll,
                 } => cast_result(fb, app, *quest, outcome, *scroll),
-                Screen::Paused { selected } => paused(fb, *selected),
+                Screen::Paused { selected } => paused(fb, app, *selected),
                 _ => {}
             }
         }
@@ -57,14 +61,15 @@ pub fn render(fb: &mut Frame, atlas: &Atlas, app: &App) {
 
 fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
     let dl = app.daylight();
-    let (ox, oy) = camera::viewport_origin(app.player, VIEW_W, VIEW_H);
+    let (view_w, view_h) = (tiles_across(fb.width()), tiles_across(fb.height()));
+    let (ox, oy) = camera::viewport_origin(app.player, view_w, view_h);
     let zone = app.zone();
     // Emberwick's festival lantern waits for quest 1; every other lantern
     // (the Library's lamps) burns on its own.
     let lantern_lit = zone.id != 0 || app.completed.contains(&1);
 
-    for row in 0..VIEW_H {
-        for col in 0..VIEW_W {
+    for row in 0..view_h {
+        for col in 0..view_w {
             let (wx, wy) = (ox + col, oy + row);
             let tile = zone.tile(wx, wy);
             let (px, py) = (col * TILE as i32, row * TILE as i32);
@@ -93,7 +98,10 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
                 Tile::Plaza => path_rim(fb, zone, wx, wy, px, py, dl, (96, 94, 88)),
                 Tile::Cliff => path_rim(fb, zone, wx, wy, px, py, dl, (88, 92, 88)),
                 Tile::Roof => roof_detail(fb, zone, wx, wy, px, py, dl),
-                Tile::Floor => floor_rim(fb, zone, wx, wy, px, py, dl),
+                Tile::Floor => {
+                    floor_rim(fb, zone, wx, wy, px, py, dl);
+                    sunbeam(fb, zone, wx, wy, px, py, dl, app.tick);
+                }
                 Tile::Rug => rug_detail(fb, zone, wx, wy, px, py, dl),
                 Tile::Runestone => stone_glimmer(fb, app, wx, wy, px, py),
                 Tile::Campfire => smoke_wisp(fb, px, py, app.tick, zone.seed ^ 0x5F0, dl),
@@ -130,7 +138,7 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
 
     let to_screen = |wx: i32, wy: i32| -> Option<(i32, i32)> {
         let (sx, sy) = (wx - ox, wy - oy);
-        (sx >= 0 && sy >= 0 && sx < VIEW_W && sy < VIEW_H)
+        (sx >= 0 && sy >= 0 && sx < view_w && sy < view_h)
             .then_some((sx * TILE as i32, sy * TILE as i32))
     };
     let ent_light = dl.max(0.55);
@@ -153,6 +161,7 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
     }
 
     let active = app.active_quest().map(|q| q.id);
+    let night = app.is_night();
     for npc in &zone.npcs {
         let Some((px, py)) = to_screen(npc.pos.0, npc.pos.1) else {
             continue;
@@ -161,15 +170,25 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
         // with a slow one-pixel sway on their own rhythm.
         let (dx, dy) = (app.player.0 - npc.pos.0, app.player.1 - npc.pos.1);
         let dir = if dx.abs() + dy.abs() == 1 {
-            facing_cell((dx, dy))
+            facing_cell((dx, dy)) // turn to face a visitor within talking reach
+        } else if night {
+            0 // asleep, facing down
         } else {
-            0
+            // A slow idle gaze: they glance about on their own unhurried beat.
+            (hash2(npc.pos.0, npc.pos.1, 0x9A2E).wrapping_add((app.tick / 55) as u32) % 4) as u16
         };
         let phase = npc.name.len() as u64;
         let sway = (app.tick / 12 + phase).is_multiple_of(5) as i32;
         blob_shadow(fb, px + 3, py + 13, 10, 2);
-        fb.sprite(atlas, npc_sprite(npc) + dir, px, py + sway, ent_light);
-        if npc.quest.is_some() && npc.quest == active {
+        // At night the folk are abed: draw them a shade dimmer, and never with
+        // a quest marker — nobody's handing out errands in their sleep.
+        let light = if night { ent_light * 0.82 } else { ent_light };
+        fb.sprite(atlas, npc_sprite(npc) + dir, px, py + sway, light);
+        if night {
+            // A little z drifting up from a sleeping head.
+            let bob = ((app.tick / 14 + phase) % 3) as i32;
+            font::text(fb, px + 9, py - 5 - bob, "z", (188, 200, 224), 1);
+        } else if npc.quest.is_some() && npc.quest == active {
             let accepted = active.map(|id| app.accepted.contains(&id)).unwrap_or(false);
             let bob = if (app.tick / 8).is_multiple_of(2) {
                 0
@@ -186,11 +205,14 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
 
     if let Some((px, py)) = to_screen(app.player.0, app.player.1) {
         let dir = facing_cell(app.facing);
-        // A fresh step plays the stride; standing still rests on the idle.
-        let id = if app.tick.saturating_sub(app.walked_at) < 4 {
+        // A fresh step plays the stride — but only the default look has a baked
+        // walk-cycle; the others walk on their idle facing, turning to look
+        // where they go. Standing still always rests on the idle.
+        let walking = app.tick.saturating_sub(app.walked_at) < 4;
+        let id = if walking && app.player_char == 0 {
             atlas::PLAYER_WALK + dir * 2 + ((app.tick / 2) % 2) as u16
         } else {
-            atlas::CAST + dir
+            app.player_look().cast + dir
         };
         blob_shadow(fb, px + 3, py + 13, 10, 2);
         fb.sprite(atlas, id, px, py, ent_light);
@@ -202,6 +224,42 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
     }
     top_bar(fb, app, dl);
     bottom_bar(fb, app);
+    zone_banner(fb, app);
+}
+
+/// A place-name banner that slides down when you arrive somewhere new, holds a
+/// moment, then fades away — "~ Whispering Woods ~".
+fn zone_banner(fb: &mut Frame, app: &App) {
+    use crate::app::BANNER_TICKS;
+    let Some((name, until)) = &app.banner else {
+        return;
+    };
+    let remaining = until.saturating_sub(app.tick);
+    let age = BANNER_TICKS.saturating_sub(remaining);
+    // Descend into place over the first breaths, fade out over the last.
+    let y = if age < 10 {
+        20 - ((10 - age) as i32 * 3)
+    } else {
+        20
+    };
+    let alpha = if remaining < 12 {
+        (remaining as i32 * 255 / 12).clamp(0, 255) as u32
+    } else {
+        255
+    };
+    let text = format!("~ {name} ~");
+    let tw = font::text_width(&text, 1);
+    let cx = fb.width() / 2;
+    let (bx, bw) = (cx - tw / 2 - 10, tw + 20);
+    fb.fill_a(bx, y - 3, bw, 15, (24, 20, 14), (alpha * 82 / 100) as u8);
+    fb.fill_a(bx, y - 3, bw, 1, PANEL_BORDER, alpha as u8);
+    fb.fill_a(bx, y + 11, bw, 1, PANEL_BORDER, alpha as u8);
+    let tc = (
+        (240 * alpha / 255) as u8,
+        (210 * alpha / 255) as u8,
+        (150 * alpha / 255) as u8,
+    );
+    font::text_center(fb, cx, y, &text, tc, 1);
 }
 
 /// Tile → (opaque base sprite, transparent overlay). The one place tile
@@ -481,6 +539,10 @@ fn tile_sprites(
         Tile::Herb => (ground, Some(atlas::HERB)),
         Tile::Chest => (furniture_base(zone, x, y), Some(atlas::CHEST)),
         Tile::Runestone => (furniture_base(zone, x, y), Some(atlas::RUNESTONE)),
+        Tile::Window => (atlas::WALL, Some(atlas::WINDOW)),
+        Tile::Painting => (atlas::WALL, Some(atlas::PAINTING)),
+        Tile::Plant => (atlas::FLOOR, Some(atlas::PLANT)),
+        Tile::Pedestal => (atlas::FLOOR, Some(atlas::PEDESTAL)),
     }
 }
 
@@ -742,6 +804,57 @@ fn rug_detail(
     }
 }
 
+/// Light falling through a window: a floor tile within a few steps below a
+/// window catches a soft shaft of it — warm and strong by day, a pale cool
+/// sliver by night — fading with distance from the pane.
+#[allow(clippy::too_many_arguments)]
+fn sunbeam(
+    fb: &mut Frame,
+    zone: &crate::world::map::Zone,
+    wx: i32,
+    wy: i32,
+    px: i32,
+    py: i32,
+    dl: f32,
+    tick: u64,
+) {
+    let mut dist = 0;
+    for d in 1..=3 {
+        match zone.tile(wx, wy - d) {
+            Tile::Window => {
+                dist = d;
+                break;
+            }
+            // Only open floor lets the light travel down to here.
+            Tile::Floor | Tile::Rug => {}
+            _ => return,
+        }
+    }
+    if dist == 0 {
+        return;
+    }
+    let t = dl.clamp(0.0, 1.0);
+    // Warm gold in daylight, a cool blue sliver after dark.
+    let col = (
+        (150.0 + 105.0 * t) as u8,
+        (170.0 + 62.0 * t) as u8,
+        (210.0 - 40.0 * t) as u8,
+    );
+    let strength = (16.0 + 58.0 * t) as i32 / dist;
+    let tw = TILE as i32;
+    // A gentle shimmer so the shaft feels alive.
+    let shimmer = (((tick / 10 + wx as u64) % 5) as i32 - 2).max(0);
+    fb.fill_a(px + 3, py, tw - 6, tw, col, (strength).clamp(4, 90) as u8);
+    fb.fill_a(
+        px + 5 + shimmer,
+        py,
+        tw - 12,
+        tw,
+        col,
+        (strength / 2).clamp(3, 60) as u8,
+    );
+}
+
 /// Interior floors darken where they meet their walls, so rooms feel enclosed
 /// even in the top-down cutaway view.
 fn floor_rim(
@@ -836,7 +949,7 @@ fn ambient_life(fb: &mut Frame, atlas: &Atlas, app: &App, ox: i32, oy: i32, dl: 
         let ay = (hash2(i, 12, 0xB77F) % (MAP_H as u32 * TILE as u32)) as i32;
         let x = ax + ((t / 9.0 + i as f32).sin() * 14.0) as i32 - ox * TILE as i32;
         let y = ay + ((t / 6.0 + i as f32 * 2.0).cos() * 8.0) as i32 - oy * TILE as i32;
-        if x < -(TILE as i32) || y < -(TILE as i32) || x >= FB_W as i32 || y >= FB_H as i32 {
+        if x < -(TILE as i32) || y < -(TILE as i32) || x >= fb.width() || y >= fb.height() {
             continue;
         }
         let id = if (app.tick / 4 + i as u64).is_multiple_of(2) {
@@ -854,7 +967,7 @@ fn ambient_life(fb: &mut Frame, atlas: &Atlas, app: &App, ox: i32, oy: i32, dl: 
         let x = if lane.is_multiple_of(2) {
             p - TILE as i32
         } else {
-            FB_W as i32 - p
+            fb.width() - p
         };
         let y = 24 + (lane % 70) as i32 + ((phase as f32 / 9.0).sin() * 4.0) as i32;
         let id = if (app.tick / 3).is_multiple_of(2) {
@@ -906,7 +1019,7 @@ fn npc_sprite(npc: &Npc) -> u16 {
 // ── HUD bars ───────────────────────────────────────────────────────────────
 
 fn top_bar(fb: &mut Frame, app: &App, dl: f32) {
-    fb.fill_a(0, 0, FB_W as i32, 13, (22, 19, 14), 215);
+    fb.fill_a(0, 0, fb.width(), 13, (22, 19, 14), 215);
     daylight_icon(fb, 8, 6, dl);
     let mut x = font::text(fb, 18, 3, app.zone().name, (226, 208, 168), 1) + 8;
     for q in QUESTS.iter().filter(|q| q.zone == app.zone().id) {
@@ -915,7 +1028,14 @@ fn top_bar(fb: &mut Frame, app: &App, dl: f32) {
     }
     let runes = format!("runes {}/{}", app.completed.len(), QUESTS.len());
     let w = font::text_width(&runes, 1);
-    font::text(fb, FB_W as i32 - w - 6, 3, &runes, (178, 162, 140), 1);
+    let rx = font::text(fb, fb.width() - w - 6, 3, &runes, (178, 162, 140), 1);
+    // The time of day, left of the rune count — only outdoors, where the
+    // shared sky actually holds sway (interiors keep their own steady hour).
+    if !app.zone().interior {
+        let phase = app.phase().label();
+        let pw = font::text_width(phase, 1);
+        font::text(fb, rx - w - pw - 14, 3, phase, (196, 186, 208), 1);
+    }
 }
 
 fn bottom_bar(fb: &mut Frame, app: &App) {
@@ -939,23 +1059,10 @@ fn bottom_bar(fb: &mut Frame, app: &App) {
     };
     let lines = &lines[..lines.len().min(3)];
     let bar_h = 5 + lines.len() as i32 * 9;
-    fb.fill_a(
-        0,
-        FB_H as i32 - bar_h,
-        FB_W as i32,
-        bar_h,
-        (22, 19, 14),
-        215,
-    );
+    let bottom = fb.height();
+    fb.fill_a(0, bottom - bar_h, fb.width(), bar_h, (22, 19, 14), 215);
     for (i, line) in lines.iter().enumerate() {
-        font::text(
-            fb,
-            6,
-            FB_H as i32 - bar_h + 3 + i as i32 * 9,
-            line,
-            color,
-            1,
-        );
+        font::text(fb, 6, bottom - bar_h + 3 + i as i32 * 9, line, color, 1);
     }
 }
 
@@ -999,10 +1106,12 @@ fn daylight_icon(fb: &mut Frame, cx: i32, cy: i32, dl: f32) {
 /// Pixel-space port of `ui::effects` — particles drift over the world but
 /// under the HUD, and never repaint what's beneath them.
 fn weather(fb: &mut Frame, kind: Weather, tick: u64, dl: f32) {
-    let (w, h) = (FB_W as i64 / 8, FB_H as i64 / 8); // 8px particle grid
+    let (w, h) = (fb.w as i64 / 8, fb.h as i64 / 8); // 8px particle grid
     match kind {
         Weather::Petals => {
-            for i in 0..26i64 {
+            // Petal count follows the width so wider screens don't thin out.
+            let petals = (w * 26 / 60).max(20);
+            for i in 0..petals {
                 let bx = hash2(i as i32, 1, 0x9E7A) as i64 % w;
                 let by = hash2(i as i32, 2, 0x9E7A) as i64 % h;
                 let drift = ((tick / 4) as i64 + i * 3) % (w + h);
@@ -1019,12 +1128,12 @@ fn weather(fb: &mut Frame, kind: Weather, tick: u64, dl: f32) {
         }
         Weather::Fireflies => fireflies(fb, tick, dl),
         Weather::Rain => {
-            for gx in 0..(FB_W as i64 / 4) {
+            for gx in 0..(fb.w as i64 / 4) {
                 let col = hash2(gx as i32, 0, 0x0A1D);
                 for (layer, speed) in [(1u32, 5i64), (2, 8)] {
                     if col.wrapping_mul(layer) % 10 < 3 {
                         let offset = (col.wrapping_mul(layer.wrapping_add(7)) % 500) as i64;
-                        let span = FB_H as i64 + 40;
+                        let span = fb.h as i64 + 40;
                         let y = (tick as i64 * speed + offset) % span;
                         for dy in 0..7 {
                             fb.blend(gx as i32 * 4, (y + dy) as i32, (118, 150, 188), 170);
@@ -1055,8 +1164,9 @@ fn weather(fb: &mut Frame, kind: Weather, tick: u64, dl: f32) {
 /// Fireflies drift over dark screens; brighter the darker it gets.
 fn fireflies(fb: &mut Frame, tick: u64, dl: f32) {
     let dim = 1.0 - dl;
-    let (w, h) = (FB_W as i64 / 8, FB_H as i64 / 8);
-    let count = (30.0 * (0.25 + 0.75 * dim)).max(6.0) as i64;
+    let (w, h) = (fb.w as i64 / 8, fb.h as i64 / 8);
+    let width_factor = w as f32 / 60.0; // keep density steady as the view widens
+    let count = (30.0 * width_factor * (0.25 + 0.75 * dim)).max(6.0) as i64;
     for i in 0..count {
         let bx = hash2(i as i32, 3, 0xF1FE) as i64 % w;
         let by = hash2(i as i32, 4, 0xF1FE) as i64 % h;
@@ -1074,7 +1184,7 @@ fn fireflies(fb: &mut Frame, tick: u64, dl: f32) {
 
 /// The cozy bordered panel; returns (x, y, w, h) of the inner area.
 fn panel(fb: &mut Frame, x: i32, y: i32, w: i32, h: i32, title: &str) -> (i32, i32, i32, i32) {
-    fb.fill_a(0, 0, FB_W as i32, FB_H as i32, (8, 6, 4), 90);
+    fb.fill_a(0, 0, fb.width(), fb.height(), (8, 6, 4), 90);
     fb.fill(x, y, w, h, PANEL_BG);
     fb.fill(x, y, w, 2, PANEL_BORDER);
     fb.fill(x, y + h - 2, w, 2, PANEL_BORDER);
@@ -1098,14 +1208,8 @@ fn panel(fb: &mut Frame, x: i32, y: i32, w: i32, h: i32, title: &str) -> (i32, i
 }
 
 fn centered_panel(fb: &mut Frame, w: i32, h: i32, title: &str) -> (i32, i32, i32, i32) {
-    panel(
-        fb,
-        (FB_W as i32 - w) / 2,
-        (FB_H as i32 - h) / 2,
-        w,
-        h,
-        title,
-    )
+    let (px, py) = ((fb.width() - w) / 2, (fb.height() - h) / 2);
+    panel(fb, px, py, w, h, title)
 }
 
 fn draw_lines(fb: &mut Frame, x: i32, y: i32, lines: &[(String, (u8, u8, u8))]) -> i32 {
@@ -1121,8 +1225,8 @@ fn draw_lines(fb: &mut Frame, x: i32, y: i32, lines: &[(String, (u8, u8, u8))]) 
 
 fn dialogue(fb: &mut Frame, atlas: &Atlas, app: &App, d: &Dialogue) {
     let (w, h) = (440, 100);
-    let x = (FB_W as i32 - w) / 2;
-    let y = FB_H as i32 - h - 10;
+    let x = (fb.width() - w) / 2;
+    let y = fb.height() - h - 10;
     let (ix, iy, iw, ih) = panel(fb, x, y, w, h, &d.speaker);
 
     // Portrait: the speaker's sprite, nice and big.
@@ -1516,24 +1620,147 @@ fn fizzle_panel(fb: &mut Frame, app: &App, title: &str, lead: &str, output: &str
 
 // ── rest, credits, title ───────────────────────────────────────────────────
 
-fn paused(fb: &mut Frame, selected: usize) {
-    let (ix, iy, _iw, _) = centered_panel(fb, 220, 76, "A moment's rest");
-    for (i, label) in ["Back to the road", "Save & sleep (quit)"]
-        .iter()
-        .enumerate()
-    {
+fn paused(fb: &mut Frame, app: &App, selected: usize) {
+    let (ix, iy, _iw, _) = centered_panel(fb, 250, 92, "A moment's rest");
+    let speed = ["Slow", "Normal", "Fast"][app.text_speed.min(2)];
+    let speed_label = format!("Text speed: < {speed} >");
+    let labels = ["Back to the road", &speed_label, "Save & sleep (quit)"];
+    for (i, label) in labels.iter().enumerate() {
         let on = i == selected;
         let c = if on { GOLD } else { DIM };
         let marker = if on { "> " } else { "  " };
         font::text(
             fb,
             ix + 10,
-            iy + 10 + i as i32 * 14,
+            iy + 8 + i as i32 * 14,
             &format!("{marker}{label}"),
             c,
             1,
         );
     }
+}
+
+/// Resting by a campfire: the world falls away into ember-dark, a curl of
+/// sparks rises, and a scrap of Rust lore keeps you company until you wake.
+fn resting(fb: &mut Frame, app: &App, lore_idx: usize, t: u32, wake: DayPhase) {
+    fb.clear((10, 8, 9));
+
+    let (cx, bottom) = (fb.width() / 2, fb.height());
+    // A low bank of embers along the bottom, breathing with the tick.
+    for i in 0..70i32 {
+        let base = cx - 60 + (hash2(i, 1, 0xF16E) % 120) as i32;
+        let flick = (app.tick / 4 + hash2(i, 2, 0xF16E) as u64) % 5;
+        let c = [(210, 96, 40), (240, 150, 60), (150, 54, 30)][(flick % 3) as usize];
+        fb.blend(base, bottom - 14 + (flick as i32 % 3), c, 150);
+    }
+    // Sparks drifting up from the fire.
+    for k in 0..16i32 {
+        let phase = (app.tick + hash2(k, 3, 0xF16E) as u64) % 60;
+        let x =
+            cx - 40 + (hash2(k, 4, 0xF16E) % 80) as i32 + ((phase as f32 / 8.0).sin() * 6.0) as i32;
+        let y = bottom - 20 - phase as i32 * 3;
+        let fade = (200 - phase as i32 * 3).max(0) as u8;
+        fb.blend(x, y, (250, 190, 110), fade);
+    }
+
+    let lore = &lore::LORE[lore_idx.min(lore::LORE.len() - 1)];
+    let (ix, iy, iw, ih) = centered_panel(fb, 400, 150, "~ resting by the fire ~");
+    let cols = (iw / GLYPH - 1) as usize;
+    font::text(fb, ix + 4, iy + 4, lore.voice, GOLD, 1);
+    let lines: Vec<_> = font::wrap(lore.text, cols)
+        .into_iter()
+        .map(|l| (l, (222, 210, 188)))
+        .collect();
+    draw_lines(fb, ix + 4, iy + 20, &lines);
+
+    let footer = match wake {
+        DayPhase::Night => "enter — drift off (you'll wake to night)",
+        _ => "enter — sleep till the morning",
+    };
+    let w = font::text_width(footer, 1);
+    font::text(fb, ix + iw - w - 2, iy + ih - 8, footer, DIM, 1);
+
+    // Fade in from black over the first breaths, so it reads as drifting off.
+    let scrim = 235u32.saturating_sub(t * 22).min(235) as u8;
+    fb.fill_a(0, 0, fb.width(), fb.height(), (0, 0, 0), scrim);
+}
+
+/// Choosing your traveller: a row of portraits to leaf through, and a name to
+/// spell out. Reached from the title's "A new journey".
+fn char_select(fb: &mut Frame, atlas: &Atlas, app: &App, idx: usize, name: &str) {
+    fb.clear((13, 15, 22));
+    fireflies(fb, app.tick, 0.0);
+    let cx = fb.width() / 2;
+
+    font::text_center(fb, cx, 26, "WHO WILL YOU BE?", (240, 205, 120), 2);
+
+    // The roster, portraits centered as a row; the chosen one lifts and glows.
+    let roster = &atlas::PLAYABLE;
+    let n = roster.len() as i32;
+    let step = 78;
+    let row_x = cx - (n - 1) * step / 2;
+    let py = 78;
+    for (i, who) in roster.iter().enumerate() {
+        let on = i == idx;
+        let x = row_x + i as i32 * step;
+        let scale = if on { 5 } else { 4 };
+        let sprite_w = TILE as i32 * scale;
+        let lift = if on { ((app.tick / 10) % 2) as i32 } else { 0 };
+        let sx = x - sprite_w / 2;
+        let sy = py + (if on { 0 } else { 8 }) - lift;
+        if on {
+            // A soft plinth of light under the chosen one.
+            fb.fill_a(
+                sx - 4,
+                sy - 4,
+                sprite_w + 8,
+                sprite_w + 8,
+                (60, 54, 40),
+                120,
+            );
+            fb.fill(sx - 4, sy - 4, sprite_w + 8, 2, GOLD);
+            fb.fill(sx - 4, sy + sprite_w + 2, sprite_w + 8, 2, GOLD);
+        }
+        let light = if on { 1.0 } else { 0.55 };
+        fb.sprite_scaled(atlas, who.cast, sx, sy, scale, light);
+    }
+
+    // The chosen look's label.
+    font::text_center(fb, cx, py + 100, roster[idx].look, WARM, 1);
+
+    // The name field, with a soft blinking cursor.
+    let shown = if name.is_empty() {
+        roster[idx].default_name
+    } else {
+        name
+    };
+    let name_color = if name.is_empty() { DIM } else { GOLD };
+    let label = "Name: ";
+    let full = format!("{label}{shown}");
+    let fw = font::text_width(&full, 1);
+    let nx = cx - fw / 2;
+    let ny = py + 122;
+    font::text(fb, nx, ny, label, (150, 150, 170), 1);
+    let vx = font::text(
+        fb,
+        nx + font::text_width(label, 1),
+        ny,
+        shown,
+        name_color,
+        1,
+    );
+    if (app.tick / 8).is_multiple_of(2) {
+        fb.fill(vx + 1, ny, 5, 8, WARM);
+    }
+
+    font::text_center(
+        fb,
+        cx,
+        fb.height() - 22,
+        "arrows pick a look, type a name, enter to begin",
+        (110, 105, 95),
+        1,
+    );
 }
 
 fn epilogue(fb: &mut Frame, app: &App, page: usize) {
@@ -1556,7 +1783,7 @@ fn title(fb: &mut Frame, atlas: &Atlas, app: &App, selected: usize) {
     fb.clear((13, 15, 22));
     fireflies(fb, app.tick, 0.0);
 
-    let cx = FB_W as i32 / 2;
+    let cx = fb.width() / 2;
     font::text_center(fb, cx + 2, 40 + 2, "RUNE & ROAD", (60, 45, 25), 3);
     font::text_center(fb, cx, 40, "RUNE & ROAD", (240, 205, 120), 3);
     font::text_center(
@@ -1587,7 +1814,7 @@ fn title(fb: &mut Frame, atlas: &Atlas, app: &App, selected: usize) {
     font::text_center(
         fb,
         cx,
-        FB_H as i32 - 20,
+        fb.height() - 20,
         "up/down choose . enter set off . keep a code editor handy",
         (110, 105, 95),
         1,

@@ -4,7 +4,8 @@ use std::sync::mpsc::Receiver;
 use crate::checker::{self, Outcome};
 use crate::content::items::{self, Item};
 use crate::content::quests::{self, QUESTS, Quest};
-use crate::content::{books, sides, stones, wilds};
+use crate::content::{books, lore, sides, stones, wilds};
+use crate::gfx::atlas::PLAYABLE;
 use crate::save::{self, SaveData};
 use crate::world::map::hash2;
 use crate::world::map::{MAP_H, MAP_W, Tile, Zone};
@@ -12,8 +13,96 @@ use crate::world::zones;
 
 /// How long a toast lingers, in ticks (~50ms each).
 const TOAST_TICKS: u64 = 110;
-/// Typewriter reveal speed, characters per tick.
-const REVEAL_PER_TICK: usize = 2;
+/// How long a zone-arrival banner slides across the screen.
+pub const BANNER_TICKS: u64 = 55;
+/// Typewriter reveal speed by option: slow, normal, fast (characters per tick).
+const REVEAL_SPEEDS: [usize; 3] = [1, 2, 4];
+/// One tall-grass step in this many rustles up a wild rune (on average). Kept
+/// deliberately uncommon so the grass stays a place to wander, not a gauntlet.
+const ENCOUNTER_RARITY: u32 = 18;
+
+// ── the day/night clock ─────────────────────────────────────────────────────
+// Time now flows: one full day is morning → day → evening → night and round
+// again. The lengths are Jani's, in real minutes, converted to 50ms ticks
+// (20 ticks a second). Outdoor places follow this shared sky; interiors keep
+// their own steady lamplight (see `App::daylight`). A campfire can jump the
+// clock straight to the next rest (`App::sleep_at_campfire`).
+const TICKS_PER_MIN: u32 = 20 * 60;
+const MORNING_LEN: u32 = 10 * TICKS_PER_MIN; // 10 real minutes
+const DAY_LEN_MIN: u32 = 20 * TICKS_PER_MIN; // 20
+const EVENING_LEN: u32 = 10 * TICKS_PER_MIN; // 10
+const NIGHT_LEN: u32 = 15 * TICKS_PER_MIN; // 15
+/// Ticks in one whole day (55 real minutes).
+pub const DAY_LEN: u32 = MORNING_LEN + DAY_LEN_MIN + EVENING_LEN + NIGHT_LEN;
+const DAY_START: u32 = MORNING_LEN; // when the sun is fully up
+const EVENING_START: u32 = MORNING_LEN + DAY_LEN_MIN;
+const NIGHT_START: u32 = MORNING_LEN + DAY_LEN_MIN + EVENING_LEN;
+
+/// The four times of day. Which one it is drives the sky, the HUD clock, and
+/// whether the folk of the world are up and about or fast asleep.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum DayPhase {
+    Morning,
+    Day,
+    Evening,
+    Night,
+}
+
+impl DayPhase {
+    pub fn label(self) -> &'static str {
+        match self {
+            DayPhase::Morning => "Morning",
+            DayPhase::Day => "Midday",
+            DayPhase::Evening => "Evening",
+            DayPhase::Night => "Night",
+        }
+    }
+
+    fn at(t: u32) -> DayPhase {
+        match t % DAY_LEN {
+            t if t < DAY_START => DayPhase::Morning,
+            t if t < EVENING_START => DayPhase::Day,
+            t if t < NIGHT_START => DayPhase::Evening,
+            _ => DayPhase::Night,
+        }
+    }
+
+    /// The tick this phase begins at — where sleeping lands you.
+    fn start(self) -> u32 {
+        match self {
+            DayPhase::Morning => 0,
+            DayPhase::Day => DAY_START,
+            DayPhase::Evening => EVENING_START,
+            DayPhase::Night => NIGHT_START,
+        }
+    }
+}
+
+/// The open-sky brightness at clock position `t`: a smooth arc from a soft
+/// dawn, up to full midday, down through a golden evening, into a deep — but
+/// never pitch — night, and back. Piecewise-linear between a handful of
+/// anchors so the transitions read as the hours sliding by.
+pub fn sky_daylight(t: u32) -> f32 {
+    const ANCHORS: [(u32, f32); 7] = [
+        (0, 0.52),
+        (MORNING_LEN, 0.95),
+        (MORNING_LEN + DAY_LEN_MIN / 2, 1.0),
+        (EVENING_START, 0.9),
+        (NIGHT_START, 0.34),
+        (NIGHT_START + NIGHT_LEN / 2, 0.16),
+        (DAY_LEN, 0.52),
+    ];
+    let t = t % DAY_LEN;
+    for w in ANCHORS.windows(2) {
+        let (t0, l0) = w[0];
+        let (t1, l1) = w[1];
+        if t >= t0 && t < t1 {
+            let f = (t - t0) as f32 / (t1 - t0) as f32;
+            return l0 + (l1 - l0) * f;
+        }
+    }
+    ANCHORS[0].1
+}
 
 /// The game's own input alphabet. The windowing shell translates whatever
 /// the platform reports into these; tests feed them to `App::on_key` directly.
@@ -27,6 +116,7 @@ pub enum Key {
     Esc,
     PageUp,
     PageDown,
+    Backspace,
     Char(char),
 }
 
@@ -89,6 +179,12 @@ pub enum Screen {
     Title {
         selected: usize,
     },
+    /// Choosing who you'll be before setting out: a look from the roster and a
+    /// name of your own.
+    CharSelect {
+        idx: usize,
+        name: String,
+    },
     World,
     Dialogue(Dialogue),
     Journal,
@@ -100,6 +196,17 @@ pub enum Screen {
     },
     /// The collection of wild runes inscribed so far.
     Grimoire,
+    /// Resting at a campfire: the screen fades to ember-dark, a scrap of Rust
+    /// lore drifts past, and waking rolls the clock on to the next rest.
+    Resting {
+        /// Index into `content::lore::LORE`.
+        lore: usize,
+        /// Ticks since lying down — drives the fade-in and the ember glow.
+        t: u32,
+        /// The phase you'll wake into (Night after a daytime rest; Morning
+        /// after sleeping through the night).
+        wake: DayPhase,
+    },
     Casting {
         quest: u8,
     },
@@ -120,9 +227,16 @@ pub struct App {
     pub screen: Screen,
     pub tick: u64,
     pub play_ticks: u64,
+    /// Position within the day/night cycle, 0..DAY_LEN. Advances with play,
+    /// and a campfire's rest can leap it to the next phase.
+    pub day_ticks: u32,
     pub zones: Vec<Zone>,
     pub zone_idx: usize,
     pub player: (i32, i32),
+    /// Who the player chose to be: an index into `atlas::PLAYABLE`, and the
+    /// name they gave themselves.
+    pub player_char: usize,
+    pub player_name: String,
     /// Which way the player faces (a unit step vector); purely cosmetic,
     /// so it is never saved.
     pub facing: (i32, i32),
@@ -141,6 +255,10 @@ pub struct App {
     /// that isn't quest completion but must be remembered.
     pub flags: BTreeSet<String>,
     pub toast: Option<(String, u64)>,
+    /// A zone-name banner that slides in when you arrive somewhere new.
+    pub banner: Option<(String, u64)>,
+    /// Typewriter reveal speed, chosen in the options: 0 slow, 1 normal, 2 fast.
+    pub text_speed: usize,
     pub cast_rx: Option<Receiver<Outcome>>,
     pub has_save: bool,
     pub should_quit: bool,
@@ -154,9 +272,12 @@ impl App {
             screen: Screen::Title { selected: 0 },
             tick: 0,
             play_ticks: 0,
+            day_ticks: 0,
             zones,
             zone_idx: 0,
             player,
+            player_char: 0,
+            player_name: String::new(),
             facing: (0, 1),
             walked_at: 0,
             completed: BTreeSet::new(),
@@ -167,6 +288,8 @@ impl App {
             grass_steps: 0,
             flags: BTreeSet::new(),
             toast: None,
+            banner: None,
+            text_speed: 1,
             cast_rx: None,
             has_save: save::exists(),
             should_quit: false,
@@ -177,10 +300,30 @@ impl App {
         &self.zones[self.zone_idx]
     }
 
-    /// Time of day is a property of *place*, not of a ticking clock: petal-lit
-    /// morning in Emberwick, dusk in the woods, lamplight indoors.
+    /// How bright it is right now. Outdoors the whole world shares one sky,
+    /// swinging through the day/night clock; each open zone keeps a little of
+    /// its own character (the woods stay shadier than the village), a gentle
+    /// canopy factor riding on top of the shared hour. Interiors ignore the
+    /// clock entirely and keep their own steady lamplight.
     pub fn daylight(&self) -> f32 {
-        self.zone().daylight
+        let zone = self.zone();
+        if zone.interior {
+            zone.daylight
+        } else {
+            let canopy = 0.82 + 0.18 * zone.daylight;
+            (sky_daylight(self.day_ticks) * canopy).clamp(0.0, 1.0)
+        }
+    }
+
+    /// Which quarter of the day it is right now.
+    pub fn phase(&self) -> DayPhase {
+        DayPhase::at(self.day_ticks)
+    }
+
+    /// True when the outdoor world has gone to sleep — folk are abed, the sky
+    /// is dark. (Interiors keep their own hour, so this is an outdoor notion.)
+    pub fn is_night(&self) -> bool {
+        !self.zone().interior && self.phase() == DayPhase::Night
     }
 
     /// Keepsakes are earned, never lost: owning one is derived from the
@@ -189,6 +332,21 @@ impl App {
         self.completed
             .iter()
             .any(|&id| items::reward(id) == Some(item))
+    }
+
+    /// The name to call the player by — with a gentle fallback for the
+    /// nameless (old saves, or anyone who skipped the naming).
+    pub fn player_name(&self) -> &str {
+        if self.player_name.is_empty() {
+            "the Wanderer"
+        } else {
+            &self.player_name
+        }
+    }
+
+    /// The player's chosen look, clamped so a stray save index can't panic.
+    pub fn player_look(&self) -> &'static crate::gfx::atlas::Playable {
+        &PLAYABLE[self.player_char.min(PLAYABLE.len() - 1)]
     }
 
     /// World flags: the memory for everything off the main quest road.
@@ -216,20 +374,45 @@ impl App {
         self.toast = Some((msg.into(), self.tick + TOAST_TICKS));
     }
 
+    /// Announce the place you've just arrived in with a sliding banner.
+    fn show_banner(&mut self) {
+        self.banner = Some((self.zone().name.to_string(), self.tick + BANNER_TICKS));
+    }
+
+    /// Characters revealed per tick, per the chosen text speed.
+    fn reveal_step(&self) -> usize {
+        REVEAL_SPEEDS[self.text_speed.min(REVEAL_SPEEDS.len() - 1)]
+    }
+
+    /// Cycle the typewriter speed (the options toggle).
+    fn cycle_text_speed(&mut self) {
+        self.text_speed = (self.text_speed + 1) % REVEAL_SPEEDS.len();
+    }
+
     // ── ticking ────────────────────────────────────────────────────────────
 
     pub fn on_tick(&mut self) {
         self.tick += 1;
         if !matches!(self.screen, Screen::Title { .. }) {
             self.play_ticks += 1;
+            self.day_ticks = (self.day_ticks + 1) % DAY_LEN;
         }
         if let Some((_, until)) = &self.toast
             && self.tick > *until
         {
             self.toast = None;
         }
+        if let Some((_, until)) = &self.banner
+            && self.tick > *until
+        {
+            self.banner = None;
+        }
+        let step = self.reveal_step();
         if let Screen::Dialogue(d) = &mut self.screen {
-            d.revealed = d.revealed.saturating_add(REVEAL_PER_TICK);
+            d.revealed = d.revealed.saturating_add(step);
+        }
+        if let Screen::Resting { t, .. } = &mut self.screen {
+            *t = t.saturating_add(1);
         }
         if matches!(self.screen, Screen::World) && self.tick.is_multiple_of(12) {
             self.wander_critters();
@@ -293,11 +476,13 @@ impl App {
     pub fn on_key(&mut self, key: Key) {
         match &mut self.screen {
             Screen::Title { .. } => self.title_key(key),
+            Screen::CharSelect { .. } => self.char_select_key(key),
             Screen::World => self.world_key(key),
             Screen::Dialogue(_) => self.dialogue_key(key),
             Screen::Journal => self.journal_key(key),
             Screen::Encounter { .. } => self.encounter_key(key),
             Screen::Grimoire => self.grimoire_key(key),
+            Screen::Resting { .. } => self.resting_key(key),
             Screen::Casting { .. } => {} // the runes are busy
             Screen::CastResult { .. } => self.cast_result_key(key),
             Screen::Paused { .. } => self.paused_key(key),
@@ -311,13 +496,13 @@ impl App {
             return;
         };
         match code {
-            Key::Up | Key::Char('k') | Key::Char('w') => {
+            Key::Up | Key::Char('k') => {
                 *selected = (*selected + items - 1) % items;
             }
-            Key::Down | Key::Char('j') | Key::Char('s') => {
+            Key::Down | Key::Char('j') => {
                 *selected = (*selected + 1) % items;
             }
-            Key::Enter | Key::Char(' ') => {
+            Key::Enter | Key::Char(' ') | Key::Char('e') => {
                 // With a save: [Continue, New Journey, Quit]; without: [New Journey, Quit].
                 let choice = *selected;
                 match (self.has_save, choice) {
@@ -331,7 +516,62 @@ impl App {
         }
     }
 
+    /// "A new journey" opens the character chooser rather than dropping you
+    /// straight into the world — first decide who you are.
     fn new_game(&mut self) {
+        self.screen = Screen::CharSelect {
+            idx: 0,
+            name: String::new(),
+        };
+    }
+
+    fn char_select_key(&mut self, code: Key) {
+        let Screen::CharSelect { idx, name } = &mut self.screen else {
+            return;
+        };
+        let n = PLAYABLE.len();
+        match code {
+            // Left/right leaf through the roster (arrows only — the letter keys
+            // are busy spelling your name).
+            Key::Left | Key::Up => *idx = (*idx + n - 1) % n,
+            Key::Right | Key::Down => *idx = (*idx + 1) % n,
+            Key::Backspace => {
+                name.pop();
+            }
+            // Enter commits; here `e`/space are letters you might be typing, so
+            // only Enter sets you off.
+            Key::Enter => {
+                let (idx, name) = (*idx, name.clone());
+                self.begin_journey(idx, name);
+            }
+            Key::Esc => self.screen = Screen::Title { selected: 0 },
+            Key::Char(c)
+                if (c.is_ascii_alphabetic() || c == '-' || c == '\'')
+                    && name.chars().count() < 14 =>
+            {
+                // Capitalize the first letter, lowercase the rest — names come
+                // out looking like names whatever the caps-lock is doing.
+                let c = if name.is_empty() {
+                    c.to_ascii_uppercase()
+                } else {
+                    c.to_ascii_lowercase()
+                };
+                name.push(c);
+            }
+            _ => {}
+        }
+    }
+
+    /// Lock in the chosen look and name, wipe the slate, and step into a fresh
+    /// Emberwick morning.
+    fn begin_journey(&mut self, idx: usize, name: String) {
+        self.player_char = idx.min(PLAYABLE.len() - 1);
+        let name = name.trim().to_string();
+        self.player_name = if name.is_empty() {
+            self.player_look().default_name.to_string()
+        } else {
+            name
+        };
         self.zone_idx = 0;
         self.player = self.zones[0].spawn;
         self.completed.clear();
@@ -342,8 +582,12 @@ impl App {
         self.grass_steps = 0;
         self.flags.clear();
         self.play_ticks = 0;
+        self.day_ticks = 0; // every journey opens on a fresh morning
         self.screen = Screen::World;
-        self.toast("A quiet morning in Emberwick. Someone near the festival square could use a hand. (Arrows/WASD to walk, e to talk.)");
+        self.toast(format!(
+            "A quiet morning in Emberwick, {}. Someone near the festival square could use a hand. (Arrows or H J K L to walk, e to talk.)",
+            self.player_name
+        ));
     }
 
     fn continue_game(&mut self) {
@@ -358,6 +602,8 @@ impl App {
     }
 
     fn apply_save(&mut self, data: SaveData) {
+        self.player_char = data.player_char.min(PLAYABLE.len() - 1);
+        self.player_name = data.player_name;
         self.completed = data.completed.into_iter().collect();
         self.accepted = data.accepted.into_iter().collect();
         self.hints = data.hints;
@@ -366,6 +612,8 @@ impl App {
         self.flags = data.flags.into_iter().collect();
         self.zone_idx = data.zone.min(self.zones.len() - 1);
         self.play_ticks = data.play_ticks;
+        self.day_ticks = data.day_ticks % DAY_LEN;
+        self.text_speed = data.text_speed.min(REVEAL_SPEEDS.len() - 1);
         let (x, y) = data.pos;
         self.player = if in_bounds((x, y)) && self.zone().tile(x, y).walkable() {
             (x, y)
@@ -376,6 +624,8 @@ impl App {
 
     fn autosave(&mut self) {
         let data = SaveData {
+            player_char: self.player_char,
+            player_name: self.player_name.clone(),
             completed: self.completed.iter().copied().collect(),
             accepted: self.accepted.iter().copied().collect(),
             hints: self.hints.clone(),
@@ -385,6 +635,8 @@ impl App {
             zone: self.zone_idx,
             pos: self.player,
             play_ticks: self.play_ticks,
+            day_ticks: self.day_ticks,
+            text_speed: self.text_speed,
         };
         match save::save(&data) {
             Ok(()) => self.has_save = true,
@@ -394,11 +646,11 @@ impl App {
 
     fn world_key(&mut self, code: Key) {
         match code {
-            Key::Up | Key::Char('w') | Key::Char('k') => self.try_move(0, -1),
-            Key::Down | Key::Char('s') | Key::Char('j') => self.try_move(0, 1),
-            Key::Left | Key::Char('a') | Key::Char('h') => self.try_move(-1, 0),
-            Key::Right | Key::Char('d') | Key::Char('l') => self.try_move(1, 0),
-            Key::Enter | Key::Char('e') => self.interact(),
+            Key::Up | Key::Char('k') => self.try_move(0, -1),
+            Key::Down | Key::Char('j') => self.try_move(0, 1),
+            Key::Left | Key::Char('h') => self.try_move(-1, 0),
+            Key::Right | Key::Char('l') => self.try_move(1, 0),
+            Key::Enter | Key::Char('e') | Key::Char(' ') => self.interact(),
             Key::Char('c') => self.start_cast(),
             Key::Char('q') => self.screen = Screen::Journal,
             Key::Char('g') => self.screen = Screen::Grimoire,
@@ -420,13 +672,13 @@ impl App {
         let rune_id = *rune;
         match *phase {
             EncounterPhase::Asking => match code {
-                Key::Up | Key::Char('k') | Key::Char('w') => {
+                Key::Up | Key::Char('k') => {
                     *selected = (*selected + 2) % 3;
                 }
-                Key::Down | Key::Char('j') | Key::Char('s') => {
+                Key::Down | Key::Char('j') => {
                     *selected = (*selected + 1) % 3;
                 }
-                Key::Enter | Key::Char(' ') => {
+                Key::Enter | Key::Char(' ') | Key::Char('e') => {
                     if *selected == wilds::wild(rune_id).answer {
                         *phase = EncounterPhase::Caught;
                         self.grimoire.insert(rune_id);
@@ -442,7 +694,7 @@ impl App {
                 _ => {}
             },
             _ => match code {
-                Key::Enter | Key::Char(' ') | Key::Esc => {
+                Key::Enter | Key::Char(' ') | Key::Char('e') | Key::Esc => {
                     self.screen = Screen::World;
                 }
                 _ => {}
@@ -452,7 +704,12 @@ impl App {
 
     fn grimoire_key(&mut self, code: Key) {
         match code {
-            Key::Esc | Key::Char('g') | Key::Char('q') | Key::Enter => {
+            Key::Esc
+            | Key::Char('g')
+            | Key::Char('q')
+            | Key::Char('e')
+            | Key::Enter
+            | Key::Char(' ') => {
                 self.screen = Screen::World;
             }
             _ => {}
@@ -473,6 +730,7 @@ impl App {
                 self.player = (gate.0 - 2, gate.1);
                 let name = self.zone().name;
                 self.toast(format!("Back along the road, into {name}."));
+                self.show_banner();
                 self.autosave();
             } else {
                 self.toast("Home lies that way — but the Library first! You promised.");
@@ -498,6 +756,7 @@ impl App {
             }
             self.zone_idx = warp.to_zone;
             self.player = warp.to_pos;
+            self.show_banner();
             if self.zone().interior && !zones::needs_light(self.zone_idx) {
                 let name = self.zone().name;
                 self.toast(format!("You step inside — {name}."));
@@ -522,15 +781,24 @@ impl App {
     }
 
     /// Each step through tall grass rolls (deterministically — same walk,
-    /// same runes) for a wild rune encounter from this zone's grass.
+    /// same runes) for a wild rune encounter from this zone's grass. Rustles
+    /// are uncommon — a small event, not something underfoot every few paces —
+    /// and a rune you've already inscribed has moved on: the grass only stirs
+    /// with the questions you haven't answered true yet.
     fn rustle_grass(&mut self) {
         self.grass_steps = self.grass_steps.wrapping_add(1);
         let h = hash2(self.player.0, self.player.1, 0xB1AD ^ self.grass_steps);
-        if !h.is_multiple_of(8) {
+        if !h.is_multiple_of(ENCOUNTER_RARITY) {
             return;
         }
-        let pool = wilds::in_zone(self.zone().id);
-        let rune = pool[(h / 8) as usize % pool.len()];
+        let pool: Vec<_> = wilds::in_zone(self.zone().id)
+            .into_iter()
+            .filter(|r| !self.grimoire.contains(&r.id))
+            .collect();
+        if pool.is_empty() {
+            return; // every wild rune in this grass is already in the grimoire
+        }
+        let rune = pool[(h / ENCOUNTER_RARITY) as usize % pool.len()];
         self.screen = Screen::Encounter {
             rune: rune.id,
             selected: 0,
@@ -545,6 +813,7 @@ impl App {
                 self.zone_idx += 1;
                 self.player = self.zone().spawn;
                 self.toast(unlock);
+                self.show_banner();
                 self.autosave();
             }
         } else {
@@ -630,6 +899,15 @@ impl App {
                 return;
             }
             _ => {}
+        }
+        // A campfire within reach: sit a while. The screen fades to embers, a
+        // little Rust lore drifts past, and waking rolls the clock on.
+        let fire = spots
+            .iter()
+            .any(|&(x, y)| self.zone().tile(x, y) == Tile::Campfire);
+        if fire {
+            self.rest_at_campfire();
+            return;
         }
         // Water within reach and a rod in the satchel: that's fishing.
         let water = spots
@@ -737,6 +1015,51 @@ impl App {
         ));
     }
 
+    /// Sit down by the fire. A daytime rest carries you into the night; a
+    /// night-time rest sees you through to a fresh morning.
+    fn rest_at_campfire(&mut self) {
+        let wake = if self.phase() == DayPhase::Night {
+            DayPhase::Morning
+        } else {
+            DayPhase::Night
+        };
+        // The same fire on the same evening tells the same tale; a later rest
+        // draws another.
+        let h = hash2(self.player.0, self.player.1, 0x71DE ^ self.day_ticks);
+        self.screen = Screen::Resting {
+            lore: h as usize % lore::LORE.len(),
+            t: 0,
+            wake,
+        };
+    }
+
+    fn resting_key(&mut self, code: Key) {
+        let Screen::Resting { wake, t, .. } = self.screen else {
+            return;
+        };
+        // Let the fade settle before a keystroke can wake you, so a mashed
+        // key doesn't skip the moment entirely.
+        if t < 4 {
+            return;
+        }
+        match code {
+            Key::Enter | Key::Char(' ') | Key::Char('e') | Key::Esc => {
+                self.day_ticks = wake.start();
+                self.screen = Screen::World;
+                let msg = match wake {
+                    DayPhase::Night => {
+                        "You wake to a sky full of stars. The world has gone quiet and gone to sleep around you."
+                    }
+                    _ => {
+                        "Dawn. You wake beside cold ashes to a world washed new — and the folk of it already stirring."
+                    }
+                };
+                self.toast(msg);
+            }
+            _ => {}
+        }
+    }
+
     fn npc_dialogue(&self, x: i32, y: i32) -> Dialogue {
         let npc = self.zone().npc_at(x, y).expect("checked above");
         // Side business first: some folk have favors going, off the quest road.
@@ -748,7 +1071,15 @@ impl App {
             return Dialogue::new(npc.name, vec![idle], DialogueKind::Flavor);
         };
         if self.completed.contains(&qid) {
-            return Dialogue::new(npc.name, vec![idle], DialogueKind::Flavor);
+            // Their errand is done: a warmer, grateful line if they have one.
+            let thanks = npc
+                .idle
+                .get(1)
+                .or(npc.idle.first())
+                .copied()
+                .unwrap_or("...")
+                .to_string();
+            return Dialogue::new(npc.name, vec![thanks], DialogueKind::Flavor);
         }
         let active = self.active_quest().map(|q| q.id);
         if active == Some(qid) {
@@ -868,8 +1199,10 @@ impl App {
 
     fn journal_key(&mut self, code: Key) {
         match code {
-            Key::Esc | Key::Char('q') | Key::Enter => self.screen = Screen::World,
             Key::Char('f') => self.ferris_hint(),
+            Key::Esc | Key::Char('q') | Key::Enter | Key::Char(' ') | Key::Char('e') => {
+                self.screen = Screen::World
+            }
             _ => {}
         }
     }
@@ -888,7 +1221,7 @@ impl App {
             Key::Down => *scroll = scroll.saturating_add(1),
             Key::PageUp => *scroll = scroll.saturating_sub(10),
             Key::PageDown => *scroll = scroll.saturating_add(10),
-            Key::Enter | Key::Esc | Key::Char(' ') => {
+            Key::Enter | Key::Esc | Key::Char(' ') | Key::Char('e') => {
                 let quest_id = *quest;
                 if matches!(outcome, Outcome::Pass { .. }) {
                     let q = quests::quest(quest_id);
@@ -915,26 +1248,36 @@ impl App {
     }
 
     fn paused_key(&mut self, code: Key) {
-        let Screen::Paused { selected } = &mut self.screen else {
+        // The rest menu: [Back to the road, Text speed, Save & sleep].
+        let Screen::Paused { selected } = &self.screen else {
             return;
         };
+        let mut sel = *selected;
         match code {
-            Key::Up
-            | Key::Down
-            | Key::Char('k')
-            | Key::Char('j')
-            | Key::Char('w')
-            | Key::Char('s') => *selected = 1 - *selected,
-            Key::Esc => self.screen = Screen::World,
-            Key::Enter | Key::Char(' ') => {
-                if *selected == 0 {
+            Key::Up | Key::Char('k') => sel = (sel + 2) % 3,
+            Key::Down | Key::Char('j') => sel = (sel + 1) % 3,
+            // Left/right nudges the text-speed toggle without leaving the menu.
+            Key::Left | Key::Right if sel == 1 => self.cycle_text_speed(),
+            Key::Esc => {
+                self.screen = Screen::World;
+                return;
+            }
+            Key::Enter | Key::Char(' ') | Key::Char('e') => match sel {
+                0 => {
                     self.screen = Screen::World;
-                } else {
+                    return;
+                }
+                1 => self.cycle_text_speed(),
+                _ => {
                     self.autosave();
                     self.should_quit = true;
+                    return;
                 }
-            }
-            _ => {}
+            },
+            _ => return,
+        }
+        if let Screen::Paused { selected } = &mut self.screen {
+            *selected = sel;
         }
     }
 
@@ -943,7 +1286,7 @@ impl App {
             return;
         };
         match code {
-            Key::Enter | Key::Char(' ') => {
+            Key::Enter | Key::Char(' ') | Key::Char('e') => {
                 if *page + 1 < EPILOGUE.len() {
                     *page += 1;
                 } else {
@@ -974,6 +1317,82 @@ pub fn in_bounds(pos: (i32, i32)) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn choosing_a_character_and_typing_a_name_begins_the_journey() {
+        let mut app = App::new();
+        app.has_save = false; // title item 0 is "A new journey"
+        app.screen = Screen::Title { selected: 0 };
+        app.on_key(Key::Enter); // new journey -> chooser
+        assert!(matches!(app.screen, Screen::CharSelect { .. }));
+        app.on_key(Key::Right); // second look
+        for c in ['f', 'e', 'r', 'n'] {
+            app.on_key(Key::Char(c));
+        }
+        app.on_key(Key::Backspace); // "fer"
+        let Screen::CharSelect { idx, name } = &app.screen else {
+            unreachable!()
+        };
+        assert_eq!(*idx, 1);
+        assert_eq!(name, "Fer", "first letter capitalized, rest lower");
+        app.on_key(Key::Enter);
+        assert!(matches!(app.screen, Screen::World));
+        assert_eq!(app.player_char, 1);
+        assert_eq!(app.player_name(), "Fer");
+        assert_eq!(app.phase(), DayPhase::Morning);
+    }
+
+    #[test]
+    fn an_unnamed_traveller_gets_their_looks_default_name() {
+        let mut app = App::new();
+        app.new_game();
+        // Straight to Enter without typing: the chosen look lends its name.
+        app.on_key(Key::Enter);
+        assert_eq!(app.player_name(), PLAYABLE[0].default_name);
+    }
+
+    #[test]
+    fn the_day_turns_through_its_four_phases() {
+        assert_eq!(DayPhase::at(0), DayPhase::Morning);
+        assert_eq!(DayPhase::at(DAY_START), DayPhase::Day);
+        assert_eq!(DayPhase::at(EVENING_START), DayPhase::Evening);
+        assert_eq!(DayPhase::at(NIGHT_START), DayPhase::Night);
+        assert_eq!(DayPhase::at(DAY_LEN), DayPhase::Morning); // wraps around
+        // Sleeping lands on the top of a phase.
+        assert_eq!(DayPhase::Night.start(), NIGHT_START);
+        // The sky stays a real brightness the whole day round, dark at the
+        // dead of night, bright at midday, and never leaves 0..=1.
+        for t in (0..DAY_LEN).step_by(500) {
+            let l = sky_daylight(t);
+            assert!((0.0..=1.0).contains(&l), "sky {l} out of range at {t}");
+        }
+        assert!(
+            sky_daylight(NIGHT_START + NIGHT_LEN / 2) < 0.3,
+            "night too bright"
+        );
+        assert!(
+            sky_daylight(MORNING_LEN + DAY_LEN_MIN / 2) > 0.9,
+            "midday too dim"
+        );
+    }
+
+    #[test]
+    fn outdoors_follows_the_clock_indoors_keeps_its_lamp() {
+        let mut app = App::new();
+        app.zone_idx = zones::EMBERWICK;
+        app.day_ticks = NIGHT_START + NIGHT_LEN / 2; // deep night
+        let night = app.daylight();
+        app.day_ticks = MORNING_LEN + DAY_LEN_MIN / 2; // high noon
+        let noon = app.daylight();
+        assert!(noon > night, "midday should outshine midnight outdoors");
+        assert!(!app.is_night());
+        // The cave keeps its own dark regardless of the hour outside.
+        app.zone_idx = zones::ECHO_CAVE;
+        let fixed = app.daylight();
+        app.day_ticks = NIGHT_START;
+        assert_eq!(app.daylight(), fixed, "interiors ignore the sky");
+        assert!(!app.is_night(), "indoors is never 'night'");
+    }
 
     #[test]
     fn active_quest_walks_the_road_in_order() {
@@ -1060,6 +1479,109 @@ mod tests {
         assert!(app.grimoire.contains(&rune), "caught rune not inscribed");
         app.on_key(Key::Enter);
         assert!(matches!(app.screen, Screen::World));
+    }
+
+    #[test]
+    fn caught_runes_stop_rustling() {
+        // With every Emberwick rune already inscribed, no amount of walking
+        // through the grass should stir one up again.
+        let mut app = App::new();
+        app.screen = Screen::World;
+        for rune in wilds::in_zone(0) {
+            app.grimoire.insert(rune.id);
+        }
+        let mut spot = None;
+        'outer: for y in 1..MAP_H - 1 {
+            for x in 1..MAP_W - 1 {
+                if app.zones[0].tile(x, y) == Tile::TallGrass
+                    && app.zones[0].tile(x + 1, y) == Tile::TallGrass
+                {
+                    spot = Some((x, y));
+                    break 'outer;
+                }
+            }
+        }
+        app.player = spot.expect("Emberwick grows tall grass in pairs");
+        for _ in 0..500 {
+            app.try_move(1, 0);
+            app.try_move(-1, 0);
+            assert!(
+                matches!(app.screen, Screen::World),
+                "a mastered rune rustled anyway"
+            );
+        }
+    }
+
+    #[test]
+    fn a_campfire_carries_you_to_night_and_back_to_morning() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        // Emberwick's festival campfire.
+        let fire = (0..MAP_H)
+            .flat_map(|y| (0..MAP_W).map(move |x| (x, y)))
+            .find(|&(x, y)| app.zones[0].tile(x, y) == Tile::Campfire)
+            .expect("Emberwick keeps a campfire");
+        app.player = (fire.0, fire.1 + 1);
+        assert_eq!(app.phase(), DayPhase::Morning);
+        app.on_key(Key::Char('e'));
+        let Screen::Resting { wake, .. } = app.screen else {
+            panic!("the campfire didn't invite a rest");
+        };
+        assert_eq!(
+            wake,
+            DayPhase::Night,
+            "a daytime rest should reach nightfall"
+        );
+        // The fade has to settle before a keystroke wakes you.
+        app.on_tick();
+        app.on_tick();
+        app.on_tick();
+        app.on_tick();
+        app.on_key(Key::Enter);
+        assert!(matches!(app.screen, Screen::World));
+        assert_eq!(app.phase(), DayPhase::Night);
+        assert!(app.is_night());
+
+        // Rest again from the night: wake to a fresh morning.
+        app.on_key(Key::Char('e'));
+        for _ in 0..5 {
+            app.on_tick();
+        }
+        app.on_key(Key::Enter);
+        assert_eq!(app.phase(), DayPhase::Morning);
+    }
+
+    #[test]
+    fn the_pause_menu_cycles_text_speed_and_saves_it() {
+        let mut app = App::new();
+        app.screen = Screen::Paused { selected: 1 }; // the text-speed row
+        assert_eq!(app.text_speed, 1);
+        app.on_key(Key::Enter); // cycle: normal -> fast
+        assert_eq!(app.text_speed, 2);
+        assert_eq!(app.reveal_step(), 4);
+        app.on_key(Key::Right); // and again: fast -> slow (wraps)
+        assert_eq!(app.text_speed, 0);
+        // The row stays put while toggling.
+        assert!(matches!(app.screen, Screen::Paused { selected: 1 }));
+        // Selecting "Back to the road" leaves the menu.
+        app.on_key(Key::Up);
+        app.on_key(Key::Enter);
+        assert!(matches!(app.screen, Screen::World));
+    }
+
+    #[test]
+    fn arriving_somewhere_new_raises_a_banner() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        assert!(app.banner.is_none());
+        // Cross Emberwick's gate (with its quests done) into the woods.
+        app.completed.extend([1, 2, 3]);
+        let gate = app.zone().gate.unwrap();
+        app.player = (gate.0 - 1, gate.1);
+        app.on_key(Key::Right);
+        assert_eq!(app.zone_idx, zones::WHISPERING_WOODS);
+        let (name, _) = app.banner.as_ref().expect("a banner should have risen");
+        assert!(name.contains("Whispering"), "banner named the wrong place");
     }
 
     #[test]

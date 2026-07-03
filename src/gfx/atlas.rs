@@ -133,7 +133,41 @@ pub const CAST_VILLAGER3: u16 = 184;
 pub const CAST_VILLAGER4: u16 = 188;
 pub const CAST_PRINCESS: u16 = 192;
 /// The player's stride: two frames per facing, same facing order as CAST.
+/// Only the default look (the Boy) has a baked walk-cycle; the others walk on
+/// their idle facings, turning to look where they go.
 pub const PLAYER_WALK: u16 = 196;
+
+/// The characters a new traveller may choose to play as: a display look, a
+/// suggested name, and the cast member whose four idle facings they wear.
+/// The first (the Boy) is the one with a full stride animation.
+pub struct Playable {
+    pub look: &'static str,
+    pub default_name: &'static str,
+    pub cast: u16,
+}
+
+pub const PLAYABLE: [Playable; 4] = [
+    Playable {
+        look: "the young traveller",
+        default_name: "Rue",
+        cast: CAST_BOY,
+    },
+    Playable {
+        look: "the wildwood forager",
+        default_name: "Bramble",
+        cast: CAST_CAVEGIRL,
+    },
+    Playable {
+        look: "the bucket-hat tinker",
+        default_name: "Pip",
+        cast: CAST_EGGBOY,
+    },
+    Playable {
+        look: "the wandering noble",
+        default_name: "Wisteria",
+        cast: CAST_PRINCESS,
+    },
+];
 // Biome grounds (plain + two decorated variants each) and per-biome props,
 // from the Ninja Adventure tilesets in assets/ninja_adventure/tilesets/.
 pub const MARSH: u16 = 204;
@@ -171,6 +205,11 @@ pub const FENCE_POST: u16 = 234;
 pub const FLOWER_O_OVER: u16 = 235;
 pub const FLOWER_W_OVER: u16 = 236;
 pub const FLOWER_B_OVER: u16 = 237;
+// The Great Library showcase: sunlit windows, framed art, and gallery exhibits.
+pub const WINDOW: u16 = 238;
+pub const PAINTING: u16 = 239;
+pub const PLANT: u16 = 240;
+pub const PEDESTAL: u16 = 241;
 
 static ATLAS_PNG: &[u8] = include_bytes!("../../assets/atlas.png");
 

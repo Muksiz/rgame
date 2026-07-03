@@ -85,21 +85,6 @@ const CELLAR_ROOM: &str = concat!(
     "######+######",
 );
 
-const LIBRARY_ROOM: &str = concat!(
-    "##########################\n",
-    "#BBBB.BBBBB....BBBBB.BBBB#\n",
-    "#........................#\n",
-    "#..stt.....RRRR.....tts..#\n",
-    "#..........RRRR..........#\n",
-    "#..stt.....RRRR.....tts..#\n",
-    "#........................#\n",
-    "#BBBB.BBBBB....BBBBB.BBBB#\n",
-    "#........................#\n",
-    "#@.L..................L..#\n",
-    "#........................#\n",
-    "###########++#############",
-);
-
 const CAVE_ROOM: &str = concat!(
     "  %%%%%%%%%%%  \n",
     " %%:::::::::%% \n",
@@ -152,9 +137,13 @@ const WORKSHOP_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 6, ROOM_AT.1 + 8);
 const STORE_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 6, ROOM_AT.1 + 8);
 const STORE_CELLAR_DOOR: (i32, i32) = (ROOM_AT.0 + 6, ROOM_AT.1);
 const CELLAR_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 6, ROOM_AT.1 + 6);
+// The Great Library is built room-by-room (see `great_library`); it is 40×24,
+// stamped at ROOM_AT, with its two entrance doors in the bottom wall.
+const LIBRARY_W: i32 = 40;
+const LIBRARY_H: i32 = 24;
 const LIBRARY_ROOM_DOORS: [(i32, i32); 2] = [
-    (ROOM_AT.0 + 11, ROOM_AT.1 + 11),
-    (ROOM_AT.0 + 12, ROOM_AT.1 + 11),
+    (ROOM_AT.0 + 19, ROOM_AT.1 + LIBRARY_H - 1),
+    (ROOM_AT.0 + 20, ROOM_AT.1 + LIBRARY_H - 1),
 ];
 const CAVE_ROOM_EXIT: (i32, i32) = (ROOM_AT.0 + 7, ROOM_AT.1 + 9);
 
@@ -203,7 +192,7 @@ pub fn runestone_spots() -> [(usize, (i32, i32)); 7] {
         (SILVERFORD, (124, 59)),       // half-sunk in Morrow's beach
         (HEARTHSPIRE, (130, 10)),      // alone in the northern crags
         (ECHO_CAVE, at(2, 2)),         // humming in the dark
-        (GREAT_LIBRARY, at(1, 9)),     // catalogued, never moved
+        (GREAT_LIBRARY, at(34, 19)),   // catalogued in the showcase gallery
     ]
 }
 
@@ -347,19 +336,28 @@ fn emberwick() -> Zone {
                 name: "Elder Rowan",
                 pos: (86, 31),
                 quest: Some(1),
-                idle: &["The lantern has hung dark for years. Tonight, maybe, it glows again."],
+                idle: &[
+                    "The lantern has hung dark for years. Tonight, maybe, it glows again.",
+                    "The festival lantern's been glowing since you lit it — folk keep drifting to the square just to stand in the warm of it. You did that.",
+                ],
             },
             Npc {
                 name: "Baker Poppy",
                 pos: (66, 25),
                 quest: Some(2),
-                idle: &["Smell that? Honey-oat loaves. The recipe is older than the village."],
+                idle: &[
+                    "Smell that? Honey-oat loaves. The recipe is older than the village.",
+                    "The ledger balances to the last crumb now, thanks to you. Here — mind the heat — a loaf for the road.",
+                ],
             },
             Npc {
                 name: "Well-keeper Bram",
                 pos: (112, 27),
                 quest: Some(3),
-                idle: &["Deepest well in the valley, this. Probably. Nobody's ever checked."],
+                idle: &[
+                    "Deepest well in the valley, this. Probably. Nobody's ever checked.",
+                    "Water's running clear and cold again since you sorted the well. The whole lane's grateful — and the storm-lantern's yours to keep.",
+                ],
             },
         ],
         critters: vec![
@@ -465,6 +463,10 @@ fn whispering_woods() -> Zone {
     b.set(46, 15, Tile::Runestone);
     b.set(217, 10, Tile::Runestone);
 
+    // A traveller's campfire off the road, for resting the day away.
+    b.clearing(140, 46, 1);
+    b.set(140, 46, Tile::Campfire);
+
     Zone {
         id: 1,
         name: "Whispering Woods",
@@ -484,19 +486,28 @@ fn whispering_woods() -> Zone {
                 name: "Wren",
                 pos: (49, 20),
                 quest: Some(4),
-                idle: &["When I grow up I'm going to walk to BOTH ends of the road."],
+                idle: &[
+                    "When I grow up I'm going to walk to BOTH ends of the road.",
+                    "You made the spell WORK! I've been showing everyone. Even the stump. The stump was very impressed, I could tell.",
+                ],
             },
             Npc {
                 name: "Forager Maren",
                 pos: (101, 46),
                 quest: Some(5),
-                idle: &["Rule one of foraging: when in doubt, don't. Rule two: see rule one."],
+                idle: &[
+                    "Rule one of foraging: when in doubt, don't. Rule two: see rule one.",
+                    "Not one bad mushroom in the whole basket now — your sorting saw to that. The hollow smells like supper.",
+                ],
             },
             Npc {
                 name: "Shepherd Ambrose",
                 pos: (172, 28),
                 quest: Some(6),
-                idle: &["*yaaawn* ...I wasn't sleeping. I was counting very slowly."],
+                idle: &[
+                    "*yaaawn* ...I wasn't sleeping. I was counting very slowly.",
+                    "Every last sheep home and counted, and I owe the nap I'm about to take entirely to you. *yaaawn*",
+                ],
             },
             // Hidden in the deep woods; her dialogue lives in content/sides.rs.
             Npc {
@@ -569,6 +580,9 @@ fn silverford() -> Zone {
     // A runestone half-sunk at the far end of Morrow's beach.
     b.set(124, 59, Tile::Runestone);
 
+    // A driftwood campfire down on Morrow's beach, for watching the river.
+    b.set(121, 58, Tile::Campfire);
+
     Zone {
         id: 2,
         name: "Silverford Riverlands",
@@ -588,19 +602,28 @@ fn silverford() -> Zone {
                 name: "Ferryman Wick",
                 pos: (136, 45),
                 quest: Some(7),
-                idle: &["River's high today. River's always high today, if you ask the river."],
+                idle: &[
+                    "River's high today. River's always high today, if you ask the river.",
+                    "Token's sorted, planks are down, and the ferry runs on time — well, on river-time. Cross whenever you like now.",
+                ],
             },
             Npc {
                 name: "Fisher Juniper",
                 pos: (148, 22),
                 quest: Some(8),
-                idle: &["The trick to fishing is patience. The other trick is bait. Mostly bait."],
+                idle: &[
+                    "The trick to fishing is patience. The other trick is bait. Mostly bait.",
+                    "Keep the spare rod — you've the patience for it. Reedy banks all down the river are yours to try.",
+                ],
             },
             Npc {
                 name: "Hermit Morrow",
                 pos: (118, 57),
                 quest: Some(9),
-                idle: &["The river brings me letters. I write back, but slowly."],
+                idle: &[
+                    "The river brings me letters. I write back, but slowly.",
+                    "The letter reached the end of its sentence at last, thanks to you. The river seems pleased. So am I.",
+                ],
             },
         ],
         critters: vec![
@@ -667,6 +690,10 @@ fn hearthspire() -> Zone {
     }
     b.set(130, 10, Tile::Runestone);
 
+    // A wayfarer's campfire beside the highland road, ringed with loose stone.
+    b.clearing(88, 52, 1);
+    b.set(88, 52, Tile::Campfire);
+
     Zone {
         id: 3,
         name: "Hearthspire Approach",
@@ -691,19 +718,26 @@ fn hearthspire() -> Zone {
                 quest: Some(10),
                 idle: &[
                     "I catalogue everything. Even this conversation. Especially this conversation.",
+                    "The lost book is catalogued and shelved, and I've noted your name beside it. In triplicate. It seemed important.",
                 ],
             },
             Npc {
                 name: "The Stone Golem",
                 pos: (172, 24),
                 quest: Some(11),
-                idle: &["...zzz... shelf... twelve... zzz..."],
+                idle: &[
+                    "...zzz... shelf... twelve... zzz...",
+                    "...mmh? Oh. Shelf twelve. Sorted. Good. *the golem settles back into a contented, gravelly doze* ...thank... you...",
+                ],
             },
             Npc {
                 name: "Sage Alderly",
                 pos: (208, 35),
                 quest: Some(12),
-                idle: &["Every book comes home eventually. Some just take the scenic route."],
+                idle: &[
+                    "Every book comes home eventually. Some just take the scenic route.",
+                    "The spellbooks are all sorted and the Library's doors stand open to you. Rest your feet a while — you've walked the whole road.",
+                ],
             },
         ],
         critters: vec![
@@ -895,28 +929,122 @@ fn echo_cave() -> Zone {
     )
 }
 
+/// The Great Library: three connected chambers built room-by-room rather than
+/// stamped from one art block — a stacks reading-room to the west, a grand
+/// lamplit entrance hall in the middle, and a showcase gallery to the east,
+/// all under a top wall of tall sunlit windows.
 fn great_library() -> Zone {
-    room(
-        GREAT_LIBRARY,
-        "The Great Library",
-        122,
-        LIBRARY_ROOM,
-        0.75,
-        vec![
+    let seed = 122;
+    let mut b = MapBuilder::new(seed);
+    b.rect(0, 0, MAP_W, MAP_H, Tile::Void);
+    let (ox, oy) = ROOM_AT;
+    let (w, h) = (LIBRARY_W, LIBRARY_H);
+
+    // Floor throughout, then a wall all around.
+    b.rect(ox, oy, w, h, Tile::Floor);
+    for x in ox..ox + w {
+        b.set(x, oy, Tile::Wall);
+        b.set(x, oy + h - 1, Tile::Wall);
+    }
+    for y in oy..oy + h {
+        b.set(ox, y, Tile::Wall);
+        b.set(ox + w - 1, y, Tile::Wall);
+    }
+
+    // Two internal walls divide the hall into three chambers, each pierced by
+    // a two-tile archway low down so you can wander between them.
+    for y in oy + 1..oy + h - 1 {
+        b.set(ox + 13, y, Tile::Wall);
+        b.set(ox + 26, y, Tile::Wall);
+    }
+    for y in [oy + h - 4, oy + h - 3] {
+        b.set(ox + 13, y, Tile::Floor);
+        b.set(ox + 26, y, Tile::Floor);
+    }
+
+    // Tall windows along the top wall — the sun (and the moon) pour through.
+    for dx in [3, 4, 9, 10, 18, 19, 21, 22, 30, 31, 36, 37] {
+        b.set(ox + dx, oy, Tile::Window);
+    }
+
+    // Entrance doors in the bottom wall (the central hall), back to Hearthspire.
+    b.set(LIBRARY_ROOM_DOORS[0].0, LIBRARY_ROOM_DOORS[0].1, Tile::Door);
+    b.set(LIBRARY_ROOM_DOORS[1].0, LIBRARY_ROOM_DOORS[1].1, Tile::Door);
+
+    // ── West chamber: the reading stacks. Shelf rows with aisles between. ──
+    for row in [3, 7, 11] {
+        for dx in 3..=8 {
+            b.set(ox + dx, oy + row, Tile::Bookshelf);
+        }
+    }
+    // A reading nook: a table and stools, and a warm rug underfoot.
+    b.rect(ox + 3, oy + 15, 4, 3, Tile::Rug);
+    b.set(ox + 4, oy + 16, Tile::Table);
+    b.set(ox + 3, oy + 16, Tile::Stool);
+    b.set(ox + 5, oy + 16, Tile::Stool);
+    b.set(ox + 9, oy + 15, Tile::Bookshelf);
+    b.set(ox + 10, oy + 15, Tile::Bookshelf);
+
+    // ── Central hall: lamps, a long rug, the librarian, a cat. ──
+    b.rect(ox + 17, oy + 15, 6, 5, Tile::Rug);
+    for (dx, dy) in [(15, 2), (24, 2), (15, 18), (24, 18)] {
+        b.set(ox + dx, oy + dy, Tile::Lantern);
+    }
+    // A grand central exhibit for arriving visitors.
+    b.set(ox + 19, oy + 4, Tile::Pedestal);
+    b.set(ox + 20, oy + 4, Tile::Pedestal);
+
+    // ── East chamber: the showcase gallery — plants, art, curios. ──
+    for (dx, dy) in [(29, 3), (36, 3), (29, 9), (34, 12), (30, 16)] {
+        b.set(ox + dx, oy + dy, Tile::Plant);
+    }
+    for (dx, dy) in [(32, 3), (32, 9), (36, 16), (29, 19)] {
+        b.set(ox + dx, oy + dy, Tile::Pedestal);
+    }
+    // Framed art on the gallery's outer and dividing walls.
+    for dy in [3, 7, 11, 15] {
+        b.set(ox + w - 1, oy + dy, Tile::Painting);
+    }
+    for dy in [4, 9, 14] {
+        b.set(ox + 26, oy + dy, Tile::Painting);
+    }
+    // The library's catalogued runestone, set on the gallery floor.
+    b.set(ox + 34, oy + 19, Tile::Runestone);
+
+    Zone {
+        id: GREAT_LIBRARY,
+        name: "The Great Library",
+        tiles: b.tiles,
+        spawn: (LIBRARY_ROOM_DOORS[0].0, LIBRARY_ROOM_DOORS[0].1 - 1),
+        gate: None,
+        locked_msg: "",
+        unlock_msg: "",
+        weather: None,
+        daylight: 0.75,
+        interior: true,
+        border: Border::Void,
+        seed,
+        warps: vec![
             exit(LIBRARY_ROOM_DOORS[0], HEARTHSPIRE, LIBRARY_DOORS[0]),
             exit(LIBRARY_ROOM_DOORS[1], HEARTHSPIRE, LIBRARY_DOORS[1]),
         ],
-        vec![Npc {
+        npcs: vec![Npc {
             name: "Under-librarian Twill",
-            pos: at(13, 8),
+            pos: at(19, 20),
             quest: None,
             idle: &[
-                "Shhh — not for quiet. The books are napping. Nudge any shelf (e) and one will happily read itself to you.",
+                "Shhh — not for quiet. The books are napping. Nudge any shelf (e) and one will happily read itself to you. The east gallery's worth a wander, too.",
             ],
         }],
-        vec![Critter::new(CritterKind::Cat, at(20, 4))],
-        vec![],
-    )
+        critters: vec![
+            Critter::new(CritterKind::Cat, at(21, 6)),
+            Critter::new(CritterKind::Cat, at(30, 12)),
+        ],
+        signs: vec![Sign {
+            pos: at(33, 16),
+            text: "THE SHOWCASE GALLERY. Curiosities gathered from the four roads: pressed ferns, a river-smoothed stone, a study in three greens. Please admire with your eyes.",
+        }],
+    }
 }
 
 #[cfg(test)]
@@ -1108,6 +1236,23 @@ mod tests {
                 z.name
             );
         }
+    }
+
+    #[test]
+    fn the_library_has_a_book_for_every_shelf() {
+        // No shelf should have to reuse a book — the collection must be at
+        // least as large as the number of shelves that read from it.
+        let lib = &zones()[GREAT_LIBRARY];
+        let shelves = (0..H)
+            .flat_map(|y| (0..W).map(move |x| (x, y)))
+            .filter(|&(x, y)| lib.tile(x, y) == Tile::Bookshelf)
+            .count();
+        assert!(shelves > 0, "the Library has no shelves at all");
+        assert!(
+            shelves <= crate::content::books::BOOKS.len(),
+            "the Library has {shelves} shelves but only {} books — some would duplicate",
+            crate::content::books::BOOKS.len()
+        );
     }
 
     #[test]

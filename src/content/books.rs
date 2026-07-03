@@ -8,7 +8,7 @@ pub struct Book {
     pub pages: &'static [&'static str],
 }
 
-pub static BOOKS: [Book; 16] = [
+pub static BOOKS: [Book; 24] = [
     Book {
         title: "The Rust Programming Language",
         pages: &[
@@ -123,6 +123,62 @@ pub static BOOKS: [Book; 16] = [
         pages: &[
             "Anything ending in ! — println!, vec!, format! — is a macro: code that writes code before the compiler reads it. The mark is a courtesy, so you always know when the language is about to do something clever on your behalf.",
             "With macro_rules! you may write your own, and with #[derive(...)] a struct can be handed whole abilities — Clone, Debug, and friends — the way a coat is handed to a guest. Used sparingly, they are delightful. Used everywhere, they are a haunted house. This book teaches sparingly.",
+        ],
+    },
+    Book {
+        title: "The Patterns Almanac",
+        pages: &[
+            "A pattern is a little picture the compiler tries to match your data against. match, if let, while let, even a plain let — all of them take patterns, and all of them can reach inside a value and give its parts names.",
+            "Destructuring, the locals call it: let (a, b) = pair unpacks a tuple, let Point { x, y } = p opens a struct, and Some(n) both tests and unwraps in one gesture. Whole staircases of if-else melt into a single, honest match.",
+        ],
+    },
+    Book {
+        title: "Closures: Spells That Remember",
+        pages: &[
+            "A closure is a small nameless function you can write right where you need it — |x| x + 1 — and unlike a plain function it may capture the world around it, borrowing or taking the variables in scope.",
+            "The three trait-siblings Fn, FnMut and FnOnce record how greedily a closure holds what it caught: a gentle reader, a scribbler, or a one-time guest that consumes what it's given. Iterators and threads run on closures the way mills run on water.",
+        ],
+    },
+    Book {
+        title: "Boxes, Rc, and the Cell Family",
+        pages: &[
+            "Sometimes one owner isn't enough, or a value must live on the heap. Box<T> puts a single value in a box with one owner; Rc<T> lets several owners share by counting the hands that hold it, tidying up when the last lets go.",
+            "And when a shared thing must still change, RefCell<T> moves the borrow-checking from compile time to run time — you promise to behave, and it politely panics if you don't. Reach for these when the ownership tree wants to be a graph.",
+        ],
+    },
+    Book {
+        title: "The Testing Handbook",
+        pages: &[
+            "Write a function, then write its doubts: a #[test] function that asserts what ought to be true. cargo test finds every one, runs them in parallel, and reports back — green for kept promises, red for broken ones.",
+            "Unit tests nestle in a #[cfg(test)] module beside the code; bigger tests live in the tests/ folder, exercising the crate as a stranger would. Even the examples in your documentation are run, so a lying doc-comment cannot hide for long.",
+        ],
+    },
+    Book {
+        title: "Slices, Vecs, and the Shape of Data",
+        pages: &[
+            "A Vec<T> is a growable row of values, owned and heap-kept; an array [T; N] is a fixed row known at compile time. A slice &[T] is a borrowed window onto either — a start and a length, owning nothing.",
+            "Because a slice is just a view, the same function can read from a Vec, an array, or part of either, and never needs a copy. &str is simply a slice of text. The librarians consider this tidiness close to a moral virtue.",
+        ],
+    },
+    Book {
+        title: "Modules, Crates, and Good Fences",
+        pages: &[
+            "A crate is one tree of code the compiler builds at once; a module is a room within it, made with mod and opened with use. Everything is private until you say pub — good fences, the saying goes, make good neighbors.",
+            "A library crate lends its abilities to others; a binary crate has a main and runs. A workspace gathers many crates under one roof, sharing a lockfile and a target folder, the way a street shares a name.",
+        ],
+    },
+    Book {
+        title: "Async, and the Art of Waiting Well",
+        pages: &[
+            "An async function returns a Future — a promise of a value not ready yet. Nothing happens until something awaits it; then the work proceeds until it must wait, yields the thread to others, and resumes when the world is ready.",
+            "This lets a single thread juggle thousands of slow errands — network calls, timers, files — without a thread apiece. A runtime such as tokio or async-std does the juggling. Rust supplies the grammar; you bring the patience.",
+        ],
+    },
+    Book {
+        title: "Enums: One of Several Things",
+        pages: &[
+            "An enum names a value that is exactly one of several shapes: an Direction that is Up or Down or Left or Right, a Shape that is a Circle with a radius or a Rect with two sides. Each variant may carry its own cargo.",
+            "Paired with match, an enum is Rust's great honesty engine: the compiler will not rest until every variant is accounted for. Option and Result — the whole language's approach to absence and failure — are, underneath, just two very famous enums.",
         ],
     },
 ];

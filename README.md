@@ -25,13 +25,18 @@ in the code, then come back to the game and press `c` to cast.
 
 | Key | Action |
 |---|---|
-| arrows / WASD / HJKL | walk (hold to keep walking) |
-| `e` / Enter | talk, read signs and Library books, fish |
+| arrows / `H` `J` `K` `L` (vim) | walk (hold to keep walking) |
+| `e` / Enter / Space | talk, advance dialogue, choose in menus, read signs & books, fish, rest at a campfire |
 | `c` | cast — compile & test the current quest file |
 | `q` | journal (current quest, file path, hints, satchel) |
 | `g` | grimoire — wild runes caught in the tall grass |
 | `f` | ask Ferris for a hint |
-| Esc | rest (save & quit menu) |
+| Esc | rest menu (text speed, save & quit) |
+
+Letter keys are read from the OS text stream, so the game follows your
+keyboard layout — Dvorak, AZERTY, and friends all just work. The window
+fills the whole screen with no black bars, ultrawide and superultrawide
+included.
 
 ### The road
 
@@ -40,12 +45,21 @@ in the code, then come back to the game and press `c` to cast.
 3. **Silverford Riverlands** — ownership, `&mut` borrows, `String` vs `&str`
 4. **Hearthspire Approach** — structs, `impl` methods, enums & `match`
 
+Before you set out you choose your traveller — a look and a name of your own.
+Then the days turn: morning, midday, evening, and a starlit night roll by in
+real time, and the whole world dims and brightens with them. Scattered
+campfires let you rest — press `e` to doze off with a scrap of Rust lore and
+wake at the next turn of the day; at night the folk of the world are fast
+asleep.
+
 And off the road: every house door opens, the tall grass hides wild runes
-with quick questions for your grimoire, quests leave keepsakes that unlock
-corners of the world (a lantern for the dark cave, a rod for the riverbanks),
-and the Great Library's shelves hold real books about Rust — its features
-and its history. Each place keeps its own hour: morning in Emberwick,
-firefly dusk in the Woods, rain over the river, mist on the mountain road.
+with quick questions for your grimoire (each asked only until you answer it
+true), quests leave keepsakes that unlock corners of the world (a lantern for
+the dark cave, a rod for the riverbanks), and the Great Library — three
+sunlit halls of stacks, a showcase gallery, and shelves of real books about
+Rust — waits at the end of the road. Each place keeps its own weather:
+petals over Emberwick, fireflies in the Woods, rain over the river, mist on
+the mountain road.
 
 Progress autosaves to `save.json`. Your quest files are never overwritten by
 the game — your work is sacred.
@@ -63,7 +77,8 @@ solve-through test, which proves every template fails untouched and every
 quest is completable.
 
 Built with [Macroquad](https://macroquad.rs) — the game renders CPU-side into
-a 480×270 framebuffer that the window integer-scales, so every screen can
+a framebuffer (480×270 by default, widened to match the window so ultrawide
+screens fill edge-to-edge) that the window integer-scales, so every screen can
 also be rendered headless. Sprites are baked from
 [Kenney](https://kenney.nl)'s CC0 packs (see `assets/CREDITS.md`). Exercise
 checking is rustlings-style: each quest file is compiled standalone with

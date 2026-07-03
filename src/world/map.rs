@@ -66,6 +66,15 @@ pub enum Tile {
     Chest,
     /// A hidden standing stone with a rune worth collecting. Press `e`.
     Runestone,
+    /// A tall window set into a wall — sunlight (or moonlight) spills through
+    /// it onto the floor below.
+    Window,
+    /// A framed painting hung on a wall (a Library showcase piece).
+    Painting,
+    /// A potted plant on display in the showcase gallery.
+    Plant,
+    /// A plinth bearing a curio — a rock, a relic, a small wonder.
+    Pedestal,
 }
 
 impl Tile {
@@ -379,6 +388,10 @@ pub fn char_tile(c: char) -> Option<Tile> {
         'x' => Tile::Crate,
         'C' => Tile::Chest,
         '@' => Tile::Runestone,
+        'W' => Tile::Window,
+        'A' => Tile::Painting,
+        'P' => Tile::Plant,
+        'E' => Tile::Pedestal,
         _ => return None,
     })
 }

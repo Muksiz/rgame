@@ -4,19 +4,55 @@
 
 use crate::gfx::atlas::{Atlas, TILE};
 
+/// The game's native logical resolution — a 16:9 handheld screen. Wider
+/// displays (ultrawide, superultrawide) render a *taller/wider* framebuffer
+/// than this so the picture fills the window edge-to-edge with no black bars;
+/// these stay the sensible default (and what the headless tools render at).
 pub const FB_W: usize = 480;
 pub const FB_H: usize = 270;
 
 pub struct Frame {
-    /// RGBA8, row-major, FB_W × FB_H.
+    /// RGBA8, row-major, `w` × `h`.
     pub px: Vec<u8>,
+    /// The framebuffer's actual size this frame — usually [`FB_W`]×[`FB_H`],
+    /// but stretched to match the window's aspect on wide screens.
+    pub w: usize,
+    pub h: usize,
 }
 
 impl Frame {
     pub fn new() -> Self {
+        Self::with_size(FB_W, FB_H)
+    }
+
+    /// A framebuffer of a given size. `w`/`h` are clamped to at least the
+    /// native resolution so the HUD and panels always have room to lay out.
+    pub fn with_size(w: usize, h: usize) -> Self {
+        let (w, h) = (w.max(FB_W), h.max(FB_H));
         Self {
-            px: vec![0; FB_W * FB_H * 4],
+            px: vec![0; w * h * 4],
+            w,
+            h,
         }
+    }
+
+    /// Resize in place, reusing the buffer. Cheap no-op when unchanged.
+    pub fn resize(&mut self, w: usize, h: usize) {
+        let (w, h) = (w.max(FB_W), h.max(FB_H));
+        if w == self.w && h == self.h {
+            return;
+        }
+        self.w = w;
+        self.h = h;
+        self.px.resize(w * h * 4, 0);
+    }
+
+    pub fn width(&self) -> i32 {
+        self.w as i32
+    }
+
+    pub fn height(&self) -> i32 {
+        self.h as i32
     }
 
     pub fn clear(&mut self, c: (u8, u8, u8)) {
@@ -30,10 +66,10 @@ impl Frame {
 
     #[inline]
     pub fn set(&mut self, x: i32, y: i32, c: (u8, u8, u8)) {
-        if x < 0 || y < 0 || x >= FB_W as i32 || y >= FB_H as i32 {
+        if x < 0 || y < 0 || x >= self.w as i32 || y >= self.h as i32 {
             return;
         }
-        let i = (y as usize * FB_W + x as usize) * 4;
+        let i = (y as usize * self.w + x as usize) * 4;
         self.px[i] = c.0;
         self.px[i + 1] = c.1;
         self.px[i + 2] = c.2;
@@ -43,10 +79,10 @@ impl Frame {
     /// Blend a pixel over the buffer with alpha 0..=255.
     #[inline]
     pub fn blend(&mut self, x: i32, y: i32, c: (u8, u8, u8), a: u8) {
-        if x < 0 || y < 0 || x >= FB_W as i32 || y >= FB_H as i32 || a == 0 {
+        if x < 0 || y < 0 || x >= self.w as i32 || y >= self.h as i32 || a == 0 {
             return;
         }
-        let i = (y as usize * FB_W + x as usize) * 4;
+        let i = (y as usize * self.w + x as usize) * 4;
         let a = a as u16;
         for (k, ch) in [c.0, c.1, c.2].into_iter().enumerate() {
             let old = self.px[i + k] as u16;

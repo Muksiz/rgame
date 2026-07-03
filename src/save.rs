@@ -8,6 +8,12 @@ pub const SAVE_PATH: &str = "save.json";
 
 #[derive(Serialize, Deserialize, Default, Debug, PartialEq)]
 pub struct SaveData {
+    /// Who the player chose to be. `default` keeps old scrolls loading — they
+    /// simply travel as the young traveller, unnamed.
+    #[serde(default)]
+    pub player_char: usize,
+    #[serde(default)]
+    pub player_name: String,
     pub completed: Vec<u8>,
     pub accepted: Vec<u8>,
     pub hints: BTreeMap<u8, usize>,
@@ -24,6 +30,18 @@ pub struct SaveData {
     pub zone: usize,
     pub pos: (i32, i32),
     pub play_ticks: u64,
+    /// Position in the day/night cycle. `default` keeps old scrolls loading —
+    /// they simply wake at dawn (tick 0).
+    #[serde(default)]
+    pub day_ticks: u32,
+    /// Typewriter text speed (0 slow, 1 normal, 2 fast). Old scrolls default
+    /// to the middle setting.
+    #[serde(default = "default_text_speed")]
+    pub text_speed: usize,
+}
+
+fn default_text_speed() -> usize {
+    1
 }
 
 pub fn exists() -> bool {
@@ -50,6 +68,8 @@ mod tests {
         let mut hints = BTreeMap::new();
         hints.insert(3u8, 2usize);
         let data = SaveData {
+            player_char: 2,
+            player_name: "Bramble".to_string(),
             completed: vec![1, 2, 3],
             accepted: vec![1, 2, 3, 4],
             hints,
@@ -59,6 +79,8 @@ mod tests {
             zone: 1,
             pos: (42, 17),
             play_ticks: 9001,
+            day_ticks: 12345,
+            text_speed: 2,
         };
         let json = serde_json::to_string(&data).unwrap();
         let back: SaveData = serde_json::from_str(&json).unwrap();
@@ -72,5 +94,9 @@ mod tests {
         assert!(back.grimoire.is_empty());
         assert_eq!(back.fish, 0);
         assert!(back.flags.is_empty());
+        assert_eq!(back.day_ticks, 0);
+        assert_eq!(back.player_char, 0);
+        assert!(back.player_name.is_empty());
+        assert_eq!(back.text_speed, 1, "old scrolls default to normal speed");
     }
 }

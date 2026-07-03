@@ -4,19 +4,20 @@
 //!
 //! ```sh
 //! cargo run --example snapshot -- world 0 --tick 600 --out shot.png
-//! cargo run --example snapshot -- <title|world|dialogue|journal|casting|pass|fizzle|paused|epilogue|toast|encounter|caught|grimoire|book>
+//! cargo run --example snapshot -- <title|charselect|world|dialogue|journal|casting|pass|fizzle|paused|resting|banner|epilogue|toast|encounter|caught|grimoire|book>
 //! ```
 //!
 //! `world` takes an optional zone (0-3 overworld, 4+ interiors) and
-//! `--pos x,y`; `--tick` drives animations (time of day is fixed per zone).
-//! Default output: snapshot.png.
+//! `--pos x,y`; `--tick` drives animations; `--day <ticks>` sets the position
+//! in the day/night clock (0 = dawn; see `rgame::app::DAY_LEN`), so outdoor
+//! scenes can be shot at any hour. Default output: snapshot.png.
 
 use std::io::BufWriter;
 
 use rgame::app::{App, Dialogue, DialogueKind, EncounterPhase, Screen};
 use rgame::checker::Outcome;
 use rgame::content::quests::QUESTS;
-use rgame::gfx::{self, Atlas, FB_H, FB_W, Frame};
+use rgame::gfx::{self, Atlas, Frame};
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -31,6 +32,10 @@ fn main() {
 
     let mut app = App::new();
     app.tick = tick;
+    app.day_ticks = flag("--day")
+        .and_then(|s| s.parse().ok())
+        .map(|d: u32| d % rgame::app::DAY_LEN)
+        .unwrap_or(0);
     app.screen = Screen::World;
 
     // `world 2` etc: jump to a zone with earlier quests completed.
@@ -49,7 +54,13 @@ fn main() {
     match scene {
         "world" => {}
         "title" => app.screen = Screen::Title { selected: 0 },
-        "toast" => app.toast("A quiet morning in Emberwick. Someone near the festival square could use a hand. (Arrows/WASD to walk, e to talk.)"),
+        "charselect" => {
+            app.screen = Screen::CharSelect {
+                idx: (tick as usize) % 4,
+                name: String::new(),
+            }
+        }
+        "toast" => app.toast("A quiet morning in Emberwick. Someone near the festival square could use a hand. (Arrows or H J K L to walk, e to talk.)"),
         "dialogue" => {
             let q = app.active_quest().expect("road not finished");
             let pages = q.intro.iter().map(|p| p.to_string()).collect();
@@ -85,7 +96,18 @@ fn main() {
                 scroll: 0,
             }
         }
-        "paused" => app.screen = Screen::Paused { selected: 0 },
+        "paused" => app.screen = Screen::Paused { selected: 1 },
+        "banner" => {
+            let name = app.zone().name.to_string();
+            app.banner = Some((name, app.tick + 40));
+        }
+        "resting" => {
+            app.screen = Screen::Resting {
+                lore: (tick as usize) % rgame::content::lore::LORE.len(),
+                t: 40,
+                wake: rgame::app::DayPhase::Night,
+            }
+        }
         "epilogue" => app.screen = Screen::Epilogue { page: 1 },
         "encounter" => {
             app.screen = Screen::Encounter {
@@ -123,14 +145,25 @@ fn main() {
     }
 
     let atlas = Atlas::load();
-    let mut fb = Frame::new();
+    // `--size WxH` renders at a non-native framebuffer size (e.g. 960x270 for a
+    // 32:9 superultrawide) to preview how the window fills without black bars.
+    let mut fb = match flag("--size") {
+        Some(s) => {
+            let (w, h) = s.split_once('x').expect("--size WxH");
+            Frame::with_size(w.parse().unwrap(), h.parse().unwrap())
+        }
+        None => Frame::new(),
+    };
     gfx::render(&mut fb, &atlas, &app);
 
     let file = std::fs::File::create(&out).expect("create output png");
-    let mut enc = png::Encoder::new(BufWriter::new(file), FB_W as u32, FB_H as u32);
+    let mut enc = png::Encoder::new(BufWriter::new(file), fb.w as u32, fb.h as u32);
     enc.set_color(png::ColorType::Rgba);
     enc.set_depth(png::BitDepth::Eight);
     let mut writer = enc.write_header().expect("png header");
     writer.write_image_data(&fb.px).expect("png data");
-    println!("wrote {out} ({FB_W}x{FB_H}, scene: {scene}, tick: {tick})");
+    println!(
+        "wrote {out} ({}x{}, scene: {scene}, tick: {tick})",
+        fb.w, fb.h
+    );
 }

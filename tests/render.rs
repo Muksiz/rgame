@@ -21,6 +21,19 @@ fn every_screen_renders() {
 
     render(&atlas, &app); // Title
 
+    // The character chooser, empty and with a typed name.
+    app.screen = Screen::CharSelect {
+        idx: 0,
+        name: String::new(),
+    };
+    render(&atlas, &app);
+    app.screen = Screen::CharSelect {
+        idx: 3,
+        name: "Bramble".to_string(),
+    };
+    render(&atlas, &app);
+    app.screen = Screen::Title { selected: 0 };
+
     // Every zone, interiors included — each keeps its own hour and weather.
     for zone in 0..app.zones.len() {
         app.zone_idx = zone;
@@ -139,6 +152,34 @@ fn every_screen_renders() {
 
     app.screen = Screen::Paused { selected: 1 };
     render(&atlas, &app);
+
+    // A zone-arrival banner, mid-slide.
+    app.screen = Screen::World;
+    app.banner = Some(("Whispering Woods".to_string(), app.tick + 30));
+    render(&atlas, &app);
+    app.banner = None;
+
+    // Resting by a campfire, mid fade-in.
+    app.screen = Screen::Resting {
+        lore: 3,
+        t: 2,
+        wake: rgame::app::DayPhase::Night,
+    };
+    render(&atlas, &app);
+    app.screen = Screen::Resting {
+        lore: 10,
+        t: 40,
+        wake: rgame::app::DayPhase::Morning,
+    };
+    render(&atlas, &app);
+
+    // The overworld at night: NPCs asleep, moon in the HUD.
+    app.day_ticks = rgame::app::DAY_LEN - 5000;
+    app.zone_idx = 0;
+    app.player = app.zones[0].spawn;
+    app.screen = Screen::World;
+    render(&atlas, &app);
+    app.day_ticks = 0;
 
     for page in 0..4 {
         app.screen = Screen::Epilogue { page };
