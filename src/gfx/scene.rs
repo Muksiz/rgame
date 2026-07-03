@@ -63,7 +63,24 @@ pub fn render(fb: &mut Frame, atlas: &Atlas, app: &App) {
 
 // ── the overworld ──────────────────────────────────────────────────────────
 
+/// How far the camera leans in: the world layer renders at native 16px tiles
+/// into a framebuffer this many times smaller, then upscales — so the world
+/// fills the screen with 2× chunkier pixels while the HUD stays fine-grained
+/// (and the window-fitting integer scale in main.rs never knows).
+const WORLD_ZOOM: usize = 2;
+
 fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
+    let mut wfb = Frame::scratch(fb.w.div_ceil(WORLD_ZOOM), fb.h.div_ceil(WORLD_ZOOM));
+    world_scene(&mut wfb, atlas, app);
+    fb.blit_scaled(&wfb, WORLD_ZOOM);
+    top_bar(fb, app, app.daylight());
+    bottom_bar(fb, app);
+    zone_banner(fb, app);
+}
+
+/// Everything that lives *in* the world — tiles, folk, weather — drawn at
+/// native tile scale into whatever frame it's given (see `WORLD_ZOOM`).
+fn world_scene(fb: &mut Frame, atlas: &Atlas, app: &App) {
     let dl = app.daylight();
     let (view_w, view_h) = (tiles_across(fb.width()), tiles_across(fb.height()));
     let (ox, oy) = camera::viewport_origin(app.player, view_w, view_h);
@@ -254,9 +271,6 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
     if let Some(kind) = zone.weather {
         weather(fb, kind, app.tick, dl);
     }
-    top_bar(fb, app, dl);
-    bottom_bar(fb, app);
-    zone_banner(fb, app);
 }
 
 /// A place-name banner that slides down when you arrive somewhere new, holds a

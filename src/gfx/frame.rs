@@ -47,6 +47,47 @@ impl Frame {
         self.px.resize(w * h * 4, 0);
     }
 
+    /// A bare offscreen buffer at exactly the requested size — no HUD-minimum
+    /// clamp, because nothing lays text out here. The world layer draws into
+    /// one of these before being zoomed up onto the screen.
+    pub fn scratch(w: usize, h: usize) -> Self {
+        Self {
+            px: vec![0; w * h * 4],
+            w,
+            h,
+        }
+    }
+
+    /// Nearest-neighbor upscale of `src` into this frame's top-left corner,
+    /// each source pixel becoming a `scale`×`scale` block (clipped at the
+    /// edges when the sizes don't divide evenly).
+    pub fn blit_scaled(&mut self, src: &Frame, scale: usize) {
+        for sy in 0..src.h {
+            for ry in 0..scale {
+                let dy = sy * scale + ry;
+                if dy >= self.h {
+                    break;
+                }
+                for sx in 0..src.w {
+                    let si = (sy * src.w + sx) * 4;
+                    for rx in 0..scale {
+                        let dx = sx * scale + rx;
+                        if dx >= self.w {
+                            break;
+                        }
+                        let di = (dy * self.w + dx) * 4;
+                        let (r, g, b, a) =
+                            (src.px[si], src.px[si + 1], src.px[si + 2], src.px[si + 3]);
+                        self.px[di] = r;
+                        self.px[di + 1] = g;
+                        self.px[di + 2] = b;
+                        self.px[di + 3] = a;
+                    }
+                }
+            }
+        }
+    }
+
     pub fn width(&self) -> i32 {
         self.w as i32
     }
