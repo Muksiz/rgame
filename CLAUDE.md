@@ -87,11 +87,15 @@ collection. Both packs still have unused tracks (3 left in *Action*, 3 in
 - **Ninja Adventure pack — the rest of it** (https://pixel-boy.itch.io/ninja-adventure-asset-pack, CC0).
   Vendored so far: the cast, the biome tilesets, `TilesetHouse.png` (the
   premade homes that fill out Emberwick, doors pasted shut at bake time),
-  the big `TilesetNature.png` trees, and one music track ("22 - Dream", the
-  calm night theme laid over the nature beds). The same download still holds
-  **36 more music tracks and 100+ SFX**, style-matched by construction and
-  already credited. First stop for the encounter sting, campfire rests, and
-  UI blips.
+  the big `TilesetNature.png` trees, one music track ("22 - Dream", the
+  calm night theme laid over the nature beds), and — raw, nothing baked yet —
+  `tilesets/TilesetWater.png` (water autotiles over every biome ground, pier
+  planks and posts), `tilesets/TilesetVillageAbandoned.png` (moss-eaten
+  overgrown ruins), `pack/Backgrounds/Vehicles/Boat.png` and the
+  `pack/Backgrounds/Animated/WaterRipples` strip. The same download still
+  holds **36 more music tracks and 100+ SFX**, style-matched by construction
+  and already credited. First stop for the encounter sting, campfire rests,
+  and UI blips.
 - **Kenney audio packs** (all CC0): *RPG Audio* (https://kenney.nl/assets/rpg-audio —
   footsteps, doors, chest creaks, coins: door warps, the cellar chest, keepsake
   handovers), *UI Audio* (https://kenney.nl/assets/ui-audio — menu/confirm
@@ -133,14 +137,15 @@ collection. Both packs still have unused tracks (3 left in *Action*, 3 in
   in use** (`assets/zelda_like/Overworld.png`, credited in
   `assets/CREDITS.md`): its perspective-drawn buildings are Emberwick's
   cottages, barn, shed, market stall and fountain (the `Tile::Facade` prefab
-  system). The same download's **cave and interior sheets plus its NPCs**
-  remain unvendored — first quarry for a dungeon-style interior or a
-  building style beyond the village
+  system). Its **cave and interior sheets and props** are now vendored too
+  (`assets/zelda_like/cave.png`, `Inner.png`, `objects.png` — chests, pots,
+  small props; nothing baked from them yet) — first quarry for a
+  dungeon-style interior or a building style beyond the village
   (https://opengameart.org/content/zelda-like-tilesets-and-sprites, CC0,
-  16×16; the rest of `gfx.zip` also holds `objects.png` with chests, pots
-  and small props).
-- **Kenney *Input Prompts Pixel 16×***
-  (https://kenney.nl/assets/input-prompts-pixel — 16×16 keyboard-key glyphs,
+  16×16). Only its NPC sheets remain unvendored.
+- ~~**Kenney *Input Prompts Pixel 16×***~~ — **now vendored, not yet drawn**
+  (`assets/kenney/input_prompts/`, credited in `assets/CREDITS.md`;
+  https://kenney.nl/assets/input-prompts-pixel — 16×16 keyboard-key glyphs,
   CC0) — drawn key hints (`e`, arrows, `g`) in the HUD/dialogue instead of
   text-only prompts.
 - **Kenney *Pixel UI Pack*** (https://kenney.nl/assets/pixel-ui-pack, CC0,
@@ -149,9 +154,11 @@ collection. Both packs still have unused tracks (3 left in *Action*, 3 in
 
 **Fonts** (current text is `font8x8` in `gfx/font.rs`):
 
-- **monogram by datagoblin** (https://datagoblin.itch.io/monogram, **CC0**) —
-  monospace bitmap font shipping as PNG+JSON, so it can be embedded the same
-  way as `font8x8`; a friendlier dialogue face, with an extended charset.
+- ~~**monogram by datagoblin**~~ — **now vendored, not yet wired in**
+  (`assets/fonts/monogram/` — the PNG+JSON bitmap form plus the extended
+  TTF; https://datagoblin.itch.io/monogram, **CC0**) — monospace bitmap font
+  embeddable the same way as `font8x8`; a friendlier dialogue face, with an
+  extended charset.
 - **m5x7 / m3x6 by Daniel Linssen** (https://managore.itch.io/m5x7, free,
   attribution appreciated — credit if used) — compact display faces for
   banners/titles.

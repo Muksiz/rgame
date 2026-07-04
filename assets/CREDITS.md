@@ -53,6 +53,33 @@ stall and plaza fountain — are from **"Zelda-like tilesets and sprites"** by
 `tools/bake_atlas.py` crops each building prefab out of it (and pastes the
 sheet's arched-door piece onto the doorless ones) at bake time.
 
+The rest of that same Zelda-like download is now vendored too, unmodified:
+`zelda_like/cave.png` and `zelda_like/Inner.png` (its cave and interior
+sheets) and `zelda_like/objects.png` (chests, pots, hearts and small props) —
+raw source material, nothing baked from them yet.
+
+Two more sheets from the **Ninja Adventure asset pack** (CC0, credited above)
+now sit in `ninja_adventure/tilesets/`, unmodified and not yet baked:
+`TilesetWater.png` (animated water autotiles over every biome ground, plus
+pier planks and posts — the raw material for real rivers, a harbor and piers
+in Silverford) and `TilesetVillageAbandoned.png` (moss-eaten, overgrown ruined
+houses — the raw material for abandoned cottages in the Whispering Woods).
+Alongside them, `ninja_adventure/pack/Backgrounds/` vendors the pack's
+`Vehicles/Boat.png` (a moored wooden boat) and
+`Animated/WaterRipples/SpriteSheet16x16.png` (a four-frame water ripple).
+
+`kenney/input_prompts/` holds the tilemap sheets of **Kenney's** *Input
+Prompts Pixel 16×* (https://kenney.nl/assets/input-prompts-pixel, **CC0**):
+16×16 keyboard-key glyphs for drawn key hints (`e`, arrows, `g`) in the HUD
+and dialogue; `Tilesheet.txt` is the pack's own layout notes (`tilemap.png`
+has 1px gutters, `tilemap_packed.png` has none).
+
+`fonts/monogram/` holds **monogram** by **Vinícius Menézio (datagoblin)**
+(https://datagoblin.itch.io/monogram, **CC0**): `monogram-bitmap.png` +
+`monogram-bitmap.json` are the embeddable bitmap form (same shape as the
+`font8x8` tables in `gfx/font.rs`), `monogram-extended.ttf` the full
+extended-charset face, `credits.txt` the author's own credits file.
+
 The critter, Ferris, bookshelf, chest, runestone and moon-mint sprites in
 the atlas are original pixel art for this project (same CC0 spirit — do
 what you like with them).
