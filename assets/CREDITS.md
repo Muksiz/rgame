@@ -59,14 +59,17 @@ sheets) and `zelda_like/objects.png` (chests, pots, hearts and small props) —
 raw source material, nothing baked from them yet.
 
 Two more sheets from the **Ninja Adventure asset pack** (CC0, credited above)
-now sit in `ninja_adventure/tilesets/`, unmodified and not yet baked:
-`TilesetWater.png` (animated water autotiles over every biome ground, plus
-pier planks and posts — the raw material for real rivers, a harbor and piers
-in Silverford) and `TilesetVillageAbandoned.png` (moss-eaten, overgrown ruined
-houses — the raw material for abandoned cottages in the Whispering Woods).
-Alongside them, `ninja_adventure/pack/Backgrounds/` vendors the pack's
-`Vehicles/Boat.png` (a moored wooden boat) and
-`Animated/WaterRipples/SpriteSheet16x16.png` (a four-frame water ripple).
+sit in `ninja_adventure/tilesets/` and are baked into the atlas:
+`TilesetWater.png` gives Silverford's harbor its pier planks, piling ends and
+moored skiffs (its water autotile sets remain unbaked), and
+`TilesetVillageAbandoned.png` the two moss-eaten abandoned houses standing in
+the Whispering Woods. The same pack's dead and gnarled trees (from
+`TilesetNature.png`) stand through the deep woods, and its forest-floor tiles
+are additionally baked in a dimmed mossy variant (the `WOODS_FLOOR` family)
+for the same zone. Alongside them, `ninja_adventure/pack/Backgrounds/`
+vendors `Vehicles/Boat.png` (the ferry tied up at the long pier) and
+`Animated/WaterRipples/SpriteSheet16x16.png` (the four-frame ripple lapping
+around hulls and pilings).
 
 `kenney/input_prompts/` holds the tilemap sheets of **Kenney's** *Input
 Prompts Pixel 16×* (https://kenney.nl/assets/input-prompts-pixel, **CC0**):

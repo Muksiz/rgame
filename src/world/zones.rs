@@ -15,8 +15,6 @@ const LIBRARY: &str = concat!(
     "gggggggggggL::Lggggggggggg",
 );
 
-const DOCK: &str = concat!("____      \n", "==========\n", "____      ",);
-
 const CAVE: &str = concat!("  ^^^^^  \n", "^^^^^^^^^\n", "^^^% %^^^\n", "^^%   %^^",);
 
 // ── the rooms behind the doors ──────────────────────────────────────────────
@@ -81,6 +79,27 @@ const CELLAR_ROOM: &str = concat!(
     "######+######",
 );
 
+// The rooms the woods took back: bare boards gone to trodden earth in
+// patches, whatever furniture wasn't worth carrying, and an old note each.
+const RUIN_ROOM: &str = concat!(
+    "#########\n",
+    "#.::..o.#\n",
+    "#:..t..:#\n",
+    "#..::...#\n",
+    "#.x...:.#\n",
+    "####+####",
+);
+
+const LODGE_ROOM: &str = concat!(
+    "###########\n",
+    "#.o..:..x.#\n",
+    "#::..t....#\n",
+    "#....:..::#\n",
+    "#.n......:#\n",
+    "#.u...x...#\n",
+    "#####+#####",
+);
+
 const CAVE_ROOM: &str = concat!(
     "  %%%%%%%%%%%  \n",
     " %%:::::::::%% \n",
@@ -107,6 +126,8 @@ pub const STOREHOUSE: usize = 8;
 pub const ECHO_CAVE: usize = 9;
 pub const GREAT_LIBRARY: usize = 10;
 pub const STOREHOUSE_CELLAR: usize = 11;
+pub const WOODS_RUIN: usize = 12;
+pub const WOODS_LODGE: usize = 13;
 
 /// Places with no light of their own: only the storm-lantern gets you in.
 pub fn needs_light(zone: usize) -> bool {
@@ -125,6 +146,9 @@ const TILLY_DOOR: (i32, i32) = (77, 48);
 const STOREHOUSE_DOOR: (i32, i32) = (136, 49);
 const CAVE_MOUTH: (i32, i32) = (122, 54);
 const LIBRARY_DOORS: [(i32, i32); 2] = [(210, 32), (211, 32)];
+// The abandoned houses in the Whispering Woods (prefab origin + door offset).
+const RUIN_STONE_DOOR: (i32, i32) = (67, 13);
+const RUIN_LODGE_DOOR: (i32, i32) = (173, 49);
 
 // Interior door tiles (stamp origin + the '+' offset in each room's art).
 const BAKERY_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 7, ROOM_AT.1 + 8);
@@ -142,6 +166,8 @@ const LIBRARY_ROOM_DOORS: [(i32, i32); 2] = [
     (ROOM_AT.0 + 20, ROOM_AT.1 + LIBRARY_H - 1),
 ];
 const CAVE_ROOM_EXIT: (i32, i32) = (ROOM_AT.0 + 7, ROOM_AT.1 + 9);
+const RUIN_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 4, ROOM_AT.1 + 5);
+const LODGE_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 5, ROOM_AT.1 + 6);
 
 /// Stepping on the outside door lands just inside the room's own door...
 fn enter(outside: (i32, i32), interior: usize, inside_door: (i32, i32)) -> Warp {
@@ -175,6 +201,8 @@ pub fn zones() -> Vec<Zone> {
         echo_cave(),
         great_library(),
         storehouse_cellar(),
+        woods_ruin(),
+        woods_lodge(),
     ]
 }
 
@@ -486,10 +514,12 @@ fn emberwick() -> Zone {
 fn whispering_woods() -> Zone {
     let seed = 22;
     let mut b = MapBuilder::new(seed);
-    b.scatter_all(Tile::Tree, 380);
+    // The deep woods press close: half again as many trees as the old
+    // airy version, hardly a flower, and the light stays down at dusk.
+    b.scatter_all(Tile::Tree, 560);
     b.scatter_all(Tile::Bush, 80);
     b.scatter_all(Tile::TallGrass, 90);
-    b.scatter_all(Tile::Flower, 15);
+    b.scatter_all(Tile::Flower, 4);
     b.scatter_all(Tile::Rock, 12); // mossgrown boulders between the trees
     b.edge_band(Tile::Tree, 4);
 
@@ -501,17 +531,30 @@ fn whispering_woods() -> Zone {
         b.set(x, 22, Tile::Fence);
     }
 
-    b.road(&[
+    // No proper road here — a single-file footpath that winds where the
+    // trees allow, and the forest presses right up to the wayside.
+    b.trail(&[
         (0, 36),
+        (14, 35),
         (30, 36),
         (45, 22),
+        (56, 19),
+        (70, 23),
         (90, 22),
         (105, 44),
+        (112, 42),
+        (126, 45),
         (150, 44),
+        (157, 38),
         (165, 30),
+        (180, 32),
+        (196, 28),
         (210, 30),
+        (222, 33),
+        (233, 32),
         (239, 32),
     ]);
+    b.clearing(8, 35, 1); // the welcome sign keeps its little glade
 
     // Wren's stump clearing.
     b.clearing(49, 18, 4);
@@ -526,20 +569,21 @@ fn whispering_woods() -> Zone {
     // leaves the road, loops around the hill and walks up into the mouth from
     // the south; it goes down first so the stamp's rocky jaw closes over any
     // stray paving while the mouth itself stays walkable.
-    b.road(&[
-        (CAVE_MOUTH.0, 44),
+    b.trail(&[
+        (CAVE_MOUTH.0, 42),
         (112, 46),
         (112, 57),
         (CAVE_MOUTH.0, 57),
         (CAVE_MOUTH.0, CAVE_MOUTH.1 + 1),
     ]);
+    b.clearing(111, 52, 1); // the moon-mint stays a step off the cave path
     b.stamp(118, 52, CAVE);
 
     // Mossy old gate across the east road.
     barrier(&mut b, 233, 30..=34, Tile::Tree);
 
     b.set(8, 34, Tile::Sign);
-    b.set(120, 40, Tile::Sign);
+    b.set(120, 41, Tile::Sign);
 
     b.clearing(49, 20, 1);
     b.clearing(101, 46, 1);
@@ -582,6 +626,48 @@ fn whispering_woods() -> Zone {
         None,
     );
     b.prefab(224, 20, atlas::TREE_TALL_PINE, atlas::TREE_TALL_SIZE, None);
+    // And the dead old growth between them: bare gnarled crowns and tall
+    // bramble snags, thicker the deeper in you go.
+    for &(x, y) in &[(38, 6), (70, 30), (160, 56), (184, 12), (226, 44)] {
+        b.prefab(x, y, atlas::TREE_DEAD_BIG, atlas::TREE_DEAD_BIG_SIZE, None);
+    }
+    for &(x, y) in &[(14, 14), (52, 44), (90, 52), (132, 8), (200, 52)] {
+        b.prefab(x, y, atlas::TREE_GNARLED, atlas::TREE_GNARLED_SIZE, None);
+    }
+
+    // Two houses the woods took back, long before anyone alive remembers:
+    // a moss-eaten stone cottage north of Wren's stretch of road, and a
+    // timber lodge sunk in the deep southeast. Both doorways still open —
+    // dim rooms, old notes, nobody home. Unsignposted trails of gaps in
+    // the trees lead to each, same as Nettle's hollow.
+    b.prefab(
+        66,
+        11,
+        atlas::RUIN_STONE,
+        atlas::RUIN_SIZE,
+        Some(atlas::RUIN_DOOR_AT),
+    );
+    for y in [15, 17, 19, 21] {
+        b.clearing(67, y, 1);
+    }
+    b.prefab(
+        172,
+        47,
+        atlas::RUIN_LODGE,
+        atlas::RUIN_SIZE,
+        Some(atlas::RUIN_DOOR_AT),
+    );
+    for (x, y) in [
+        (173, 51),
+        (170, 50),
+        (168, 48),
+        (166, 47),
+        (163, 46),
+        (160, 45),
+        (158, 44),
+    ] {
+        b.clearing(x, y, 1);
+    }
 
     // Moon-mint for Granny Sorrel's kettle, just off the cave path,
     // and two runestones for sharp-eyed wanderers.
@@ -602,11 +688,15 @@ fn whispering_woods() -> Zone {
         locked_msg: "An old mossy gate, swollen shut. The woods aren't done with you yet, it seems.",
         unlock_msg: "The mossy gate creaks open, almost politely. Onward, to the river!",
         weather: Some(Weather::Fireflies),
-        daylight: 0.45,
+        daylight: 0.32,
         interior: false,
         border: Border::Forest,
         seed,
-        warps: vec![enter(CAVE_MOUTH, ECHO_CAVE, CAVE_ROOM_EXIT)],
+        warps: vec![
+            enter(CAVE_MOUTH, ECHO_CAVE, CAVE_ROOM_EXIT),
+            enter(RUIN_STONE_DOOR, WOODS_RUIN, RUIN_ROOM_DOOR),
+            enter(RUIN_LODGE_DOOR, WOODS_LODGE, LODGE_ROOM_DOOR),
+        ],
         npcs: vec![
             Npc {
                 name: "Pip",
@@ -690,7 +780,7 @@ fn whispering_woods() -> Zone {
                 text: "The Whispering Woods. The trees gossip, but they mean well.",
             },
             Sign {
-                pos: (120, 40),
+                pos: (120, 41),
                 text: "Echo Cave, south. Please do not teach the echo any bad words.",
             },
         ],
@@ -708,12 +798,15 @@ fn silverford() -> Zone {
 
     b.road(&[(0, 40), (60, 40), (80, 34), (140, 34)]);
     b.road(&[(170, 34), (239, 34)]);
-    b.road(&[(130, 36), (130, 46), (134, 47)]);
+    b.road(&[(130, 36), (130, 46), (134, 47), (139, 47)]);
     b.road(&[(138, 32), (138, 22), (146, 22)]);
     b.road(&[(114, 42), (114, 54)]);
 
-    // The Silverford itself (drawn after the roads: the river wins).
-    b.river(155, 6.0, 4);
+    // The Silverford itself (drawn after the roads: the river wins) — and a
+    // tributary winding in from the northwest hills to join it, so the
+    // Riverlands finally earn their plural.
+    b.river(155, 6.0, 5);
+    b.stream(&[(0, 10), (40, 14), (80, 8), (120, 14), (155, 12)], 2);
 
     // The old bridge — its west end is also the gate east.
     for x in 146..=168 {
@@ -725,15 +818,30 @@ fn silverford() -> Zone {
         b.set(146, y, Tile::Gate);
     }
 
-    // Ferry dock, south along the west bank.
-    b.stamp(136, 46, DOCK);
+    // The harbor: a cobbled quay along the west bank below the bridge, three
+    // timber piers walking out over the water, the ferry tied up along the
+    // long one, and a couple of skiffs riding at their moorings.
+    use crate::gfx::atlas;
+    b.rect(139, 44, 7, 11, Tile::Plaza);
+    for x in 145..=151 {
+        b.set(x, 46, Tile::Pier);
+    }
+    for x in 145..=153 {
+        b.set(x, 50, Tile::Pier);
+    }
+    for x in 145..=149 {
+        b.set(x, 53, Tile::Pier);
+    }
+    b.prefab(147, 51, atlas::BOAT, atlas::BOAT_SIZE, None);
+    b.prefab(147, 47, atlas::SKIFF, atlas::SKIFF_SIZE, None);
+    // A third skiff upstream, pulled in by Juniper's fishing hole.
+    b.prefab(157, 21, atlas::SKIFF, atlas::SKIFF_SIZE, None);
 
     // Morrow's little beach.
     b.rect(112, 55, 14, 6, Tile::Sand);
     b.scatter(Tile::Reed, 180, (108, 53, 22, 10));
 
     // Old growth along the banks: broad crowns leaning over the meadows.
-    use crate::gfx::atlas;
     b.prefab(30, 28, atlas::TREE_BIG_GREEN, atlas::TREE_BIG_SIZE, None);
     b.prefab(56, 20, atlas::TREE_BIG_PINK, atlas::TREE_BIG_SIZE, None);
     b.prefab(84, 44, atlas::TREE_BIG_GREEN, atlas::TREE_BIG_SIZE, None);
@@ -821,6 +929,20 @@ fn silverford() -> Zone {
                     "The river brings me letters. I write back, but slowly.",
                     "The letter reached the end of its sentence at last, thanks to you. The river seems pleased. So am I.",
                 ],
+            },
+            // The harbor's own folk: two anglers who hold down the pier
+            // ends, lines in the water, all day long.
+            Npc {
+                name: "Angler Rush",
+                pos: (152, 50),
+                quest: None,
+                idle: &["Shh. Not because of the fish — they can't hear you. It's the principle."],
+            },
+            Npc {
+                name: "Angler Minnow",
+                pos: (149, 46),
+                quest: None,
+                idle: &["Caught one this big yesterday. The pier was shorter then, mind."],
             },
         ],
         critters: vec![
@@ -1141,6 +1263,40 @@ fn echo_cave() -> Zone {
         vec![Sign {
             pos: at(10, 6),
             text: "Someone has carved: HELLO. Below it, smaller: hello. Below that, tiny: hello.",
+        }],
+    )
+}
+
+fn woods_ruin() -> Zone {
+    room(
+        WOODS_RUIN,
+        "A Tumbledown Cottage",
+        133,
+        RUIN_ROOM,
+        0.5,
+        vec![exit(RUIN_ROOM_DOOR, WHISPERING_WOODS, RUIN_STONE_DOOR)],
+        vec![],
+        vec![Critter::new(CritterKind::Moth, at(6, 2))],
+        vec![Sign {
+            pos: at(4, 2),
+            text: "A note on the table, the ink gone the color of weak tea: 'The roof lets in more sky than it keeps out, and the moss has opinions about the pantry. Gone down to Emberwick. Whoever finds this: the kettle's yours. Mind the third floorboard.'",
+        }],
+    )
+}
+
+fn woods_lodge() -> Zone {
+    room(
+        WOODS_LODGE,
+        "The Old Forester's Lodge",
+        144,
+        LODGE_ROOM,
+        0.45,
+        vec![exit(LODGE_ROOM_DOOR, WHISPERING_WOODS, RUIN_LODGE_DOOR)],
+        vec![],
+        vec![Critter::new(CritterKind::Moth, at(8, 3))],
+        vec![Sign {
+            pos: at(5, 2),
+            text: "A note nailed to the table, in a hand that pressed hard: 'Gone deeper in. The trees talk less nonsense than the town does, and the quiet keeps better company. Don't come looking — but if you do, follow the gaps, not the road. — N.'",
         }],
     )
 }

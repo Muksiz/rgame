@@ -14,7 +14,7 @@ use crate::world::entity::{CritterKind, Npc};
 use crate::world::map::{Tile, Weather, Zone, hash2};
 use crate::world::zones::{
     BAKERY, CARPENTER_HOUSE, ECHO_CAVE, GREAT_LIBRARY, SORREL_COTTAGE, STOREHOUSE,
-    STOREHOUSE_CELLAR, TILLY_COTTAGE,
+    STOREHOUSE_CELLAR, TILLY_COTTAGE, WOODS_LODGE, WOODS_RUIN,
 };
 
 /// How many whole tiles it takes to cover a framebuffer of size `px`. The
@@ -228,13 +228,18 @@ fn world_scene(fb: &mut Frame, atlas: &Atlas, app: &App) {
         let Some((px, py)) = to_screen(npc.pos.0, npc.pos.1) else {
             continue;
         };
+        // Anyone standing on a pier with open water at their feet is
+        // fishing: they face the river, line cast, and don't glance about.
+        let fishing = !night
+            && zone.tile(npc.pos.0, npc.pos.1) == Tile::Pier
+            && zone.tile(npc.pos.0, npc.pos.1 + 1) == Tile::Water;
         // Folk turn to face the player when spoken-to distance, and breathe
         // with a slow one-pixel sway on their own rhythm.
         let (dx, dy) = (app.player.0 - npc.pos.0, app.player.1 - npc.pos.1);
         let dir = if dx.abs() + dy.abs() == 1 {
             facing_cell((dx, dy)) // turn to face a visitor within talking reach
-        } else if night {
-            0 // asleep, facing down
+        } else if night || fishing {
+            0 // asleep — or watching the bobber — facing down
         } else {
             // A slow idle gaze: they glance about on their own unhurried beat.
             (hash2(npc.pos.0, npc.pos.1, 0x9A2E).wrapping_add((app.tick / 55) as u32) % 4) as u16
@@ -246,6 +251,10 @@ fn world_scene(fb: &mut Frame, atlas: &Atlas, app: &App) {
         // a quest marker — nobody's handing out errands in their sleep.
         let light = if night { ent_light * 0.82 } else { ent_light };
         fb.sprite(atlas, npc_sprite(npc) + dir, px, py + sway, light);
+        if fishing {
+            // The cast line, rod tip to bobber, out on the water below.
+            fb.sprite(atlas, atlas::ROD_CAST, px, py + TILE as i32, light);
+        }
         if night {
             // A little z drifting up from a sleeping head.
             let bob = ((app.tick / 14 + phase) % 3) as i32;
@@ -356,7 +365,7 @@ fn tile_sprites(
         Tile::TallGrass => {
             // Each biome's encounter grass sways between its own two frames.
             let (a, b) = match zone_id {
-                1 => (atlas::TUFT_DEEP_A, atlas::TUFT_DEEP_B),
+                1 => (atlas::WOODS_TUFT_A, atlas::WOODS_TUFT_B),
                 3 => (atlas::TUFT_SNOW_A, atlas::TUFT_SNOW_B),
                 _ => (atlas::SPROUT, atlas::SPROUT_ALT),
             };
@@ -400,13 +409,15 @@ fn tile_sprites(
                 atlas::TREE_GREEN,
                 atlas::PINE,
             ];
+            // The woods run dark: pines and teal crowns, no cheery orchard
+            // greens past the first bend.
             const WOODS: [u16; 6] = [
                 atlas::PINE,
-                atlas::TREE_GREEN,
+                atlas::PINE_TEAL,
                 atlas::PINE_TEAL,
                 atlas::TREE_TEAL,
-                atlas::TREE_ORANGE,
-                atlas::PINE_ORANGE,
+                atlas::PINE,
+                atlas::TREE_GREEN,
             ];
             const RIVER: [u16; 6] = [
                 atlas::TREE_GREEN,
@@ -430,7 +441,15 @@ fn tile_sprites(
                 2 => RIVER,
                 _ => CRAGS,
             };
-            let id = if matches!(zone_id, 1 | 3) && h % 19 == 7 {
+            // Dead snags stand among the living — a rare sight up on the
+            // Hearthspire, but ever more common the deeper into the
+            // Whispering Woods you walk.
+            let snag_in = match zone_id {
+                1 => 3 + (x / 60).clamp(0, 3) as u32,
+                3 => 1,
+                _ => 0,
+            };
+            let id = if h % 19 < snag_in {
                 atlas::DEAD_TREE
             } else {
                 mix[(h % 6) as usize]
@@ -447,6 +466,16 @@ fn tile_sprites(
             (ground_base(zone, h), Some(id))
         }
         Tile::Water => {
+            // Water laps around pilings and hulls: a slow ripple beside
+            // anything built out over it (piers, moored boats).
+            let built = |t: Tile| matches!(t, Tile::Pier | Tile::Facade(_));
+            let ripples = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+                .iter()
+                .any(|&(dx, dy)| built(zone.tile(x + dx, y + dy)));
+            if ripples {
+                let frame = ((tick / 10 + h as u64) % 4) as u16;
+                return (water_frame(x, y, tick), Some(atlas::RIPPLE + frame));
+            }
             // A lily pad drifts here and there, where water meets the banks.
             let pad = h.is_multiple_of(29)
                 && [(-1, 0), (1, 0), (0, -1), (0, 1)]
@@ -474,6 +503,19 @@ fn tile_sprites(
             (ground_base(zone, h), Some(id))
         }
         Tile::Bridge => (atlas::BRIDGE, None),
+        Tile::Pier => {
+            // Boardwalk planking; the cell whose south side meets open water
+            // shows its piling tops, so every pier stands on visible legs.
+            let end = !matches!(zone.tile(x, y + 1), Tile::Pier);
+            (
+                water_frame(x, y, tick),
+                Some(if end {
+                    atlas::PIER_END
+                } else {
+                    atlas::PIER_PLANK
+                }),
+            )
+        }
         // Under the ground, "path" is the floor itself: cave stone strewn
         // with what grows and glitters in the dark, cellar earth kept
         // tidier (it is somebody's pantry, after all).
@@ -529,6 +571,8 @@ fn tile_sprites(
                 match zone_id {
                     STOREHOUSE_CELLAR => h.is_multiple_of(5).then_some(atlas::COBWEB_A),
                     STOREHOUSE => (back_wall && h.is_multiple_of(4)).then_some(atlas::COBWEB_A),
+                    // Nobody has swept the abandoned houses in a long while.
+                    WOODS_RUIN | WOODS_LODGE => h.is_multiple_of(3).then_some(atlas::COBWEB_A),
                     BAKERY | SORREL_COTTAGE | CARPENTER_HOUSE | TILLY_COTTAGE if back_wall => {
                         match h % 11 {
                             0 => Some(atlas::FRAME_TEAL),
@@ -548,7 +592,9 @@ fn tile_sprites(
         // "beneath" is comes from the nearest ground outside the prefab, so
         // the plaza fountain stands on cobbles and a lane-side house on its
         // lane, never on a stray patch of grass.
-        Tile::Facade(cell) | Tile::FacadeDoor(cell) => (facade_ground(zone, x, y, h), Some(cell)),
+        Tile::Facade(cell) | Tile::FacadeDoor(cell) => {
+            (facade_ground(zone, x, y, h, tick), Some(cell))
+        }
         // Alternate exterior wall builds: sprigs of ivy here and there, same
         // as plain Wall — just a different building material underneath.
         Tile::WallStone => (atlas::WALL_STONE, h.is_multiple_of(7).then_some(atlas::IVY)),
@@ -807,9 +853,9 @@ fn paved_base(zone: &Zone, x: i32, y: i32, default: u16) -> u16 {
 /// building actually stands on. A prefab stamp replaces the tiles beneath it,
 /// so the original ground is gone — instead, walk outward in growing rings
 /// until something that isn't part of a prefab turns up, and match it. The
-/// plaza fountain gets cobbles, a roadside house its road, everything else
-/// the zone's grass.
-fn facade_ground(zone: &Zone, x: i32, y: i32, h: u32) -> u16 {
+/// plaza fountain gets cobbles, a roadside house its road, a moored boat the
+/// river it floats on, everything else the zone's grass.
+fn facade_ground(zone: &Zone, x: i32, y: i32, h: u32, tick: u64) -> u16 {
     for r in 1..=4i32 {
         for dy in -r..=r {
             for dx in -r..=r {
@@ -833,6 +879,9 @@ fn facade_ground(zone: &Zone, x: i32, y: i32, h: u32) -> u16 {
                         };
                     }
                     Tile::Sand => return atlas::SAND,
+                    Tile::Water | Tile::WaterRock | Tile::Pier => {
+                        return water_frame(x, y, tick);
+                    }
                     _ => return ground_base(zone, h),
                 }
             }
@@ -866,7 +915,7 @@ fn furniture_base(zone: &Zone, x: i32, y: i32) -> u16 {
 fn interior_floor(zone_id: usize, h: u32) -> u16 {
     match zone_id {
         BAKERY => atlas::FLOOR_LIGHT,
-        CARPENTER_HOUSE | STOREHOUSE => atlas::FLOOR_BOARDS,
+        CARPENTER_HOUSE | STOREHOUSE | WOODS_RUIN | WOODS_LODGE => atlas::FLOOR_BOARDS,
         GREAT_LIBRARY => {
             if h.is_multiple_of(11) {
                 atlas::SANDSTONE_B
@@ -919,7 +968,11 @@ fn wall_base(zone_id: usize, h: u32) -> u16 {
 /// on the Hearthspire approach. Mostly plain, with sprinkled richer variants.
 fn ground_base(zone: &Zone, h: u32) -> u16 {
     let family = match zone.id {
-        1 => [atlas::DEEP, atlas::DEEP_B, atlas::DEEP_C],
+        1 => [
+            atlas::WOODS_FLOOR,
+            atlas::WOODS_FLOOR_B,
+            atlas::WOODS_FLOOR_C,
+        ],
         2 => [atlas::MARSH, atlas::MARSH_B, atlas::MARSH_C],
         3 => [atlas::SNOW, atlas::SNOW_B, atlas::SNOW_C],
         _ => {
@@ -1044,7 +1097,7 @@ fn blob_shadow(fb: &mut Frame, x: i32, y: i32, w: i32, h: i32) {
 
 /// Tiles that read as water surface (no shoreline drawn between them).
 fn is_wet(t: Tile) -> bool {
-    matches!(t, Tile::Water | Tile::WaterRock | Tile::Bridge)
+    matches!(t, Tile::Water | Tile::WaterRock | Tile::Bridge | Tile::Pier)
 }
 
 /// Lighter shallows along every water edge that touches land, plus the

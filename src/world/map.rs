@@ -27,6 +27,10 @@ pub enum Tile {
     WaterRock,
     Reed,
     Bridge,
+    /// Harbor boardwalk planking laid out over the water on pilings —
+    /// walkable, like a bridge, but timber-and-tar dockside rather than a
+    /// road crossing.
+    Pier,
     Path,
     /// Cobbled paving — the festival square and other village-proud ground.
     Plaza,
@@ -110,6 +114,7 @@ impl Tile {
                 | Tile::Path
                 | Tile::Plaza
                 | Tile::Bridge
+                | Tile::Pier
                 | Tile::Sand
                 | Tile::Floor
                 | Tile::Door
@@ -315,6 +320,24 @@ impl MapBuilder {
         }
     }
 
+    /// A single-file footpath through the waypoints (same L-shaped segments
+    /// as `road`), with no cleared shoulders — the forest presses right up
+    /// to the wayside. For places where a proper road would be a lie.
+    pub fn trail(&mut self, waypoints: &[(i32, i32)]) {
+        for pair in waypoints.windows(2) {
+            let (x0, y0) = pair[0];
+            let (x1, y1) = pair[1];
+            let sx = if x1 >= x0 { 1 } else { -1 };
+            for x in step_range(x0, x1, sx) {
+                self.set(x, y0, Tile::Path);
+            }
+            let sy = if y1 >= y0 { 1 } else { -1 };
+            for y in step_range(y0, y1, sy) {
+                self.set(x1, y, Tile::Path);
+            }
+        }
+    }
+
     /// A river running top-to-bottom, meandering around `center_x`.
     pub fn river(&mut self, center_x: i32, amplitude: f32, half_width: i32) {
         for y in 0..MAP_H {
@@ -329,6 +352,46 @@ impl MapBuilder {
             for &x in &[cx - half_width - 1, cx + half_width + 1] {
                 if self.get(x, y) == Tile::Grass && hash2(x, y, self.seed ^ 0x0EED) % 100 < 45 {
                     self.set(x, y, Tile::Reed);
+                }
+            }
+        }
+    }
+
+    /// A winding side-stream painted along waypoints (L-shaped segments,
+    /// like `road`), `half_width` water on either side and reedy banks —
+    /// how a tributary finds its way to the river proper.
+    pub fn stream(&mut self, waypoints: &[(i32, i32)], half_width: i32) {
+        let mut pts: Vec<(i32, i32)> = Vec::new();
+        for pair in waypoints.windows(2) {
+            let (x0, y0) = pair[0];
+            let (x1, y1) = pair[1];
+            let sx = if x1 >= x0 { 1 } else { -1 };
+            for x in step_range(x0, x1, sx) {
+                pts.push((x, y0));
+            }
+            let sy = if y1 >= y0 { 1 } else { -1 };
+            for y in step_range(y0, y1, sy) {
+                pts.push((x1, y));
+            }
+        }
+        for &(x, y) in &pts {
+            for dy in -half_width..=half_width {
+                for dx in -half_width..=half_width {
+                    self.set(x + dx, y + dy, Tile::Water);
+                }
+            }
+        }
+        // Reeds take root along the new banks.
+        for &(x, y) in &pts {
+            let r = half_width + 1;
+            for dy in -r..=r {
+                for dx in -r..=r {
+                    let (nx, ny) = (x + dx, y + dy);
+                    if self.get(nx, ny) == Tile::Grass
+                        && hash2(nx, ny, self.seed ^ 0x0EED) % 100 < 40
+                    {
+                        self.set(nx, ny, Tile::Reed);
+                    }
                 }
             }
         }

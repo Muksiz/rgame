@@ -139,6 +139,22 @@ def na_prefab(sheet_name, name, px, py, tw, th, paste=None, shift=(0, 0)):
     ]
 
 
+def img_prefab(path, name, px, py, tw, th):
+    """A multi-tile prefab cut straight from any RGBA image file (the raw
+    `pack/` material), sliced into tw x th atlas cells row-major, same
+    contract as zl_prefab/na_prefab."""
+    sheet = Image.open(path).convert("RGBA")
+    img = sheet.crop((px, py, px + tw * TILE, py + th * TILE))
+    return [
+        (
+            name if r == 0 and c == 0 else None,
+            img.crop((c * TILE, r * TILE, c * TILE + TILE, r * TILE + TILE)),
+        )
+        for r in range(th)
+        for c in range(tw)
+    ]
+
+
 def na_idles(folder):
     """The four 16x16 idle frames (down, up, left, right) of a cast member.
 
@@ -198,6 +214,18 @@ def tint(sprite, rgb):
                 a,
             ),
         )
+    return out
+
+
+def dim(sprite, mul):
+    """Darken a sprite channel-by-channel (mul = (r, g, b) factors) — how the
+    deep-woods floor gets its dusk without a second source tile."""
+    out = sprite.copy()
+    px = out.load()
+    for y in range(out.height):
+        for x in range(out.width):
+            r, g, b, a = px[x, y]
+            px[x, y] = (int(r * mul[0]), int(g * mul[1]), int(b * mul[2]), a)
     return out
 
 
@@ -591,6 +619,25 @@ vvvvvvvvvvvvvVvv
 vvvvvvvvvvvvvvvv
 vvvvvvvVvvvvvvvv
 vvvvvvvvvvvvvvvv
+"""
+
+ROD_CAST = """
+.....b..........
+.....bb.........
+......bb........
+.......bb.......
+........bb......
+.........b......
+.........k......
+.........k......
+.........k......
+.........k......
+........1w......
+........11......
+................
+................
+................
+................
 """
 
 PALETTE = {
@@ -993,6 +1040,40 @@ def main(sheet_path, chars_path):
         # single-tile garden flowers to thicken the village beds
         ("SUNFLOWER_TALL", na_tile("TilesetNature", 1, 11)),
         ("ROSEBUSH", na_tile("TilesetNature", 2, 11)),
+        # ── the zone-identity pass (all Ninja Adventure, CC0; see
+        # assets/CREDITS.md): dead old growth for a darker Whispering Woods,
+        # moss-eaten ruins to stumble on between the trees, and the makings
+        # of Silverford's working waterfront. ──
+        *na_prefab("TilesetNature", "TREE_DEAD_BIG", 64, 0, 2, 2),
+        *na_prefab("TilesetNature", "TREE_GNARLED", 16, 80, 2, 3),
+        *na_prefab("TilesetVillageAbandoned", "RUIN_STONE", 0, 0, 4, 3),
+        *na_prefab("TilesetVillageAbandoned", "RUIN_LODGE", 192, 128, 4, 3),
+        # Harbor timber from TilesetWater: pier planks (the END cell carries
+        # the piling tops along its water edge) and a little moored skiff.
+        ("PIER_PLANK", na_tile("TilesetWater", 5, 13)),
+        ("PIER_END", na_tile("TilesetWater", 5, 15)),
+        *na_prefab("TilesetWater", "SKIFF", 416, 0, 2, 1),
+        # The ferry itself, from the raw pack (Backgrounds/Vehicles).
+        *img_prefab(
+            NA_DIR / "pack" / "Backgrounds" / "Vehicles" / "Boat.png",
+            "BOAT", 0, 0, 5, 2,
+        ),
+        # A four-frame water ripple, lapping around hulls and pilings.
+        *img_prefab(
+            NA_DIR / "pack" / "Backgrounds" / "Animated" / "WaterRipples"
+            / "SpriteSheet16x16.png",
+            "RIPPLE", 0, 0, 4, 1,
+        ),
+        # A cast fishing line, drawn on the water south of whoever holds it.
+        ("ROD_CAST", from_art(ROD_CAST, PALETTE)),
+        # The deep-woods floor: the forest ground family dimmed toward moss
+        # and shadow, plus matching dimmed encounter-grass tufts, so the
+        # Whispering Woods keep their dusk even at noon.
+        ("WOODS_FLOOR", dim(na_tile("TilesetFloor", 11, 12), (0.62, 0.74, 0.68))),
+        ("WOODS_FLOOR_B", dim(na_tile("TilesetFloor", 12, 12), (0.62, 0.74, 0.68))),
+        ("WOODS_FLOOR_C", dim(na_tile("TilesetFloor", 14, 12), (0.62, 0.74, 0.68))),
+        ("WOODS_TUFT_A", dim(na_tile("TilesetFloorDetail", 0, 2), (0.62, 0.74, 0.68))),
+        ("WOODS_TUFT_B", dim(na_tile("TilesetFloorDetail", 1, 2), (0.62, 0.74, 0.68))),
     ]
 
     rows = (len(cells) + COLS - 1) // COLS

@@ -329,6 +329,26 @@ pub const TREE_TALL_SNOW: u16 = 631; // snowbound canopy (4x3)
 pub const BUSH_BIG: u16 = 643; // spreading garden bush (2x2)
 pub const SUNFLOWER_TALL: u16 = 647;
 pub const ROSEBUSH: u16 = 648;
+// The zone-identity pass (all Ninja Adventure, CC0): dead old growth and
+// moss-eaten ruins for a darker Whispering Woods, harbor timber and boats
+// for Silverford's waterfront.
+pub const TREE_DEAD_BIG: u16 = 649; // gnarled bare crown (2x2)
+pub const TREE_GNARLED: u16 = 653; // tall dead bramble tree (2x3)
+pub const RUIN_STONE: u16 = 659; // moss-eaten stone cottage, open doorway (4x3)
+pub const RUIN_LODGE: u16 = 671; // overgrown timber lodge, open doorway (4x3)
+pub const PIER_PLANK: u16 = 683; // boardwalk planking (seamless)
+pub const PIER_END: u16 = 684; // planking with piling tops along its edge
+pub const SKIFF: u16 = 685; // little moored rowboat (2x1)
+pub const BOAT: u16 = 687; // the ferry, tied up along the long pier (5x2)
+pub const RIPPLE: u16 = 697; // four-frame water ripple (RIPPLE..RIPPLE+3)
+pub const ROD_CAST: u16 = 701; // a cast fishing line, bobber and all
+// The deep-woods floor and tufts: the forest ground family dimmed toward
+// moss and shadow, so the Whispering Woods keep their dusk even at noon.
+pub const WOODS_FLOOR: u16 = 702;
+pub const WOODS_FLOOR_B: u16 = 703;
+pub const WOODS_FLOOR_C: u16 = 704;
+pub const WOODS_TUFT_A: u16 = 705;
+pub const WOODS_TUFT_B: u16 = 706;
 pub const HOUSE_SIZE: (i32, i32) = (5, 5);
 pub const SHED_SIZE: (i32, i32) = (3, 3);
 pub const STALL_SIZE: (i32, i32) = (5, 5);
@@ -339,6 +359,13 @@ pub const NA_TALL_SIZE: (i32, i32) = (4, 4);
 pub const TREE_BIG_SIZE: (i32, i32) = (3, 3);
 pub const TREE_TALL_SIZE: (i32, i32) = (4, 3);
 pub const BUSH_BIG_SIZE: (i32, i32) = (2, 2);
+pub const TREE_DEAD_BIG_SIZE: (i32, i32) = (2, 2);
+pub const TREE_GNARLED_SIZE: (i32, i32) = (2, 3);
+pub const RUIN_SIZE: (i32, i32) = (4, 3);
+/// Where the walkable doorway cell sits inside RUIN_STONE / RUIN_LODGE.
+pub const RUIN_DOOR_AT: (i32, i32) = (1, 2);
+pub const SKIFF_SIZE: (i32, i32) = (2, 1);
+pub const BOAT_SIZE: (i32, i32) = (5, 2);
 /// Where the walkable doorway cell sits inside HOUSE_A / HOUSE_B_DOOR.
 pub const HOUSE_DOOR_AT: (i32, i32) = (2, 4);
 
