@@ -12,13 +12,17 @@ use rgame::app::{App, Key, Screen};
 use rgame::checker::Outcome;
 use rgame::gfx::{self, Atlas, FB_H, FB_W, Frame};
 
-const TICK_SECS: f32 = 0.05;
+const TICK_SECS: f32 = rgame::app::TICK_SECS;
 /// Held movement keys repeat after this long, every `REPEAT_EVERY`. The delay
 /// is kept short so walking picks up quickly once a key is held, while still
 /// leaving a hair of margin over a deliberate single tap so one press steps one
-/// tile.
-const REPEAT_AFTER: f32 = 0.13;
-const REPEAT_EVERY: f32 = 0.09;
+/// tile. The pace comes from the game (`app::STEP_SECS`) so the renderer's
+/// step-glide covers exactly one repeat: feet and pixels agree.
+const REPEAT_AFTER: f32 = 0.14;
+const REPEAT_EVERY: f32 = rgame::app::STEP_SECS;
+/// Walking both axes at once covers √2 ground per step, so diagonal repeats
+/// come a touch slower to keep the traveller honest.
+const DIAGONAL_STRETCH: f32 = 1.4;
 
 fn conf() -> mq::Conf {
     mq::Conf {
@@ -55,11 +59,25 @@ const MOVEMENT: &[mq::KeyCode] = &[
     mq::KeyCode::Right,
 ];
 
+/// Which way a game key walks, if it's a movement key at all.
+fn dir_of(key: Key) -> Option<(i32, i32)> {
+    match key {
+        Key::Up | Key::Char('k') => Some((0, -1)),
+        Key::Down | Key::Char('j') => Some((0, 1)),
+        Key::Left | Key::Char('h') => Some((-1, 0)),
+        Key::Right | Key::Char('l') => Some((1, 0)),
+        _ => None,
+    }
+}
+
 const MUSIC_VOLUME: f32 = 0.5;
 /// Night ambience sits a touch below the daytime loops — quieter is calmer,
 /// and it wants to feel like the world settling rather than a new song
 /// starting.
 const NIGHT_VOLUME: f32 = 0.4;
+/// The calm melody over the night beds sits softest of all — it should feel
+/// like it drifts in from somewhere over the hills.
+const NIGHT_THEME_VOLUME: f32 = 0.35;
 const SFX_VOLUME: f32 = 0.7;
 /// The owl is meant to be *far off* — a soft note under the ambience, never a
 /// jump-scare. Kept low on purpose.
@@ -85,6 +103,12 @@ static NIGHT_MUSIC: &[&[u8]] = &[
     include_bytes!("../assets/audio/music/night/silverford.ogg"),
     include_bytes!("../assets/audio/music/night/hearthspire.ogg"),
 ];
+
+/// The calm night theme ("Dream", from the Ninja Adventure pack — see
+/// `assets/CREDITS.md`): one gentle melody looped over *every* outdoor zone
+/// after dark, laid on top of that zone's nature bed, so night has real music
+/// rather than crickets alone.
+static NIGHT_THEME: &[u8] = include_bytes!("../assets/audio/music/night/theme.ogg");
 
 /// A lone owl, hooted at random intervals under the night ambience (never by
 /// day, never indoors). See `assets/CREDITS.md` for licensing.
@@ -187,6 +211,9 @@ async fn main() {
                 .expect("night ambience is baked into the binary"),
         );
     }
+    let night_theme = audio::load_sound_from_bytes(NIGHT_THEME)
+        .await
+        .expect("night theme is baked into the binary");
     let sfx_owl = audio::load_sound_from_bytes(SFX_OWL)
         .await
         .expect("owl sfx is baked into the binary");
@@ -207,6 +234,7 @@ async fn main() {
     // night flag is part of the identity so dusk and dawn swap the loop even
     // without leaving the zone.
     let mut playing_zone: Option<(usize, bool)> = None;
+    let mut playing_theme = false;
     let mut playing_title = false;
     let mut cue = Cue::None;
     // When the next owl hoot is due (`mq::get_time()` seconds); `None` while
@@ -221,11 +249,13 @@ async fn main() {
     let mut fb_dims = (fb.w, fb.h);
 
     let mut tick_acc = 0.0f32;
-    // The physical key currently held to walk, the game key it sends, and its
-    // repeat timer. Arrows and vim keys both feed this one mechanism, so they
-    // start walking after the same `REPEAT_AFTER` and step at the same
-    // `REPEAT_EVERY` — the OS key-repeat settings never enter into it.
-    let mut held: Option<(mq::KeyCode, Key, f32)> = None;
+    // Every physical key currently held to walk, with the game key it sends.
+    // Arrows and vim keys both feed this one mechanism, so they start walking
+    // after the same `REPEAT_AFTER` and step at the same `REPEAT_EVERY` — the
+    // OS key-repeat settings never enter into it. Holding two keys on
+    // different axes walks the diagonal.
+    let mut held: Vec<(mq::KeyCode, Key)> = Vec::new();
+    let mut walk_t = 0.0f32;
     let mut fullscreen = false;
 
     while !app.should_quit {
@@ -261,7 +291,10 @@ async fn main() {
             if matches!(c, 'h' | 'j' | 'k' | 'l') && matches!(app.screen, Screen::World) {
                 if let Some(&mk) = pressed.iter().find(|k| !MOVEMENT.contains(*k)) {
                     app.on_key(Key::Char(c));
-                    held = Some((mk, Key::Char(c), 0.0));
+                    if !held.iter().any(|&(k, _)| k == mk) {
+                        held.push((mk, Key::Char(c)));
+                        walk_t = 0.0;
+                    }
                 }
             } else if c.is_ascii_alphabetic() || c == '-' || c == '\'' {
                 app.on_key(Key::Char(c));
@@ -271,21 +304,43 @@ async fn main() {
         for &(mk, code) in KEYMAP {
             if mq::is_key_pressed(mk) {
                 app.on_key(code);
-                if MOVEMENT.contains(&mk) {
-                    held = Some((mk, code, 0.0));
+                if MOVEMENT.contains(&mk) && !held.iter().any(|&(k, _)| k == mk) {
+                    held.push((mk, code));
+                    walk_t = 0.0;
                 }
             }
         }
-        // Hold-to-walk: repeat the held movement key while it stays down.
-        if let Some((mk, code, ref mut t)) = held {
-            if mq::is_key_down(mk) && matches!(app.screen, Screen::World) {
-                *t += mq::get_frame_time();
-                if *t >= REPEAT_AFTER {
-                    *t -= REPEAT_EVERY;
-                    app.on_key(code);
+        // Hold-to-walk: repeat the held movement keys while any stay down.
+        // One key walks a line; keys on both axes walk the diagonal, the
+        // newest press deciding which way the traveller faces.
+        held.retain(|&(mk, _)| mq::is_key_down(mk));
+        if held.is_empty() || !matches!(app.screen, Screen::World) {
+            walk_t = 0.0;
+        } else {
+            // The latest-held key per axis, oldest axis stepping first so
+            // the most recent press wins the facing.
+            let mut moves: Vec<Key> = Vec::new();
+            for &(_, key) in &held {
+                if let Some(d) = dir_of(key) {
+                    moves.retain(|k| dir_of(*k).is_none_or(|e| (e.0 != 0) != (d.0 != 0)));
+                    moves.push(key);
                 }
+            }
+            let step = if moves.len() > 1 {
+                REPEAT_EVERY * DIAGONAL_STRETCH
             } else {
-                held = None;
+                REPEAT_EVERY
+            };
+            walk_t += mq::get_frame_time();
+            if walk_t >= REPEAT_AFTER {
+                walk_t -= step;
+                for &key in &moves {
+                    // The first step may open a door, a gate or an encounter;
+                    // the second only lands if we're still on the road.
+                    if matches!(app.screen, Screen::World) {
+                        app.on_key(key);
+                    }
+                }
             }
         }
 
@@ -294,6 +349,8 @@ async fn main() {
             tick_acc -= TICK_SECS;
             app.on_tick();
         }
+        // Where we are inside the current tick, for the renderer's step-glide.
+        app.subtick = (tick_acc / TICK_SECS).clamp(0.0, 1.0);
 
         // Title theme: loops through the title and char-select screens, then
         // gives way to zone music once the journey actually starts.
@@ -344,6 +401,25 @@ async fn main() {
                 );
             }
             playing_zone = zone_track;
+        }
+
+        // The night theme rides over whichever nature bed is playing: one
+        // calm melody for the whole night, started at dusk (or on stepping
+        // outside after dark) and stopped at dawn or back indoors.
+        let want_theme = matches!(zone_track, Some((_, true)));
+        if want_theme != playing_theme {
+            if want_theme {
+                audio::play_sound(
+                    &night_theme,
+                    PlaySoundParams {
+                        looped: true,
+                        volume: NIGHT_THEME_VOLUME,
+                    },
+                );
+            } else {
+                audio::stop_sound(&night_theme);
+            }
+            playing_theme = want_theme;
         }
 
         // A distant owl, at night only: a soft one-shot fired at randomized

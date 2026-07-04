@@ -82,8 +82,21 @@ fn world(fb: &mut Frame, atlas: &Atlas, app: &App) {
 /// native tile scale into whatever frame it's given (see `WORLD_ZOOM`).
 fn world_scene(fb: &mut Frame, atlas: &Atlas, app: &App) {
     let dl = app.daylight();
-    let (view_w, view_h) = (tiles_across(fb.width()), tiles_across(fb.height()));
-    let (ox, oy) = camera::viewport_origin(app.player, view_w, view_h);
+    let t = TILE as i32;
+    // The step-glide: the player's *drawn* position slides from the square
+    // they left to the one they stand on, and the camera follows it in
+    // pixels — so walking scrolls the world smoothly instead of snapping a
+    // tile at a time.
+    let (glide_x, glide_y) = player_glide(app);
+    let (ppx, ppy) = (app.player.0 * t + glide_x, app.player.1 * t + glide_y);
+    let (cam_x, cam_y) =
+        camera::viewport_origin_px((ppx + t / 2, ppy + t / 2), fb.width(), fb.height());
+    let (ox, oy) = (cam_x.div_euclid(t), cam_y.div_euclid(t));
+    let (sub_x, sub_y) = (cam_x.rem_euclid(t), cam_y.rem_euclid(t));
+    let (view_w, view_h) = (
+        tiles_across(fb.width() + sub_x),
+        tiles_across(fb.height() + sub_y),
+    );
     let zone = app.zone();
     // Emberwick's festival lantern waits for quest 1; every other lantern
     // (the Library's lamps) burns on its own.
@@ -93,7 +106,7 @@ fn world_scene(fb: &mut Frame, atlas: &Atlas, app: &App) {
         for col in 0..view_w {
             let (wx, wy) = (ox + col, oy + row);
             let tile = zone.tile(wx, wy);
-            let (px, py) = (col * TILE as i32, row * TILE as i32);
+            let (px, py) = (col * TILE as i32 - sub_x, row * TILE as i32 - sub_y);
             let (base, overlay) = tile_sprites(tile, wx, wy, app.tick, zone, lantern_lit);
             fb.sprite(atlas, base, px, py, dl);
             // A few darker specks so long runs of road/sand don't look flat.
@@ -185,10 +198,10 @@ fn world_scene(fb: &mut Frame, atlas: &Atlas, app: &App) {
         }
     }
 
-    let to_screen = |wx: i32, wy: i32| -> Option<(i32, i32)> {
-        let (sx, sy) = (wx - ox, wy - oy);
-        (sx >= 0 && sy >= 0 && sx < view_w && sy < view_h)
-            .then_some((sx * TILE as i32, sy * TILE as i32))
+    let (fw, fh) = (fb.width(), fb.height());
+    let to_screen = move |wx: i32, wy: i32| -> Option<(i32, i32)> {
+        let (sx, sy) = (wx * t - cam_x, wy * t - cam_y);
+        (sx > -t && sy > -t && sx < fw && sy < fh).then_some((sx, sy))
     };
     let ent_light = dl.max(0.55);
 
@@ -252,7 +265,9 @@ fn world_scene(fb: &mut Frame, atlas: &Atlas, app: &App) {
         }
     }
 
-    if let Some((px, py)) = to_screen(app.player.0, app.player.1) {
+    {
+        // The player rides their glide position, not the tile grid.
+        let (px, py) = (ppx - cam_x, ppy - cam_y);
         let dir = facing_cell(app.facing);
         // A fresh step plays the stride — but only the default look has a baked
         // walk-cycle; the others walk on their idle facing, turning to look
@@ -267,7 +282,7 @@ fn world_scene(fb: &mut Frame, atlas: &Atlas, app: &App) {
         fb.sprite(atlas, id, px, py, ent_light);
     }
 
-    ambient_life(fb, atlas, app, ox, oy, dl);
+    ambient_life(fb, atlas, app, cam_x, cam_y, dl);
     if let Some(kind) = zone.weather {
         weather(fb, kind, app.tick, dl);
     }
@@ -529,8 +544,11 @@ fn tile_sprites(
         }
         // A building prefab cell: the atlas cell rides in the tile itself
         // (see the Tile::Facade docs), drawn over whatever grows beneath so
-        // the roofline's transparent corners show grass, not void.
-        Tile::Facade(cell) | Tile::FacadeDoor(cell) => (ground, Some(cell)),
+        // the roofline's transparent corners show grass, not void. What
+        // "beneath" is comes from the nearest ground outside the prefab, so
+        // the plaza fountain stands on cobbles and a lane-side house on its
+        // lane, never on a stray patch of grass.
+        Tile::Facade(cell) | Tile::FacadeDoor(cell) => (facade_ground(zone, x, y, h), Some(cell)),
         // Alternate exterior wall builds: sprigs of ivy here and there, same
         // as plain Wall — just a different building material underneath.
         Tile::WallStone => (atlas::WALL_STONE, h.is_multiple_of(7).then_some(atlas::IVY)),
@@ -785,6 +803,44 @@ fn paved_base(zone: &Zone, x: i32, y: i32, default: u16) -> u16 {
     if paved { atlas::COBBLE } else { default }
 }
 
+/// What shows through a prefab cell's transparent pixels: the ground the
+/// building actually stands on. A prefab stamp replaces the tiles beneath it,
+/// so the original ground is gone — instead, walk outward in growing rings
+/// until something that isn't part of a prefab turns up, and match it. The
+/// plaza fountain gets cobbles, a roadside house its road, everything else
+/// the zone's grass.
+fn facade_ground(zone: &Zone, x: i32, y: i32, h: u32) -> u16 {
+    for r in 1..=4i32 {
+        for dy in -r..=r {
+            for dx in -r..=r {
+                if dx.abs().max(dy.abs()) != r {
+                    continue; // only the ring's edge — inner cells were seen
+                }
+                match zone.tile(x + dx, y + dy) {
+                    Tile::Facade(_) | Tile::FacadeDoor(_) => continue,
+                    Tile::Plaza => {
+                        return if h.is_multiple_of(7) {
+                            atlas::COBBLE_ALT
+                        } else {
+                            atlas::COBBLE
+                        };
+                    }
+                    Tile::Path => {
+                        return if h.is_multiple_of(9) {
+                            atlas::PATH_ALT
+                        } else {
+                            atlas::PATH
+                        };
+                    }
+                    Tile::Sand => return atlas::SAND,
+                    _ => return ground_base(zone, h),
+                }
+            }
+        }
+    }
+    ground_base(zone, h)
+}
+
 /// What freestanding clutter sits on: the biome's ground outdoors, and
 /// indoors whatever the room is floored with — bare stone or earth in the
 /// cave and cellar, that room's boards everywhere else — so a barrel never
@@ -905,6 +961,14 @@ fn sway_partner(id: u16) -> Option<u16> {
 fn grass_decor(h: u32, zone_id: usize) -> Option<u16> {
     if zone_id == 3 && h % 179 == 3 {
         return Some(atlas::BONE);
+    }
+    // Village gardens: the odd tall sunflower or rose bush between the homes.
+    if zone_id == 0 && h % 61 == 5 {
+        return Some(if h.is_multiple_of(2) {
+            atlas::SUNFLOWER_TALL
+        } else {
+            atlas::ROSEBUSH
+        });
     }
     if h % 5 != 3 {
         return None;
@@ -1318,8 +1382,9 @@ fn stone_glimmer(fb: &mut Frame, app: &App, wx: i32, wy: i32, px: i32, py: i32) 
 }
 
 /// Butterflies bob around fixed spots in the world by day, and now and then a
-/// bird crosses the sky. Small lives, big difference.
-fn ambient_life(fb: &mut Frame, atlas: &Atlas, app: &App, ox: i32, oy: i32, dl: f32) {
+/// bird crosses the sky. Small lives, big difference. Takes the camera's
+/// pixel origin, so the little lives scroll as smoothly as the ground.
+fn ambient_life(fb: &mut Frame, atlas: &Atlas, app: &App, cam_x: i32, cam_y: i32, dl: f32) {
     use crate::world::map::{MAP_H, MAP_W};
     if dl <= 0.45 || app.zone().interior {
         return; // butterflies and birds are day folk, and outdoor folk at that
@@ -1328,8 +1393,8 @@ fn ambient_life(fb: &mut Frame, atlas: &Atlas, app: &App, ox: i32, oy: i32, dl: 
     for i in 0..120i32 {
         let ax = (hash2(i, 11, 0xB77F) % (MAP_W as u32 * TILE as u32)) as i32;
         let ay = (hash2(i, 12, 0xB77F) % (MAP_H as u32 * TILE as u32)) as i32;
-        let x = ax + ((t / 9.0 + i as f32).sin() * 14.0) as i32 - ox * TILE as i32;
-        let y = ay + ((t / 6.0 + i as f32 * 2.0).cos() * 8.0) as i32 - oy * TILE as i32;
+        let x = ax + ((t / 9.0 + i as f32).sin() * 14.0) as i32 - cam_x;
+        let y = ay + ((t / 6.0 + i as f32 * 2.0).cos() * 8.0) as i32 - cam_y;
         if x < -(TILE as i32) || y < -(TILE as i32) || x >= fb.width() || y >= fb.height() {
             continue;
         }
@@ -1358,6 +1423,26 @@ fn ambient_life(fb: &mut Frame, atlas: &Atlas, app: &App, ox: i32, oy: i32, dl: 
         };
         fb.sprite(atlas, id, x, y, dl);
     }
+}
+
+/// Pixel offset of the player's drawn position from their logical tile: eases
+/// from the departure square to zero across one step's length. Warps and
+/// gate-crossings (any hop longer than a step) arrive instantly.
+fn player_glide(app: &App) -> (i32, i32) {
+    let (dx, dy) = (
+        app.prev_player.0 - app.player.0,
+        app.prev_player.1 - app.player.1,
+    );
+    if dx.abs() > 1 || dy.abs() > 1 {
+        return (0, 0);
+    }
+    let step_ticks = crate::app::STEP_SECS / crate::app::TICK_SECS;
+    let now = app.tick as f32 + app.subtick;
+    let left = 1.0 - ((now - app.walked_at as f32) / step_ticks).clamp(0.0, 1.0);
+    (
+        (dx as f32 * left * TILE as f32).round() as i32,
+        (dy as f32 * left * TILE as f32).round() as i32,
+    )
 }
 
 fn water_frame(x: i32, y: i32, tick: u64) -> u16 {
@@ -1436,28 +1521,36 @@ fn npc_sprite(npc: &Npc) -> u16 {
 // ── HUD bars ───────────────────────────────────────────────────────────────
 
 fn top_bar(fb: &mut Frame, app: &App, dl: f32) {
-    fb.fill_a(0, 0, fb.width(), 13, (22, 19, 14), 215);
-    daylight_icon(fb, 8, 6, dl);
-    let mut x = font::text(fb, 18, 3, app.zone().name, (226, 208, 168), 1) + 8;
+    fb.fill_a(0, 0, fb.width(), 17, (22, 19, 14), 215);
+    daylight_icon(fb, 9, 8, dl);
+    let mut x = font::text_lg(fb, 20, 3, app.zone().name, (226, 208, 168)) + 8;
     for q in QUESTS.iter().filter(|q| q.zone == app.zone().id) {
-        diamond(fb, x + 3, 6, 3, GOLD, app.completed.contains(&q.id));
+        diamond(fb, x + 3, 8, 3, GOLD, app.completed.contains(&q.id));
         x += 10;
     }
+    // The counters keep the small face so the roomier zone name never
+    // squeezes them out; they're glanced at, not read.
     let runes = format!("runes {}/{}", app.completed.len(), QUESTS.len());
     let w = font::text_width(&runes, 1);
-    let rx = font::text(fb, fb.width() - w - 6, 3, &runes, (178, 162, 140), 1);
+    font::text(fb, fb.width() - w - 6, 5, &runes, (178, 162, 140), 1);
     // The time of day, left of the rune count — only outdoors, where the
     // shared sky actually holds sway (interiors keep their own steady hour).
+    // On the narrowest windows a long zone name may leave it no room; the
+    // sun/moon icon still tells the hour, so it simply sits this one out.
     if !app.zone().interior {
         let phase = app.phase().label();
         let pw = font::text_width(phase, 1);
-        font::text(fb, rx - w - pw - 14, 3, phase, (196, 186, 208), 1);
+        let px = fb.width() - w - pw - 20;
+        if px > x + 8 {
+            font::text(fb, px, 5, phase, (196, 186, 208), 1);
+        }
     }
 }
 
 fn bottom_bar(fb: &mut Frame, app: &App) {
+    let cols = ((fb.width() - 12) / font::GLYPH_LG - 1).max(20) as usize;
     let (lines, color) = match &app.toast {
-        Some((msg, _)) => (font::wrap(msg, 58), (255, 224, 150)),
+        Some((msg, _)) => (font::wrap(msg, cols), (255, 224, 150)),
         None => {
             let near = app.zone().npcs.iter().find(|n| {
                 (n.pos.0 - app.player.0).abs() <= 1 && (n.pos.1 - app.player.1).abs() <= 1
@@ -1471,15 +1564,21 @@ fn bottom_bar(fb: &mut Frame, app: &App) {
                     "arrows move . e talk . c cast . q journal . g grimoire . f hint . esc".into()
                 }
             };
-            (font::wrap(&hint, 58), DIM)
+            (font::wrap(&hint, cols), DIM)
         }
     };
     let lines = &lines[..lines.len().min(3)];
-    let bar_h = 5 + lines.len() as i32 * 9;
+    let bar_h = 5 + lines.len() as i32 * font::LINE_LG;
     let bottom = fb.height();
     fb.fill_a(0, bottom - bar_h, fb.width(), bar_h, (22, 19, 14), 215);
     for (i, line) in lines.iter().enumerate() {
-        font::text(fb, 6, bottom - bar_h + 3 + i as i32 * 9, line, color, 1);
+        font::text_lg(
+            fb,
+            6,
+            bottom - bar_h + 3 + i as i32 * font::LINE_LG,
+            line,
+            color,
+        );
     }
 }
 
@@ -1617,11 +1716,19 @@ fn panel(fb: &mut Frame, x: i32, y: i32, w: i32, h: i32, title: &str) -> (i32, i
         fb.fill(cx, cy, 2, 2, PANEL_BG);
     }
     if !title.is_empty() {
-        let tw = font::text_width(title, 1);
-        fb.fill(x + 8, y - 3, tw + 8, 13, PANEL_BG);
-        font::text(fb, x + 12, y, title, WARM, 1);
+        // The roomy reading face, unless the title is a long one (a book's
+        // full name, a wordy fizzle) — those keep the small face and fit.
+        let tw = font::text_width_lg(title);
+        if tw + 24 <= w {
+            fb.fill(x + 8, y - 4, tw + 8, 17, PANEL_BG);
+            font::text_lg(fb, x + 12, y - 1, title, WARM);
+        } else {
+            let tw = font::text_width(title, 1);
+            fb.fill(x + 8, y - 3, tw + 8, 13, PANEL_BG);
+            font::text(fb, x + 12, y, title, WARM, 1);
+        }
     }
-    (x + 6, y + 8, w - 12, h - 14)
+    (x + 6, y + 10, w - 12, h - 16)
 }
 
 fn centered_panel(fb: &mut Frame, w: i32, h: i32, title: &str) -> (i32, i32, i32, i32) {
@@ -1638,12 +1745,28 @@ fn draw_lines(fb: &mut Frame, x: i32, y: i32, lines: &[(String, (u8, u8, u8))]) 
     cy
 }
 
+/// Same, in the one-and-a-half reading face (menus and dialogue).
+fn draw_lines_lg(fb: &mut Frame, x: i32, y: i32, lines: &[(String, (u8, u8, u8))]) -> i32 {
+    let mut cy = y;
+    for (line, color) in lines {
+        font::text_lg(fb, x, cy, line, *color);
+        cy += font::LINE_LG;
+    }
+    cy
+}
+
 // ── dialogue ───────────────────────────────────────────────────────────────
 
+/// How much prose fits one dialogue page at the larger reading face —
+/// `Dialogue::new` re-flows its pages against these, so nothing authored
+/// ever falls off the bottom of the box.
+pub const DIALOGUE_COLS: usize = 30;
+pub const DIALOGUE_ROWS: usize = 8;
+
 fn dialogue(fb: &mut Frame, atlas: &Atlas, app: &App, d: &Dialogue) {
-    let (w, h) = (440, 100);
+    let (w, h) = (460, 126);
     let x = (fb.width() - w) / 2;
-    let y = fb.height() - h - 10;
+    let y = fb.height() - h - 8;
     let (ix, iy, iw, ih) = panel(fb, x, y, w, h, &d.speaker);
 
     // Portrait: the speaker's sprite, nice and big.
@@ -1669,12 +1792,13 @@ fn dialogue(fb: &mut Frame, atlas: &Atlas, app: &App, d: &Dialogue) {
 
     let page = &d.pages[d.page.min(d.pages.len() - 1)];
     let shown: String = page.chars().take(d.revealed).collect();
-    let cols = ((ix + iw - text_x) / GLYPH - 1) as usize;
-    let lines: Vec<_> = font::wrap(&shown, cols)
+    // Pages arrive pre-flowed to DIALOGUE_COLS (see Dialogue::new), so the
+    // wrap here re-derives the same lines while the reveal is mid-word.
+    let lines: Vec<_> = font::wrap(&shown, DIALOGUE_COLS)
         .into_iter()
         .map(|l| (l, BODY))
         .collect();
-    draw_lines(fb, text_x, iy + 2, &lines[..lines.len().min(8)]);
+    draw_lines_lg(fb, text_x, iy + 2, &lines[..lines.len().min(DIALOGUE_ROWS)]);
 
     // Page dots + advance arrow.
     let done = d.revealed >= page.chars().count();
@@ -1696,8 +1820,8 @@ fn dialogue(fb: &mut Frame, atlas: &Atlas, app: &App, d: &Dialogue) {
 // ── journal ────────────────────────────────────────────────────────────────
 
 fn journal(fb: &mut Frame, app: &App) {
-    let (ix, iy, iw, _ih) = centered_panel(fb, 420, 210, "Journal");
-    let cols = (iw / GLYPH - 1) as usize;
+    let (ix, iy, iw, ih) = centered_panel(fb, 464, 252, "Journal");
+    let cols = (iw / font::GLYPH_LG - 1) as usize;
     let mut lines: Vec<(String, (u8, u8, u8))> = Vec::new();
     let push = |s: &str, c: (u8, u8, u8), lines: &mut Vec<(String, (u8, u8, u8))>| {
         for l in font::wrap(s, cols) {
@@ -1796,7 +1920,11 @@ fn journal(fb: &mut Frame, app: &App) {
         }
     }
 
-    lines.push((String::new(), DIM));
+    let max = 17usize;
+    draw_lines_lg(fb, ix + 4, iy + 2, &lines[..lines.len().min(max)]);
+
+    // The tallies live on a fixed footer line (small face, like the
+    // grimoire's), so however long the hints run they never push it out.
     let stones_found = stones::found(&app.flags);
     let stones_part = if stones_found > 0 {
         format!(
@@ -1807,18 +1935,15 @@ fn journal(fb: &mut Frame, app: &App) {
     } else {
         String::new() // the stones stay a secret until the first is found
     };
-    lines.push((
-        format!(
-            "Runes mastered: {}/12 . grimoire {}/{} (g){} . esc close",
-            app.completed.len(),
-            app.grimoire.len(),
-            wilds::WILDS.len(),
-            stones_part,
-        ),
-        DIM,
-    ));
-    let max = 20usize;
-    draw_lines(fb, ix + 4, iy + 2, &lines[..lines.len().min(max)]);
+    let footer = format!(
+        "Runes mastered: {}/12 . grimoire {}/{} (g){} . esc close",
+        app.completed.len(),
+        app.grimoire.len(),
+        wilds::WILDS.len(),
+        stones_part,
+    );
+    let w = font::text_width(&footer, 1);
+    font::text(fb, ix + iw - w - 2, iy + ih - 8, &footer, DIM, 1);
 }
 
 // ── wild runes: encounters & the grimoire ──────────────────────────────────
@@ -1884,13 +2009,13 @@ fn encounter(fb: &mut Frame, rune_id: u8, selected: usize, phase: EncounterPhase
 }
 
 fn grimoire(fb: &mut Frame, app: &App) {
-    let (ix, iy, iw, ih) = centered_panel(fb, 440, 220, "Grimoire - wild runes of the road");
+    let (ix, iy, iw, ih) = centered_panel(fb, 464, 252, "Grimoire - wild runes of the road");
     // Names only, two columns per zone — the lore is read at catch time —
     // so all four zones fit on one page.
     let mut y = iy + 2;
     for zone in 0..=3 {
-        font::text(fb, ix + 4, y, app.zones[zone].name, WARM, 1);
-        y += 10;
+        font::text_lg(fb, ix + 4, y, app.zones[zone].name, WARM);
+        y += font::LINE_LG + 1;
         let runes = wilds::in_zone(zone);
         for (i, rune) in runes.iter().enumerate() {
             let x = ix + 10 + (i as i32 % 2) * (iw / 2);
@@ -1900,13 +2025,13 @@ fn grimoire(fb: &mut Frame, app: &App) {
                 font::text(fb, x, y, ". ???", (110, 102, 88), 1);
             }
             if i % 2 == 1 {
-                y += 9;
+                y += 11;
             }
         }
         if runes.len() % 2 == 1 {
-            y += 9;
+            y += 11;
         }
-        y += 5;
+        y += 8;
     }
     let footer = format!(
         "{}/{} inscribed . wild runes live in tall grass . esc",
@@ -2038,7 +2163,7 @@ fn fizzle_panel(fb: &mut Frame, app: &App, title: &str, lead: &str, output: &str
 // ── rest, credits, title ───────────────────────────────────────────────────
 
 fn paused(fb: &mut Frame, app: &App, selected: usize) {
-    let (ix, iy, _iw, _) = centered_panel(fb, 250, 92, "A moment's rest");
+    let (ix, iy, _iw, _) = centered_panel(fb, 320, 112, "A moment's rest");
     let speed = ["Slow", "Normal", "Fast"][app.text_speed.min(2)];
     let speed_label = format!("Text speed: < {speed} >");
     let labels = ["Back to the road", &speed_label, "Save & sleep (quit)"];
@@ -2046,13 +2171,12 @@ fn paused(fb: &mut Frame, app: &App, selected: usize) {
         let on = i == selected;
         let c = if on { GOLD } else { DIM };
         let marker = if on { "> " } else { "  " };
-        font::text(
+        font::text_lg(
             fb,
             ix + 10,
-            iy + 8 + i as i32 * 14,
+            iy + 8 + i as i32 * 20,
             &format!("{marker}{label}"),
             c,
-            1,
         );
     }
 }

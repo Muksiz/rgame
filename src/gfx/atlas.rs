@@ -308,10 +308,37 @@ pub const HOUSE_B_DOOR: u16 = 430; // barn with an arched door (5x5)
 pub const SHED: u16 = 455; // little steep-roofed shed (3x3)
 pub const STALL: u16 = 464; // blue-striped market stall (5x5)
 pub const FOUNTAIN: u16 = 489; // round plaza fountain (3x4)
+// Premade village homes from the Ninja Adventure TilesetHouse (CC0, see
+// assets/CREDITS.md), doors pasted shut at bake time — flavor homes that
+// nobody needs to enter, for a village that finally looks lived-in.
+pub const NA_HOUSE_THATCH: u16 = 501; // thatched roof, shoji windows (4x3)
+pub const NA_HOUSE_FLAT: u16 = 513; // flat tan roof (4x3)
+pub const NA_HOUSE_PLAIN: u16 = 525; // thatched roof, plain walls (4x3)
+pub const NA_SHOP: u16 = 537; // little bakery-signed shopfront (3x3)
+pub const NA_TAVERN: u16 = 546; // dark-beamed tavern, lanterns lit (3x3)
+pub const NA_HOUSE_TALL: u16 = 555; // two-storey townhouse (4x4)
+// Big premade trees from the Ninja Adventure TilesetNature — old growth
+// planted between the everyday single-tile trees.
+pub const TREE_BIG_PINK: u16 = 571; // blossoming crown (3x3)
+pub const TREE_BIG_GREEN: u16 = 580; // broad summer crown (3x3)
+pub const TREE_BIG_WHITE: u16 = 589; // snow-dusted crown (3x3)
+pub const TREE_BIG_ORANGE: u16 = 598; // autumn crown (3x3)
+pub const TREE_TALL_PINE: u16 = 607; // towering old pine (4x3)
+pub const TREE_TALL_CANOPY: u16 = 619; // triple-crowned canopy (4x3)
+pub const TREE_TALL_SNOW: u16 = 631; // snowbound canopy (4x3)
+pub const BUSH_BIG: u16 = 643; // spreading garden bush (2x2)
+pub const SUNFLOWER_TALL: u16 = 647;
+pub const ROSEBUSH: u16 = 648;
 pub const HOUSE_SIZE: (i32, i32) = (5, 5);
 pub const SHED_SIZE: (i32, i32) = (3, 3);
 pub const STALL_SIZE: (i32, i32) = (5, 5);
 pub const FOUNTAIN_SIZE: (i32, i32) = (3, 4);
+pub const NA_HOUSE_SIZE: (i32, i32) = (4, 3);
+pub const NA_SHOP_SIZE: (i32, i32) = (3, 3);
+pub const NA_TALL_SIZE: (i32, i32) = (4, 4);
+pub const TREE_BIG_SIZE: (i32, i32) = (3, 3);
+pub const TREE_TALL_SIZE: (i32, i32) = (4, 3);
+pub const BUSH_BIG_SIZE: (i32, i32) = (2, 2);
 /// Where the walkable doorway cell sits inside HOUSE_A / HOUSE_B_DOOR.
 pub const HOUSE_DOOR_AT: (i32, i32) = (2, 4);
 

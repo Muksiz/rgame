@@ -24,6 +24,15 @@ strip (plus the player's walk strip), unmodified, and
 each overworld zone its own biome ground and props. The older Kenney-composed
 character cells remain in the atlas so existing sprite ids never shift.
 
+The same pack now also furnishes the village expansion:
+`ninja_adventure/tilesets/TilesetHouse.png` holds the premade homes (the
+thatched, plain and flat-roofed cottages, the two-storey townhouse, the
+shopfront and the tavern) — flavor houses whose open doorways
+`tools/bake_atlas.py` pastes shut with the sheet's own plank door — and the
+big old-growth trees (blossoming, summer, snow-dusted and autumn crowns,
+towering pines, triple canopies) plus the garden bushes and tall flowers are
+cropped from `TilesetNature.png`, already vendored above.
+
 `ninja_adventure/pack/` vendors the rest of that same download unmodified
 (`Actor/Character`, `Actor/CharacterAnimated`, `Actor/Animal`, `Actor/Boss`,
 `Actor/Monster`, `Items`, `FX`, and its `LICENSE.txt`) — raw source material
@@ -84,6 +93,10 @@ remain unclaimed for a future pass.
 the daytime loop after dark (`App::is_night()`), same filename per zone. All
 **CC0**, from OpenGameArt:
 
+- `theme.ogg` — the calm melody laid *over* every zone's nature bed after
+  dark: "22 - Dream" from the **Ninja Adventure asset pack** by **Pixel-boy
+  and AAA** (https://pixel-boy.itch.io/ninja-adventure-asset-pack, **CC0**),
+  unmodified — so night has real music rather than crickets alone.
 - `emberwick.ogg` — "Crickets Ambient Noise - loopable" by **Wolfgang_**
   (https://opengameart.org/content/crickets-ambient-noise-loopable).
 - `whispering-woods.ogg` — "Swamp Environment Audio" by **LokiF**

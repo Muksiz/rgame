@@ -75,6 +75,48 @@ pub fn text_center(fb: &mut Frame, cx: i32, y: i32, s: &str, c: (u8, u8, u8), sc
     text(fb, cx - text_width(s, scale) / 2, y, s, c, scale);
 }
 
+/// The one-and-a-half-size face used by the HUD bars, menus and dialogue:
+/// each 8×8 glyph fills a 12×12 box (every other glyph pixel doubles, the
+/// fixed-point way), so the reading text sits comfortably between the tiny
+/// scale-1 captions and the shouty scale-2 headlines.
+pub const GLYPH_LG: i32 = 12;
+/// Line step for `text_lg` blocks — a 12px glyph plus a pixel of air.
+pub const LINE_LG: i32 = 13;
+
+pub fn text_width_lg(s: &str) -> i32 {
+    fold_str(s).chars().count() as i32 * GLYPH_LG
+}
+
+/// Draw `s` at one-and-a-half size, top-left at (x, y). Returns the x just
+/// past the text.
+pub fn text_lg(fb: &mut Frame, x: i32, y: i32, s: &str, c: (u8, u8, u8)) -> i32 {
+    let mut cx = x;
+    for ch in fold_str(s).chars() {
+        if let Some(glyph) = BASIC_FONTS.get(ch) {
+            for (row, bits) in glyph.iter().enumerate() {
+                let row = row as i32;
+                let (y0, y1) = (row * 3 / 2, (row + 1) * 3 / 2);
+                for col in 0..8i32 {
+                    if bits & (1 << col) != 0 {
+                        let (x0, x1) = (col * 3 / 2, (col + 1) * 3 / 2);
+                        for yy in y0..y1 {
+                            for xx in x0..x1 {
+                                fb.set(cx + xx, y + yy, c);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        cx += GLYPH_LG;
+    }
+    cx
+}
+
+pub fn text_center_lg(fb: &mut Frame, cx: i32, y: i32, s: &str, c: (u8, u8, u8)) {
+    text_lg(fb, cx - text_width_lg(s) / 2, y, s, c);
+}
+
 /// Greedy word-wrap to `cols` columns, honoring explicit newlines.
 pub fn wrap(s: &str, cols: usize) -> Vec<String> {
     let mut lines = Vec::new();

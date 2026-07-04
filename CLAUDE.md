@@ -47,7 +47,7 @@ first `cargo run` a couple seconds slower to reach the title screen than a
 
 ## Architecture
 
-Lib + thin bin split: `src/main.rs` is only the Macroquad shell (input → `app::Key`, a 50ms tick, a window-sized `Frame`, framebuffer upload). Everything else lives in the lib so integration tests can drive the whole game black-box through `App::on_key` / `App::on_tick` — keep new behavior reachable through those two entry points. Input is the game's own `app::Key` enum; nothing outside `main.rs` knows about macroquad key codes. **Letter keys come from the OS text stream** (`get_char_pressed`), so the game follows the player's keyboard layout (Dvorak, AZERTY, …); only non-character keys (arrows, Enter, Esc, Space, Backspace, PageUp/Down) go through the physical `KEYMAP`. Movement is arrows + vim `H J K L` (no WASD); `e`/Enter/Space are one unified confirm. The `Frame` (`gfx/frame.rs`) carries its own `w`/`h`; `main.rs` resizes it each frame and `gfx/scene.rs` lays everything out from `fb.width()`/`fb.height()`, never fixed constants. A new journey runs through `Screen::CharSelect` (pick a look from `atlas::PLAYABLE` + type a name; both persist in `SaveData`).
+Lib + thin bin split: `src/main.rs` is only the Macroquad shell (input → `app::Key`, a 50ms tick, a window-sized `Frame`, framebuffer upload). Everything else lives in the lib so integration tests can drive the whole game black-box through `App::on_key` / `App::on_tick` — keep new behavior reachable through those two entry points. Input is the game's own `app::Key` enum; nothing outside `main.rs` knows about macroquad key codes. **Letter keys come from the OS text stream** (`get_char_pressed`), so the game follows the player's keyboard layout (Dvorak, AZERTY, …); only non-character keys (arrows, Enter, Esc, Space, Backspace, PageUp/Down) go through the physical `KEYMAP`. Movement is arrows + vim `H J K L` (no WASD); the shell tracks *all* held movement keys, so two keys on different axes walk the diagonal (repeats stretched ×1.4 to keep speed honest), and the held-walk pace is `app::STEP_SECS`. Logic stays strictly tile-based, but the renderer glides the player and the pixel camera between tiles (`App::prev_player` + `App::subtick`, cosmetic and never saved — headless renders leave `subtick` 0 and lose nothing). `e`/Enter/Space are one unified confirm. The `Frame` (`gfx/frame.rs`) carries its own `w`/`h`; `main.rs` resizes it each frame and `gfx/scene.rs` lays everything out from `fb.width()`/`fb.height()`, never fixed constants. A new journey runs through `Screen::CharSelect` (pick a look from `atlas::PLAYABLE` + type a name; both persist in `SaveData`).
 
 **Quest pipeline** (the core loop, spans several files):
 `content/quests.rs` holds the static `QUESTS: [Quest; 23]` array — all dialogue, hints, and templates (`include_str!` from `src/content/templates/*.rs`). Accepting a quest makes `checker::scaffold` copy the template to `./quests/` in the cwd (**never overwrites** — player work is sacred). Pressing `c` runs `checker::cast`: a background thread compiles the file standalone with `rustc --edition 2024 --test`, runs the test binary with a 10s kill-timeout (players write infinite loops), and reports an `Outcome` over an mpsc channel polled in `App::on_tick`.
@@ -69,7 +69,7 @@ Lib + thin bin split: `src/main.rs` is only the Macroquad shell (input → `app:
 
 **Rendering** (`src/gfx/`): everything draws CPU-side into a 480×270 RGBA framebuffer (`gfx/frame.rs`); the shell only uploads and integer-scales it, which is what lets `examples/snapshot.rs` dump pixel-identical PNGs headless and lets `tests/render.rs` exercise every screen without a window. The world layer is additionally zoomed: `world_scene` renders at native 16px tiles into a `WORLD_ZOOM`× smaller scratch frame which is then nearest-neighbor upscaled into the framebuffer (`gfx/scene.rs`), so the camera sits close to the player while the HUD bars, dialogue and menus keep their finer pixel grid on top. The camera (`world/camera.rs`) follows the player and clamps to the map. Tile appearance lives in one place: `tile_sprites()` in `gfx/scene.rs` (base sprite + transparent overlay per tile, animated by tick), with edge-aware detail passes (shoreline, path/floor rims, rugs, roof shingles) beside it — with one deliberate exception: `Tile::Facade(cell)`/`Tile::FacadeDoor(cell)` carry their atlas cell directly, because they're cells of multi-tile **building prefabs** (the perspective-drawn cottages, barn, shed, market stall and fountain from the CC0 Zelda-like sheet in `assets/zelda_like/`, baked by `zl_prefab` in the bake script and placed with `MapBuilder::prefab` — enterable buildings put a `FacadeDoor` where their `Warp` sits, facades stay all-`Facade` with a shut door baked into the art). All colors pass through `gfx::shade()` with the zone's fixed `App::daylight()`. Weather is pixel particles drawn over the world but under the HUD. Text is the `font8x8`-based bitmap font in `gfx/font.rs`. Sprites come from `assets/atlas.png`, baked by `tools/bake_atlas.py` from Kenney's CC0 packs (terrain/props, sheets in `assets/kenney/`) and the CC0 Ninja Adventure pack (the whole cast, strips in `assets/ninja_adventure/<Character>/` — see `CAST` in the bake script and `assets/CREDITS.md`); to add sprites, append cells at the *end* of the bake list (existing ids must not shift), run `python3 tools/bake_atlas.py assets/kenney/roguelikeSheet_transparent.png assets/kenney/roguelikeChar_transparent.png` (needs Pillow), and sync the printed constants into `gfx/atlas.rs`. Characters are animated: each cast member has four idle facings (`atlas::CAST`, NPCs turn to face the adjacent player and sway), the player has stride frames (`atlas::PLAYER_WALK`, driven by `App::facing`/`App::walked_at` — cosmetic, never saved). Hand-pixeled sprites (critters, Ferris, the bookshelf) are `from_art` text grids in the bake script — match that style for new ones.
 
-**Screens** are one enum (`app::Screen`); input dispatch and all state transitions live in `app.rs`, drawing in `gfx/scene.rs`. Dialogue endings carry side effects via `DialogueKind` (Intro → scaffold+accept, Success → gate unlock / epilogue / keepsake handover; Book → a Library shelf reading itself, with a bookshelf portrait).
+**Screens** are one enum (`app::Screen`); input dispatch and all state transitions live in `app.rs`, drawing in `gfx/scene.rs`. Dialogue endings carry side effects via `DialogueKind` (Intro → scaffold+accept, Success → gate unlock / epilogue / keepsake handover; Book → a Library shelf reading itself, with a bookshelf portrait). The HUD bars, menus and dialogue read in a 1.5× face (`font::text_lg`, 8×8 glyphs in 12px boxes); `Dialogue::new` re-flows its pages against `scene::DIALOGUE_COLS`/`DIALOGUE_ROWS`, so an over-long authored page becomes more page dots, never lost lines.
 
 ## Free asset shelf (researched, not yet used)
 
@@ -85,9 +85,13 @@ collection. Both packs still have unused tracks (3 left in *Action*, 3 in
 *Adventure*) — first stop for an encounter sting or campfire rest theme:
 
 - **Ninja Adventure pack — the rest of it** (https://pixel-boy.itch.io/ninja-adventure-asset-pack, CC0).
-  We only vendored the cast + tilesets; the same download also holds **37 music
-  tracks and 100+ SFX**, style-matched by construction and already credited.
-  First stop for the encounter sting, campfire rests, and UI blips.
+  Vendored so far: the cast, the biome tilesets, `TilesetHouse.png` (the
+  premade homes that fill out Emberwick, doors pasted shut at bake time),
+  the big `TilesetNature.png` trees, and one music track ("22 - Dream", the
+  calm night theme laid over the nature beds). The same download still holds
+  **36 more music tracks and 100+ SFX**, style-matched by construction and
+  already credited. First stop for the encounter sting, campfire rests, and
+  UI blips.
 - **Kenney audio packs** (all CC0): *RPG Audio* (https://kenney.nl/assets/rpg-audio —
   footsteps, doors, chest creaks, coins: door warps, the cellar chest, keepsake
   handovers), *UI Audio* (https://kenney.nl/assets/ui-audio — menu/confirm
@@ -98,7 +102,10 @@ collection. Both packs still have unused tracks (3 left in *Action*, 3 in
   each overworld zone swaps its daytime chiptune for a calm nature loop —
   crickets over Emberwick, a swamp in the Woods, rain on Silverford, wind off
   the Hearthspire road, plus a distant owl (`sfx/owl.ogg`) hooted at random
-  gaps. Sourced from OpenGameArt (crickets, swamp, rain, wind) and Wikimedia
+  gaps, and a calm melody (`night/theme.ogg`, "Dream" from the Ninja
+  Adventure pack) laid over whichever bed is playing so night has real music.
+  Sourced from OpenGameArt (crickets, swamp, rain, wind), the Ninja Adventure
+  pack (the theme) and Wikimedia
   Commons (the owl — the repo's one CC-BY asset). Plenty more CC0 nature
   ambience remains for daytime weather beds: *JC Sounds — Nature Ambient Pack
   Vol 1* (https://opengameart.org/content/jc-sounds-nature-ambient-pack-vol-1),

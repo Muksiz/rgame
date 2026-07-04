@@ -247,13 +247,46 @@ fn emberwick() -> Zone {
     b.road(&[(130, 26), (130, 39)]);
 
     // Homes nobody needs to enter — doors shut, curtains drawn — plus the
-    // old lean-to shed behind the storehouse, to make Emberwick feel like a
-    // village rather than five quest-relevant houses in a field.
+    // old lean-to shed behind the storehouse. A real village's worth of them
+    // now: the Ninja Adventure homes (thatched, plain, flat-roofed, the tall
+    // townhouse, a shopfront and the tavern) cluster tight along the roads
+    // and around the square, so Emberwick reads as streets rather than five
+    // quest-relevant houses in a field.
     b.prefab(150, 14, atlas::HOUSE_A_SHUT, atlas::HOUSE_SIZE, None);
-    b.prefab(196, 20, atlas::HOUSE_A_SHUT, atlas::HOUSE_SIZE, None);
-    b.prefab(105, 52, atlas::HOUSE_A_SHUT, atlas::HOUSE_SIZE, None);
     b.prefab(160, 43, atlas::HOUSE_B, atlas::HOUSE_SIZE, None);
     b.prefab(143, 46, atlas::SHED, atlas::SHED_SIZE, None);
+    // North of the main road: a row of homes between the bakery and the well.
+    b.prefab(56, 24, atlas::NA_HOUSE_PLAIN, atlas::NA_HOUSE_SIZE, None);
+    b.prefab(72, 25, atlas::NA_HOUSE_THATCH, atlas::NA_HOUSE_SIZE, None);
+    b.prefab(84, 20, atlas::NA_HOUSE_FLAT, atlas::NA_HOUSE_SIZE, None);
+    b.prefab(100, 17, atlas::NA_HOUSE_TALL, atlas::NA_TALL_SIZE, None);
+    // Around the square: a shopfront on the west edge, the tavern by the
+    // fountain, and a shut cottage anchoring the south-west corner.
+    b.prefab(76, 33, atlas::NA_SHOP, atlas::NA_SHOP_SIZE, None);
+    b.prefab(98, 33, atlas::NA_TAVERN, atlas::NA_SHOP_SIZE, None);
+    b.prefab(67, 33, atlas::HOUSE_A_SHUT, atlas::HOUSE_SIZE, None);
+    // The east lane, both sides of the road out toward the woods.
+    b.prefab(118, 33, atlas::NA_HOUSE_THATCH, atlas::NA_HOUSE_SIZE, None);
+    b.prefab(146, 33, atlas::HOUSE_A_SHUT, atlas::HOUSE_SIZE, None);
+    b.prefab(152, 36, atlas::NA_HOUSE_FLAT, atlas::NA_HOUSE_SIZE, None);
+    // And the south quarter, filling in around Tilly and the storehouse.
+    b.prefab(109, 43, atlas::NA_SHOP, atlas::NA_SHOP_SIZE, None);
+    b.prefab(122, 43, atlas::NA_HOUSE_PLAIN, atlas::NA_HOUSE_SIZE, None);
+    b.prefab(98, 47, atlas::HOUSE_A_SHUT, atlas::HOUSE_SIZE, None);
+
+    // Old growth: big blossoming trees between the houses, and garden
+    // bushes tucked against the lanes.
+    b.prefab(48, 24, atlas::TREE_BIG_PINK, atlas::TREE_BIG_SIZE, None);
+    b.prefab(60, 10, atlas::TREE_BIG_GREEN, atlas::TREE_BIG_SIZE, None);
+    b.prefab(116, 12, atlas::TREE_BIG_PINK, atlas::TREE_BIG_SIZE, None);
+    b.prefab(124, 25, atlas::TREE_BIG_GREEN, atlas::TREE_BIG_SIZE, None);
+    b.prefab(68, 52, atlas::TREE_BIG_GREEN, atlas::TREE_BIG_SIZE, None);
+    b.prefab(90, 52, atlas::TREE_BIG_PINK, atlas::TREE_BIG_SIZE, None);
+    b.prefab(118, 52, atlas::TREE_BIG_ORANGE, atlas::TREE_BIG_SIZE, None);
+    b.prefab(170, 30, atlas::TREE_BIG_ORANGE, atlas::TREE_BIG_SIZE, None);
+    b.prefab(50, 34, atlas::BUSH_BIG, atlas::BUSH_BIG_SIZE, None);
+    b.prefab(102, 34, atlas::BUSH_BIG, atlas::BUSH_BIG_SIZE, None);
+    b.prefab(89, 24, atlas::BUSH_BIG, atlas::BUSH_BIG_SIZE, None);
 
     // Festival square, now a proper market: cobbles, the unlit lantern, a
     // cosy campfire, the big blue-awninged market stall, and a round
@@ -532,6 +565,24 @@ fn whispering_woods() -> Zone {
     }
     b.clearing(215, 12, 2);
 
+    // Old growth: towering pines and triple crowns between the everyday
+    // trees, kept well clear of the road, the clearings and Nettle's trail.
+    use crate::gfx::atlas;
+    b.prefab(30, 12, atlas::TREE_TALL_PINE, atlas::TREE_TALL_SIZE, None);
+    b.prefab(64, 40, atlas::TREE_TALL_CANOPY, atlas::TREE_TALL_SIZE, None);
+    b.prefab(76, 8, atlas::TREE_TALL_CANOPY, atlas::TREE_TALL_SIZE, None);
+    b.prefab(120, 16, atlas::TREE_TALL_PINE, atlas::TREE_TALL_SIZE, None);
+    b.prefab(140, 28, atlas::TREE_BIG_ORANGE, atlas::TREE_BIG_SIZE, None);
+    b.prefab(152, 52, atlas::TREE_TALL_PINE, atlas::TREE_TALL_SIZE, None);
+    b.prefab(
+        196,
+        44,
+        atlas::TREE_TALL_CANOPY,
+        atlas::TREE_TALL_SIZE,
+        None,
+    );
+    b.prefab(224, 20, atlas::TREE_TALL_PINE, atlas::TREE_TALL_SIZE, None);
+
     // Moon-mint for Granny Sorrel's kettle, just off the cave path,
     // and two runestones for sharp-eyed wanderers.
     b.set(110, 52, Tile::Herb);
@@ -681,6 +732,21 @@ fn silverford() -> Zone {
     b.rect(112, 55, 14, 6, Tile::Sand);
     b.scatter(Tile::Reed, 180, (108, 53, 22, 10));
 
+    // Old growth along the banks: broad crowns leaning over the meadows.
+    use crate::gfx::atlas;
+    b.prefab(30, 28, atlas::TREE_BIG_GREEN, atlas::TREE_BIG_SIZE, None);
+    b.prefab(56, 20, atlas::TREE_BIG_PINK, atlas::TREE_BIG_SIZE, None);
+    b.prefab(84, 44, atlas::TREE_BIG_GREEN, atlas::TREE_BIG_SIZE, None);
+    b.prefab(
+        100,
+        24,
+        atlas::TREE_TALL_CANOPY,
+        atlas::TREE_TALL_SIZE,
+        None,
+    );
+    b.prefab(186, 22, atlas::TREE_BIG_GREEN, atlas::TREE_BIG_SIZE, None);
+    b.prefab(206, 44, atlas::TREE_BIG_PINK, atlas::TREE_BIG_SIZE, None);
+
     b.set(8, 38, Tile::Sign);
     b.set(140, 38, Tile::Sign);
 
@@ -806,6 +872,15 @@ fn hearthspire() -> Zone {
     for x in 208..=211 {
         b.set(x, 34, Tile::Plaza); // cobbled forecourt up to the door
     }
+
+    // Old growth on the highland: snowbound canopies braced against the mist.
+    use crate::gfx::atlas;
+    b.prefab(32, 42, atlas::TREE_TALL_SNOW, atlas::TREE_TALL_SIZE, None);
+    b.prefab(60, 28, atlas::TREE_BIG_WHITE, atlas::TREE_BIG_SIZE, None);
+    b.prefab(96, 34, atlas::TREE_TALL_SNOW, atlas::TREE_TALL_SIZE, None);
+    b.prefab(140, 28, atlas::TREE_BIG_WHITE, atlas::TREE_BIG_SIZE, None);
+    b.prefab(150, 40, atlas::TREE_TALL_SNOW, atlas::TREE_TALL_SIZE, None);
+    b.prefab(180, 12, atlas::TREE_BIG_WHITE, atlas::TREE_BIG_SIZE, None);
 
     b.set(8, 34, Tile::Sign);
     b.set(190, 32, Tile::Sign);

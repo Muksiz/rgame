@@ -12,6 +12,14 @@ use crate::world::map::{MAP_H, MAP_W, Tile, Zone};
 use crate::world::zones;
 
 /// How long a toast lingers, in ticks (~50ms each).
+/// The game clock's tick length — the shell calls `on_tick` at this cadence,
+/// and the renderer's step-glide converts seconds to ticks with it.
+pub const TICK_SECS: f32 = 0.05;
+/// How long one walking step takes while a movement key is held. The shell
+/// repeats held keys at this pace and the renderer glides the player across
+/// exactly this window, so feet and pixels agree.
+pub const STEP_SECS: f32 = 0.12;
+
 const TOAST_TICKS: u64 = 110;
 /// How long a zone-arrival banner slides across the screen.
 pub const BANNER_TICKS: u64 = 55;
@@ -155,6 +163,25 @@ pub struct Dialogue {
 
 impl Dialogue {
     fn new(speaker: &str, pages: Vec<String>, kind: DialogueKind) -> Self {
+        // Re-flow the authored pages against the dialogue box's actual
+        // capacity (the larger reading face fits less per page than the old
+        // small one): every page is wrapped to the box's columns and split
+        // into as many full pages as it needs, so nothing authored is ever
+        // cut off — long book pages simply turn more page dots.
+        use crate::gfx::font;
+        use crate::gfx::scene::{DIALOGUE_COLS, DIALOGUE_ROWS};
+        let mut pages: Vec<String> = pages
+            .iter()
+            .flat_map(|page| {
+                font::wrap(page, DIALOGUE_COLS)
+                    .chunks(DIALOGUE_ROWS)
+                    .map(|lines| lines.join("\n"))
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+        if pages.is_empty() {
+            pages.push(String::new());
+        }
         Self {
             speaker: speaker.to_string(),
             pages,
@@ -242,6 +269,14 @@ pub struct App {
     pub facing: (i32, i32),
     /// Tick of the last successful step — while fresh, the walk cycle plays.
     pub walked_at: u64,
+    /// The square the last step departed from — the renderer glides the
+    /// player (and camera) from here to `player` over the step, so walking
+    /// reads as motion instead of tile-snaps. Cosmetic, never saved.
+    pub prev_player: (i32, i32),
+    /// How far into the current 50ms tick the shell is (0..1), so the glide
+    /// above stays butter-smooth at any frame rate. Headless renders leave
+    /// it at zero and lose nothing.
+    pub subtick: f32,
     pub completed: BTreeSet<u8>,
     pub accepted: BTreeSet<u8>,
     pub hints: BTreeMap<u8, usize>,
@@ -280,6 +315,8 @@ impl App {
             player_name: String::new(),
             facing: (0, 1),
             walked_at: 0,
+            prev_player: player,
+            subtick: 0.0,
             completed: BTreeSet::new(),
             accepted: BTreeSet::new(),
             hints: BTreeMap::new(),
@@ -774,6 +811,12 @@ impl App {
         let occupied = self.zone().npc_at(target.0, target.1).is_some()
             || self.zone().critters.iter().any(|c| c.pos == target);
         if tile.walkable() && !occupied {
+            // A second step landing on the same tick (the shell walking a
+            // held diagonal) keeps the original departure square, so the
+            // glide runs corner-to-corner instead of kinking mid-step.
+            if self.walked_at != self.tick {
+                self.prev_player = self.player;
+            }
             self.player = target;
             self.walked_at = self.tick;
             if tile == Tile::TallGrass && !self.zone().interior {

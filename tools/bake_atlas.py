@@ -114,6 +114,31 @@ def zl_prefab(name, px, py, tw, th, keep=None, paste=None):
     ]
 
 
+def na_prefab(sheet_name, name, px, py, tw, th, paste=None, shift=(0, 0)):
+    """A multi-tile prefab from a Ninja Adventure tileset (margin-free grid),
+    sliced into tw x th atlas cells row-major, same contract as zl_prefab.
+
+    `paste` composites another region of the same sheet (sx, sy, w, h, rx, ry)
+    onto the crop — how the flavor houses get their doors shut. `shift`
+    offsets the art inside the cell box (for centering a crop that isn't a
+    whole multiple of 16 wide, e.g. the big nature trees).
+    """
+    sheet = Image.open(NA_DIR / "tilesets" / f"{sheet_name}.png").convert("RGBA")
+    img = Image.new("RGBA", (tw * TILE, th * TILE), (0, 0, 0, 0))
+    img.alpha_composite(sheet.crop((px, py, px + tw * TILE, py + th * TILE)), shift)
+    if paste:
+        sx, sy, w, h, rx, ry = paste
+        img.alpha_composite(sheet.crop((sx, sy, sx + w, sy + h)), (rx, ry))
+    return [
+        (
+            name if r == 0 and c == 0 else None,
+            img.crop((c * TILE, r * TILE, c * TILE + TILE, r * TILE + TILE)),
+        )
+        for r in range(th)
+        for c in range(tw)
+    ]
+
+
 def na_idles(folder):
     """The four 16x16 idle frames (down, up, left, right) of a cast member.
 
@@ -945,6 +970,29 @@ def main(sheet_path, chars_path):
         # x=399 is the waist between the first and second, so the crop stops
         # a pixel short of it.
         *zl_prefab("FOUNTAIN", 351, 136, 3, 4, keep=(0, 2, 48, 55)),
+        # ── the village expansion: premade homes from the Ninja Adventure
+        # pack's TilesetHouse (see assets/CREDITS.md). Flavor homes, so every
+        # open doorway gets the sheet's own plank door pasted shut — same
+        # trick as HOUSE_A_SHUT above. ──
+        *na_prefab("TilesetHouse", "NA_HOUSE_THATCH", 0, 0, 4, 3, paste=(32, 48, 16, 16, 24, 32)),
+        *na_prefab("TilesetHouse", "NA_HOUSE_FLAT", 64, 0, 4, 3, paste=(32, 48, 16, 16, 24, 32)),
+        *na_prefab("TilesetHouse", "NA_HOUSE_PLAIN", 128, 0, 4, 3, paste=(32, 48, 16, 16, 24, 32)),
+        *na_prefab("TilesetHouse", "NA_SHOP", 256, 0, 3, 3, paste=(32, 48, 16, 16, 16, 32)),
+        *na_prefab("TilesetHouse", "NA_TAVERN", 304, 0, 3, 3, paste=(32, 48, 16, 16, 16, 32)),
+        *na_prefab("TilesetHouse", "NA_HOUSE_TALL", 464, 0, 4, 4, paste=(32, 48, 16, 16, 16, 46)),
+        # ── the big trees (Ninja Adventure TilesetNature): stately old
+        # growth planted as prefabs between the everyday single-tile trees ──
+        *na_prefab("TilesetNature", "TREE_BIG_PINK", 0, 288, 3, 3),
+        *na_prefab("TilesetNature", "TREE_BIG_GREEN", 48, 288, 3, 3),
+        *na_prefab("TilesetNature", "TREE_BIG_WHITE", 96, 288, 3, 3),
+        *na_prefab("TilesetNature", "TREE_BIG_ORANGE", 144, 288, 3, 3),
+        *na_prefab("TilesetNature", "TREE_TALL_PINE", 0, 32, 4, 3),
+        *na_prefab("TilesetNature", "TREE_TALL_CANOPY", 64, 32, 4, 3),
+        *na_prefab("TilesetNature", "TREE_TALL_SNOW", 128, 32, 4, 3),
+        *na_prefab("TilesetNature", "BUSH_BIG", 0, 0, 2, 2),
+        # single-tile garden flowers to thicken the village beds
+        ("SUNFLOWER_TALL", na_tile("TilesetNature", 1, 11)),
+        ("ROSEBUSH", na_tile("TilesetNature", 2, 11)),
     ]
 
     rows = (len(cells) + COLS - 1) // COLS
