@@ -114,6 +114,7 @@ impl Tile {
                 // Low brush is for wading through, not walking around — only
                 // trees and the big bush prefabs actually block.
                 | Tile::Bush
+                | Tile::Reed
                 | Tile::Path
                 | Tile::Plaza
                 | Tile::Bridge
@@ -353,10 +354,11 @@ impl MapBuilder {
         for y in 0..MAP_H {
             let cx = center_x + (amplitude * (y as f32 / 11.0).sin()) as i32;
             for x in cx - half_width..=cx + half_width {
-                // Mostly open water, with the odd rock breaking the surface
-                // (kept off the banks so the shoreline stays clean).
+                // Mostly open water, with the occasional rock breaking the
+                // surface — sparse on purpose, kept off the banks so the
+                // shoreline stays clean and the river doesn't read as scree.
                 let rock = x.abs_diff(cx) < half_width as u32
-                    && hash2(x, y, self.seed ^ 0x0C0C) % 1000 < 30;
+                    && hash2(x, y, self.seed ^ 0x0C0C) % 1000 < 12;
                 self.set(x, y, if rock { Tile::WaterRock } else { Tile::Water });
             }
             for &x in &[cx - half_width - 1, cx + half_width + 1] {

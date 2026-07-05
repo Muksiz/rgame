@@ -36,10 +36,6 @@ I would like for there to be some sort of city in the Whispering Woods as well. 
 many NPC's are just scattered around the road in a forest. If there was a city with people living there
 it would make more sense. Find textures that fit the description of house in the dark forest.
 
-The small grass with an animation in Silverford Riverlands should not have collision, you should be able
-to walk through it. There are too many big stones. Those big stones should have collision but there should
-not be as many of them as there are now.
-
 The doors of the great library do not look correct. The windows inside are nice, add windows to more houses
 in the game's different locations.
 
