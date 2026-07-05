@@ -7,6 +7,7 @@ use crate::content::quests::{self, QUESTS, Quest};
 use crate::content::{books, lore, sides, stones, wilds};
 use crate::gfx::atlas::PLAYABLE;
 use crate::save::{self, SaveData};
+use crate::world::entity::CritterKind;
 use crate::world::map::hash2;
 use crate::world::map::{MAP_H, MAP_W, Tile, Zone};
 use crate::world::zones;
@@ -289,6 +290,14 @@ pub struct App {
     /// it with this fraction lets the glide start exactly at the departure
     /// square. Cosmetic, never saved; headless leaves it zero.
     pub walk_subtick: f32,
+    /// The companion's tile — the square the player last vacated, so the
+    /// little crab walks exactly one step behind. Maintained whether or not
+    /// it's earned yet (only drawn once `has_companion()`), ephemeral like
+    /// `walked_at`: never saved, it simply reappears at your side on load.
+    pub companion: (i32, i32),
+    /// The square the companion stepped from, for its own render glide.
+    /// Cosmetic, never saved.
+    pub companion_prev: (i32, i32),
     pub completed: BTreeSet<u8>,
     pub accepted: BTreeSet<u8>,
     pub hints: BTreeMap<u8, usize>,
@@ -330,6 +339,8 @@ impl App {
             prev_player: player,
             subtick: 0.0,
             walk_subtick: 0.0,
+            companion: player,
+            companion_prev: player,
             completed: BTreeSet::new(),
             accepted: BTreeSet::new(),
             hints: BTreeMap::new(),
@@ -397,6 +408,20 @@ impl App {
     /// The player's chosen look, clamped so a stray save index can't panic.
     pub fn player_look(&self) -> &'static crate::gfx::atlas::Playable {
         &PLAYABLE[self.player_char.min(PLAYABLE.len() - 1)]
+    }
+
+    /// Whether the little crab walks at your heels — derived from the meal
+    /// flags (fed at three different hours), never stored on its own.
+    pub fn has_companion(&self) -> bool {
+        sides::crab_tamed(&self.flags)
+    }
+
+    /// Gather the companion in to the player's square — through doors, gates
+    /// and zone edges it scurries along rather than being left behind, and on
+    /// load it simply reappears at your side.
+    fn companion_snap(&mut self) {
+        self.companion = self.player;
+        self.companion_prev = self.player;
     }
 
     /// World flags: the memory for everything off the main quest road.
@@ -500,10 +525,13 @@ impl App {
         let tick = self.tick as u32;
 
         for i in 0..self.zones[zone_idx].critters.len() {
-            let (pos, home) = {
+            let (kind, pos, home) = {
                 let c = &self.zones[zone_idx].critters[i];
-                (c.pos, c.home)
+                (c.kind, c.pos, c.home)
             };
+            if kind == CritterKind::Crab {
+                continue; // the stray stays curled where it lies
+            }
             let h = hash2(pos.0, pos.1, tick.wrapping_add(i as u32 * 977));
             if h % 10 >= 4 {
                 continue; // mostly they just stand there, being pleasant
@@ -635,6 +663,7 @@ impl App {
         self.flags.clear();
         self.play_ticks = 0;
         self.day_ticks = 0; // every journey opens on a fresh morning
+        self.companion_snap();
         self.screen = Screen::World;
         self.toast(format!(
             "A quiet morning in Emberwick, {}. Someone near the festival square could use a hand. (Arrows or H J K L to walk, e to talk.)",
@@ -672,6 +701,8 @@ impl App {
         } else {
             self.zone().spawn
         };
+        // The companion's spot is never saved: it reappears at your side.
+        self.companion_snap();
     }
 
     fn autosave(&mut self) {
@@ -780,6 +811,7 @@ impl App {
                 self.zone_idx -= 1;
                 let gate = self.zone().gate.unwrap_or(self.zone().spawn);
                 self.player = (gate.0 - 2, gate.1);
+                self.companion_snap();
                 let name = self.zone().name;
                 self.toast(format!("Back along the road, into {name}."));
                 self.show_banner();
@@ -808,6 +840,7 @@ impl App {
             }
             self.zone_idx = warp.to_zone;
             self.player = warp.to_pos;
+            self.companion_snap();
             self.show_banner();
             if self.zone().interior && !zones::needs_light(self.zone_idx) {
                 let name = self.zone().name;
@@ -821,15 +854,26 @@ impl App {
             self.try_gate();
             return;
         }
+        // Once the stray follows at your heels it occupies no world tile —
+        // its old curl-spot behind the storehouse stops blocking the way.
+        let tamed = self.has_companion();
         let occupied = self.zone().npc_at(target.0, target.1).is_some()
-            || self.zone().critters.iter().any(|c| c.pos == target);
+            || self
+                .zone()
+                .critters
+                .iter()
+                .any(|c| c.pos == target && !(c.kind == CritterKind::Crab && tamed));
         if tile.walkable() && !occupied {
             // A second step landing on the same tick (the shell walking a
             // held diagonal) keeps the original departure square, so the
             // glide runs corner-to-corner instead of kinking mid-step.
             if self.walked_at != self.tick {
                 self.prev_player = self.player;
+                self.companion_prev = self.companion;
             }
+            // The companion takes the square being vacated: always exactly
+            // one step behind, and never on a tile the player couldn't stand.
+            self.companion = self.player;
             self.player = target;
             self.walked_at = self.tick;
             self.walk_subtick = self.subtick;
@@ -871,6 +915,7 @@ impl App {
             if self.zone_idx + 1 < self.zones.len() {
                 self.zone_idx += 1;
                 self.player = self.zone().spawn;
+                self.companion_snap();
                 self.toast(unlock);
                 self.show_banner();
                 self.autosave();
@@ -898,6 +943,20 @@ impl App {
             let dialogue = self.npc_dialogue(x, y);
             self.screen = Screen::Dialogue(dialogue);
             return;
+        }
+        // The stray behind the storehouse: a very small crab with a very
+        // small appetite. Once it follows you it isn't out here anymore.
+        if !self.has_companion() {
+            let crab_near = spots.iter().any(|&(x, y)| {
+                self.zone()
+                    .critters
+                    .iter()
+                    .any(|c| c.kind == CritterKind::Crab && c.pos == (x, y))
+            });
+            if crab_near {
+                self.feed_crab();
+                return;
+            }
         }
         // Anything with writing on it: signposts outside, notes left on
         // tables and crates indoors.
@@ -996,6 +1055,31 @@ impl App {
         let book = &books::BOOKS[ordinal % books::BOOKS.len()];
         let pages = book.pages.iter().map(|p| p.to_string()).collect();
         self.screen = Screen::Dialogue(Dialogue::new(book.title, pages, DialogueKind::Book));
+    }
+
+    /// A morsel for the stray crab. It takes one per hour of the day
+    /// (morning, midday, evening, night — the clock or a campfire rest moves
+    /// them along); the third meal wins its trust, and from then on the
+    /// little crab walks at your heels. The gentlest quest on the road.
+    fn feed_crab(&mut self) {
+        let fed_flag = match self.phase() {
+            DayPhase::Morning => sides::CRAB_FED[0],
+            DayPhase::Day => sides::CRAB_FED[1],
+            DayPhase::Evening => sides::CRAB_FED[2],
+            DayPhase::Night => sides::CRAB_FED[3],
+        };
+        if self.has_flag(fed_flag) {
+            self.toast(
+                "The little crab is still working on the last morsel. Perhaps at another hour.",
+            );
+            return;
+        }
+        let talk = sides::crab_talk(&self.flags, fed_flag);
+        self.screen = Screen::Dialogue(Dialogue::new(
+            "A very small crab",
+            talk.pages,
+            DialogueKind::Side(talk.set),
+        ));
     }
 
     /// The moon-mint patch off the cave path — Granny Sorrel's favor.
@@ -1931,6 +2015,124 @@ mod tests {
         app.try_move(0, 1); // step back onto the room's own door
         assert_eq!(app.zone_idx, 0, "no way back out of the bakery");
         assert_eq!(app.player, (warp.at.0, warp.at.1 + 1));
+    }
+
+    /// Three meals at three hours of the day win the stray crab's trust.
+    #[test]
+    fn feeding_the_stray_crab_thrice_tames_it() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        let crab = app.zones[0]
+            .critters
+            .iter()
+            .find(|c| c.kind == CritterKind::Crab)
+            .expect("a stray crab curls behind the storehouse")
+            .home;
+        // The player can stand beside it (the gap is reachable, not scenery).
+        app.player = (crab.0 - 1, crab.1);
+        assert!(
+            app.zone().tile(app.player.0, app.player.1).walkable(),
+            "no standing room beside the stray"
+        );
+
+        // First morsel, in the morning.
+        assert_eq!(app.phase(), DayPhase::Morning);
+        app.on_key(Key::Char('e'));
+        let Screen::Dialogue(d) = &app.screen else {
+            panic!("the crab said nothing (well, clicked nothing)");
+        };
+        assert!(matches!(d.kind, DialogueKind::Side(Some(_))));
+        click_through(&mut app);
+        assert_eq!(sides::crab_meals(&app.flags), 1);
+        assert!(!app.has_companion());
+
+        // The same hour won't do: it's still nibbling.
+        app.on_key(Key::Char('e'));
+        assert!(matches!(app.screen, Screen::World), "double-fed the crab");
+        assert_eq!(sides::crab_meals(&app.flags), 1);
+
+        // Midday brings a second appetite, evening the third — and trust.
+        app.day_ticks = DAY_START;
+        app.on_key(Key::Char('e'));
+        click_through(&mut app);
+        assert_eq!(sides::crab_meals(&app.flags), 2);
+        app.day_ticks = EVENING_START;
+        app.on_key(Key::Char('e'));
+        click_through(&mut app);
+        assert_eq!(sides::crab_meals(&app.flags), 3);
+        assert!(app.has_companion(), "three meals should win its trust");
+
+        // Now it walks at your heels, and its curl-spot no longer blocks.
+        app.on_key(Key::Char('e'));
+        assert!(
+            matches!(app.screen, Screen::World),
+            "the tamed crab should have left the storehouse gap"
+        );
+        app.try_move(1, 0);
+        assert_eq!(app.player, crab, "the old curl-spot should be walkable");
+    }
+
+    /// The companion trails exactly one step behind, never in scenery —
+    /// every square it sits on is one the player just stood on.
+    #[test]
+    fn the_companion_follows_a_step_behind() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        for f in sides::CRAB_FED.iter().take(3) {
+            app.set_flag(f);
+        }
+        assert!(app.has_companion());
+        app.player = app.zones[0].spawn;
+        app.companion_snap();
+        let mut walked = 0;
+        for (dx, dy) in [(1, 0), (1, 0), (0, 1), (-1, 0), (0, -1), (1, 0)] {
+            let before = app.player;
+            app.tick += 5; // separate ticks, like real steps
+            app.try_move(dx, dy);
+            if app.player != before {
+                walked += 1;
+                assert_eq!(app.companion, before, "not at the player's heels");
+                assert!(
+                    app.zone().tile(app.companion.0, app.companion.1).walkable(),
+                    "companion left in scenery at {:?}",
+                    app.companion
+                );
+            }
+        }
+        assert!(walked >= 2, "the walk never got going");
+    }
+
+    /// Doors don't lose the little crab: it scurries through with you.
+    #[test]
+    fn the_companion_is_never_lost_across_a_warp() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        for f in sides::CRAB_FED.iter().take(3) {
+            app.set_flag(f);
+        }
+        let warp = app.zones[0].warps[0]; // the bakery's front door
+        app.player = (warp.at.0, warp.at.1 + 1);
+        app.companion_snap();
+        app.try_move(0, -1); // step through the door
+        assert_eq!(app.zone_idx, warp.to_zone);
+        assert_eq!(
+            app.companion, app.player,
+            "the companion should be gathered in at the doorstep"
+        );
+        // And the first step deeper inside puts it right back at your heels
+        // (not (0, 1) — that's the doorstep again, which would warp us out).
+        let inside = app.player;
+        let zone_now = app.zone_idx;
+        app.tick += 5;
+        for (dx, dy) in [(0, -1), (1, 0), (-1, 0)] {
+            app.try_move(dx, dy);
+            if app.player != inside {
+                break;
+            }
+        }
+        assert_eq!(app.zone_idx, zone_now);
+        assert_ne!(app.player, inside, "no room to step inside the bakery?");
+        assert_eq!(app.companion, inside);
     }
 
     #[test]

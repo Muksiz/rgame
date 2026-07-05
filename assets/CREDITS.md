@@ -85,7 +85,9 @@ extended-charset face, `credits.txt` the author's own credits file.
 
 The critter, Ferris, bookshelf, chest, runestone and moon-mint sprites in
 the atlas are original pixel art for this project (same CC0 spirit — do
-what you like with them).
+what you like with them). So are the six frames of the little crab
+companion, drawn after Rust's mascot Ferris (rustacean.net, by Karen Rustad
+Tölva, CC0) in its canonical colors.
 
 To rebake after editing the script:
 

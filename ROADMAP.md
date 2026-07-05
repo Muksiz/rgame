@@ -56,7 +56,20 @@ Invariants (to test): every anchor is standable and BFS-reachable in its
 zone; talk-reach works at every anchor; the active quest's giver is always at
 their canonical spot; nothing about schedules touches `SaveData`.
 
-## 2. A companion at your heels
+## 2. A companion at your heels — DONE
+
+**Shipped** (ahead of schedules, by request): the stray is a very small crab
+in Ferris's exact colors (rustacean.net's #F74C00, hand-pixeled `from_art`
+frames), curled in the gap between the Emberwick storehouse and the lean-to
+shed. Feed it thrice — one morsel per hour of the day, `crab.fed.*` flags,
+tamed derived from any three — and it walks one tile behind you forever:
+scuttle frames on the move, a claws-up wave at rest, eyestalks in tall grass,
+a startled hop when a wild rune stirs, a doze with its own z after dark, and
+a curl in the ember-light on the resting screen. Ferris vouches for it
+(family, apparently). Position is ephemeral (`App::companion`), snapped to
+your side across warps/gates/loads; `--crab` previews it in the snapshot
+tool. Remaining polish ideas: a choice of friend at char-select, a slow
+blink at NPCs.
 
 A small friend who walks the road with you — earned, in keeping with the
 world, through a gentle side quest (a stray curled behind the storehouse who

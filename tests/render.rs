@@ -181,6 +181,52 @@ fn every_screen_renders() {
     render(&atlas, &app);
     app.day_ticks = 0;
 
+    // The companion at your heels: fed thrice, the little crab follows.
+    for f in rgame::content::sides::CRAB_FED.iter().take(3) {
+        app.set_flag(f);
+    }
+    let spawn = app.zones[0].spawn;
+    app.player = spawn;
+    app.companion = (spawn.0 - 1, spawn.1);
+    app.companion_prev = (spawn.0 - 2, spawn.1);
+    render(&atlas, &app); // sitting at your heels
+    app.walked_at = app.tick; // mid-stride: the scuttle frames
+    render(&atlas, &app);
+    app.walked_at = 0;
+    app.day_ticks = rgame::app::DAY_LEN - 5000;
+    render(&atlas, &app); // dozing at night, z and all
+    app.day_ticks = 0;
+    // Peeking out of the tall grass, eyestalks only.
+    let grass = (0..MAP_H)
+        .flat_map(|y| (0..MAP_W).map(move |x| (x, y)))
+        .find(|&(x, y)| {
+            app.zones[0].tile(x, y) == rgame::world::map::Tile::TallGrass
+                && app.zones[0].tile(x + 1, y).walkable()
+        })
+        .expect("Emberwick grows tall grass beside a path");
+    app.player = (grass.0 + 1, grass.1);
+    app.companion = grass;
+    app.companion_prev = grass;
+    render(&atlas, &app);
+    // A startled hop when a wild rune stirs.
+    app.screen = Screen::Encounter {
+        rune: 1,
+        selected: 0,
+        phase: EncounterPhase::Asking,
+    };
+    render(&atlas, &app);
+    // And curled in the ember-light at a campfire rest.
+    app.screen = Screen::Resting {
+        lore: 5,
+        t: 40,
+        wake: rgame::app::DayPhase::Night,
+    };
+    render(&atlas, &app);
+    app.screen = Screen::World;
+    app.player = app.zones[0].spawn;
+    app.companion = app.zones[0].spawn;
+    app.companion_prev = app.zones[0].spawn;
+
     for page in 0..4 {
         app.screen = Screen::Epilogue { page };
         render(&atlas, &app);
@@ -199,6 +245,9 @@ fn a_completed_game_still_renders() {
     }
     app.set_flag(rgame::content::sides::SORREL_DONE);
     app.set_flag(rgame::content::sides::CHEST_OPENED);
+    for f in rgame::content::sides::CRAB_FED {
+        app.set_flag(f);
+    }
     app.zone_idx = 3;
     app.player = app.zones[3].spawn;
     app.screen = Screen::World;
