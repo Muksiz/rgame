@@ -1,27 +1,46 @@
-// Reference solution — Quest 15: .clone() the manifest so the original
-// survives its own move.
+// Reference solution — Quest 15: one struct definition, one instance, three
+// facts traveling as one.
 
-fn log_manifest(label: String) -> String {
-    format!("Logged: {label}")
+struct Manifest {
+    label: String,
+    weight: u32,
+    sealed: bool,
 }
 
-fn check_cargo() -> (String, String) {
-    let manifest = String::from("Crate 14, dry goods");
+fn receive_crate() -> Manifest {
+    Manifest {
+        label: String::from("Crate 14, dry goods"),
+        weight: 12,
+        sealed: true,
+    }
+}
 
-    let checked_in = log_manifest(manifest.clone());
-    let checked_out = log_manifest(manifest);
-
-    (checked_in, checked_out)
+fn ledger_line(entry: &Manifest) -> String {
+    format!(
+        "{} — {} stone, seal {}",
+        entry.label,
+        entry.weight,
+        if entry.sealed { "unbroken" } else { "BROKEN" }
+    )
 }
 
 fn main() {
-    let (inn, out) = check_cargo();
-    println!("{inn}\n{out}");
+    let crate_record = receive_crate();
+    println!("{}", ledger_line(&crate_record));
 }
 
 #[test]
-fn both_logs_are_written() {
-    let (checked_in, checked_out) = check_cargo();
-    assert_eq!(checked_in, "Logged: Crate 14, dry goods");
-    assert_eq!(checked_out, "Logged: Crate 14, dry goods");
+fn the_record_holds_all_three_facts() {
+    let entry = receive_crate();
+    assert_eq!(entry.label, "Crate 14, dry goods");
+    assert_eq!(entry.weight, 12);
+    assert!(entry.sealed);
+}
+
+#[test]
+fn the_ledger_line_reads_true() {
+    assert_eq!(
+        ledger_line(&receive_crate()),
+        "Crate 14, dry goods — 12 stone, seal unbroken"
+    );
 }

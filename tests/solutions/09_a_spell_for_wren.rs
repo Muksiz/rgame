@@ -1,19 +1,28 @@
-// Reference solution — Quest 9: a whole function, in and out.
+// Reference solution — Quest 9: clone into the first cast; the original
+// survives for the second.
 
-fn double_step(paces: i32) -> i32 {
-    paces * 2
+fn cast(incantation: String) -> String {
+    format!("~ {incantation} ~")
+}
+
+fn practice_twice() -> (String, String) {
+    let spell = String::from("double step");
+
+    let first = cast(spell.clone());
+    let second = cast(spell);
+
+    (first, second)
 }
 
 fn main() {
-    println!("Seven paces become {}!", double_step(7));
+    let (first, second) = practice_twice();
+    println!("First casting:  {first}");
+    println!("Second casting: {second}");
 }
 
 #[test]
-fn small_hops() {
-    assert_eq!(double_step(3), 6);
-}
-
-#[test]
-fn a_grand_journey() {
-    assert_eq!(double_step(21), 42);
+fn both_castings_sparkle() {
+    let (first, second) = practice_twice();
+    assert_eq!(first, "~ double step ~");
+    assert_eq!(second, "~ double step ~");
 }

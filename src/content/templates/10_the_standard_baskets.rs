@@ -2,41 +2,45 @@
 //   Quest 10: The Standard Baskets                ~ Whispering Woods ~
 // ══════════════════════════════════════════════════════════════════
 //
-//   Basket-weaver Briar: "Every stall gets four baskets, always in
-//   the same order, always the same four sizes. I just need to know
-//   what the THIRD one holds. Not the fourth. The third."
+//   Basket-weaver Briar: "Every basket comes past me for a
+//   checking-stamp before it goes out. But my stamping-rune has
+//   developed a HABIT: baskets go in, baskets do not come out."
 //
 //   ── YOUR TASK ──────────────────────────────────────────────────
-//   A fixed-size array like `[5, 6, 7, 8]` has type `[i32; 4]` — four
-//   slots, no more, no less — and counting starts at zero:
+//   Ownership flows through functions in both directions:
 //
-//       basket[0]  // the first basket
-//       basket[1]  // the second
-//       ...
+//   • Passing a `String` in MOVES it — the function owns it now.
+//   • When the function ends, everything it still owns is dropped.
+//   • Returning a value moves ownership back OUT to the caller.
 //
-//   Fix the index so it reaches the THIRD basket, then press `c`.
+//   Right now `stamp` takes the basket and returns nothing, so the
+//   stamped basket is dropped — gone, mulch — the moment the
+//   function ends. Give `stamp` a return type (`-> String`), hand
+//   the stamped basket back on its last line, and catch it at the
+//   call site.
+//
+//   Fix the round, then press `c` in the game.
 // ──────────────────────────────────────────────────────────────────
 
-fn basket_capacities() -> [u32; 4] {
-    [5, 6, 7, 8]
+fn stamp(basket: String) {
+    // The stamped basket never leaves this function...
+    let stamped = format!("{basket} [checked]");
 }
 
-fn third_basket_capacity() -> u32 {
-    let baskets = basket_capacities();
-    baskets[3] // TODO: array indices start at 0 — this reaches the fourth basket
+fn morning_round() -> String {
+    let basket = String::from("Basket no. 3");
+
+    // TODO: `basket` moves into `stamp` here and is never handed back.
+    stamp(basket);
+    basket
 }
 
 fn main() {
-    println!("The third basket holds {}.", third_basket_capacity());
+    println!("Back from the stamping table: '{}'", morning_round());
 }
 
 // ─── Briar counts her baskets by hand (leave this part alone) ─────
 #[test]
-fn there_are_four_standard_baskets() {
-    assert_eq!(basket_capacities(), [5, 6, 7, 8]);
-}
-
-#[test]
-fn the_third_basket_is_the_third() {
-    assert_eq!(third_basket_capacity(), 7);
+fn the_basket_comes_back_stamped() {
+    assert_eq!(morning_round(), "Basket no. 3 [checked]");
 }

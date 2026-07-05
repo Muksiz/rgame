@@ -726,8 +726,8 @@ fn whispering_woods() -> Zone {
                 pos: (105, 46),
                 quest: Some(10),
                 idle: &[
-                    "Four baskets, four sizes, every stall the same. Counting's the whole trick.",
-                    "The right basket, every time now — no more guessing which one's which. Take an apple, go on.",
+                    "Every basket past my table for its stamp before it goes out. Lent is not lost — that's the whole trade.",
+                    "In and back out, stamped and counted, every single time now. Take an apple, go on.",
                 ],
             },
             Npc {
@@ -762,8 +762,8 @@ fn whispering_woods() -> Zone {
                 pos: (225, 31),
                 quest: Some(14),
                 idle: &[
-                    "Some evenings I find the old bell. Some evenings, nothing. Both are true, is the trouble.",
-                    "Honest runework, that. Nothing pretending to be something it isn't. I'll remember that, one way or another.",
+                    "Some evenings I find the old bell. Some evenings, nothing. A body can only walk three grounds a night, is the trouble.",
+                    "Three grounds an evening, honestly planned. No more pretending the whole wood fits in one night. I'll find that bell yet.",
                 ],
             },
             // Hidden in the deep woods; her dialogue lives in content/sides.rs.
@@ -895,8 +895,8 @@ fn silverford() -> Zone {
                 pos: (130, 42),
                 quest: Some(15),
                 idle: &[
-                    "Every crate, logged twice. In, then out. Doesn't sound like much until the rune won't do it.",
-                    "Both entries in the ledger now, word for word. Proper paper trail. Wick's just down at the landing, if the ferry's your business.",
+                    "Every crate that lands gets a record: label, weight, seal. Three facts, one crate — you'd think a ledger could keep them together.",
+                    "Label, weight and seal, one bundle to a crate now. Proper paper trail. Wick's just down at the landing, if the ferry's your business.",
                 ],
             },
             Npc {
@@ -923,7 +923,7 @@ fn silverford() -> Zone {
                 quest: Some(18),
                 idle: &[
                     "The tide chart only wants the first three days. The rest is just noise, far as I'm concerned.",
-                    "A tidy little slice, and not a splinter more. That's how I like my logs, and my nets.",
+                    "Three days, one snug bundle, and not a number more. That's how I like my charts, and my nets.",
                 ],
             },
             Npc {

@@ -2,21 +2,31 @@
 //   Quest 20: The Lost Book                 ~ Hearthspire Approach ~
 // ══════════════════════════════════════════════════════════════════
 //
-//   Archivist Elm: "Before it comes home to the Library it must be
-//   CATALOGUED. A record-rune bundles facts so they travel as one:
-//   we call the bundle a `struct`. Dignified word."
+//   Archivist Elm: "Any dockhand can bundle facts — no offense to
+//   dockhands. A LIBRARY record has *abilities*. It answers for
+//   itself: is it overdue? What does its catalogue card say?"
 //
 //   ── YOUR TASK ──────────────────────────────────────────────────
-//   The struct is already defined. Build one *value* of it, naming
-//   every field:
+//   Abilities that belong to a type are *methods*, and they live in
+//   an `impl` block:
 //
-//       Book { title: ..., pages: ..., years_overdue: ... }
+//       impl Book {
+//           fn is_overdue(&self) -> bool {
+//               self.years_overdue > 0
+//           }
+//       }
 //
-//   The paperwork:  title "A Field Guide to Polite Dragons",
-//   312 pages, 58 years overdue. (A `String` title needs
-//   `.to_string()` — string literals are only borrowed `&str`.)
+//   `&self` is a polite borrow of the very record the method is
+//   called on; its fields read as `self.title`, `self.pages`.
+//   Methods are called with a dot: `book.is_overdue()`.
 //
-//   Replace the `todo!()`, then press `c` in the game.
+//   Carve BOTH methods into the impl block:
+//
+//     .is_overdue()      ->  bool: true past zero years
+//     .catalogue_card()  ->  String: title, then pages in brackets —
+//                            "A Field Guide to Polite Dragons (312 pages)"
+//
+//   Then press `c` in the game.
 // ──────────────────────────────────────────────────────────────────
 
 struct Book {
@@ -25,20 +35,46 @@ struct Book {
     years_overdue: u32,
 }
 
-fn catalogue_the_book() -> Book {
-    todo!("fill in the record: title, pages, years_overdue")
+impl Book {
+    // TODO: fn is_overdue(&self) -> bool
+
+    // TODO: fn catalogue_card(&self) -> String
+}
+
+fn the_returned_book() -> Book {
+    Book {
+        title: String::from("A Field Guide to Polite Dragons"),
+        pages: 312,
+        years_overdue: 58, // no judgement. some judgement.
+    }
 }
 
 fn main() {
-    let book = catalogue_the_book();
-    println!("Catalogued: '{}', {} pages.", book.title, book.pages);
+    let book = the_returned_book();
+    println!("{}", book.catalogue_card());
+    println!(
+        "Overdue? {}",
+        if book.is_overdue() { "Fifty-eight years. NO JUDGEMENT." } else { "Not at all." }
+    );
 }
 
 // ─── Elm's four-angle inspection (leave this part alone) ──────────
 #[test]
-fn the_record_is_complete() {
-    let book = catalogue_the_book();
-    assert_eq!(book.title, "A Field Guide to Polite Dragons");
-    assert_eq!(book.pages, 312);
-    assert_eq!(book.years_overdue, 58);
+fn the_record_answers_for_itself() {
+    let book = the_returned_book();
+    assert!(book.is_overdue());
+    assert_eq!(
+        book.catalogue_card(),
+        "A Field Guide to Polite Dragons (312 pages)"
+    );
+}
+
+#[test]
+fn a_punctual_book_is_not_accused() {
+    let punctual = Book {
+        title: String::from("On Time: A Memoir"),
+        pages: 41,
+        years_overdue: 0,
+    };
+    assert!(!punctual.is_overdue());
 }

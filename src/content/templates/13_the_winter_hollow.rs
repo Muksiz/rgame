@@ -2,37 +2,46 @@
 //   Quest 13: The Winter Hollow                  ~ Whispering Woods ~
 // ══════════════════════════════════════════════════════════════════
 //
-//   Hollow-keeper Yew: "An array wants to know its size before it's
-//   born. My hoard doesn't work that way — some years three good
-//   gathering days, some years thirty. I need something that grows
-//   as the acorns come in."
+//   Hollow-keeper Yew: "The labeling-rune writes the hoard's label
+//   INSIDE itself, then tries to hand me a mere borrow of it. But
+//   everything inside the rune is swept away the moment it
+//   finishes! A finger pointing at swept-away writing!"
 //
 //   ── YOUR TASK ──────────────────────────────────────────────────
-//   `Vec<T>` is a growable list. Start one empty and add to it as
-//   you go:
+//   A function can never return a reference to something it created
+//   inside itself: the value is dropped when the function ends, and
+//   the reference would point at nothing. The compiler refuses to
+//   let such a thing exist — read its note below, it's a good one.
 //
-//       let mut hoard = Vec::new();
-//       hoard.push(3);
+//   The honest fix is to hand out the value itself:
 //
-//   Fix the rune so each day's count gets pushed in, then press `c`.
+//       fn hoard_label(acorns: u32) -> String   // owned, not borrowed
+//
+//   ...and return `label`, not `&label`. Ownership then MOVES out
+//   of the function and into the caller's hands. Nothing is copied;
+//   nothing dangles.
+//
+//   Mend the rune, then press `c` in the game.
 // ──────────────────────────────────────────────────────────────────
 
-fn gather_acorns(day1: u32, day2: u32, day3: u32) -> Vec<u32> {
-    // TODO: start an empty Vec (`Vec::new()`) and `.push()` each day's count
-    todo!()
+fn hoard_label(acorns: u32) -> &String {
+    let label = format!("{acorns} acorns against the winter");
+    // TODO: `label` is swept away when this function ends — hand out
+    // the owned String itself, not a borrow of it.
+    &label
 }
 
 fn main() {
-    println!("Yew's hoard: {:?}", gather_acorns(3, 5, 2));
+    println!("The hoard-post reads: '{}'", hoard_label(31));
 }
 
 // ─── Yew checks the hollow every evening (leave this part alone) ──
 #[test]
-fn every_day_is_kept_in_order() {
-    assert_eq!(gather_acorns(3, 5, 2), vec![3, 5, 2]);
+fn the_label_survives_the_rune() {
+    assert_eq!(hoard_label(31), "31 acorns against the winter");
 }
 
 #[test]
-fn the_hoard_has_one_entry_per_day() {
-    assert_eq!(gather_acorns(0, 0, 0).len(), 3);
+fn even_a_lean_year_gets_its_label() {
+    assert_eq!(hoard_label(3), "3 acorns against the winter");
 }

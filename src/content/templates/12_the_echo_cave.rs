@@ -2,43 +2,43 @@
 //   Quest 12: The Echo Cave                     ~ Whispering Woods ~
 // ══════════════════════════════════════════════════════════════════
 //
-//   Shepherd Ambrose: "Give the rune a word and a number, and it
-//   repeats the word that many times with a space between.
-//   'baa baa baa'. The sheep settle right down. Bliss."
+//   Shepherd Ambrose: "My sheep settle for the night on a good
+//   triple 'baa' — the call, plus two echoes on the end. My
+//   echo-rune borrows the call politely, one of those `&` marks...
+//   and the cave REFUSED. Looking-borrows are for looking, it says."
 //
 //   ── YOUR TASK ──────────────────────────────────────────────────
-//   Build the echo with a loop. Useful pieces:
+//   A shared borrow (`&String`) never permits changes. To let a
+//   function CHANGE the caller's value, borrow mutably at both ends:
 //
-//       let mut result = String::new();
-//       for _ in 0..times { ... }
-//       result.push_str(word);      result.push(' ');
+//       fn add_echo(call: &mut String) { ... }   // the pen, lent
+//       add_echo(&mut call);                     // the pen, offered
 //
-//   Careful: single spaces BETWEEN words only — the echo is fussy
-//   about trailing spaces.
+//   Only one mutable borrow may exist at a time — nobody reads a
+//   sentence while it's still being written. (That's the whole rule,
+//   and the cave is very proud of it.)
 //
-//   Replace the `todo!()`, then press `c` in the game.
+//   Fix both ends, then press `c` in the game.
 // ──────────────────────────────────────────────────────────────────
 
-fn echo(word: &str, times: u32) -> String {
-    todo!()
+fn add_echo(call: &String) {
+    // TODO: an echo CHANGES the call — a `&` borrow won't allow it.
+    call.push_str(" baa");
+}
+
+fn settle_the_sheep() -> String {
+    let mut call = String::from("baa");
+    add_echo(&call); // TODO: lend the pen, not just a look
+    add_echo(&call);
+    call
 }
 
 fn main() {
-    println!("The cave answers: {}", echo("baa", 3));
+    println!("The cave answers: {}", settle_the_sheep());
 }
 
 // ─── The cave's acoustics (leave this part alone) ─────────────────
 #[test]
 fn a_sleepy_triple() {
-    assert_eq!(echo("baa", 3), "baa baa baa");
-}
-
-#[test]
-fn a_single_polite_echo() {
-    assert_eq!(echo("hello", 1), "hello");
-}
-
-#[test]
-fn no_trailing_space() {
-    assert_eq!(echo("ho", 2), "ho ho", "single spaces between, none at the end");
+    assert_eq!(settle_the_sheep(), "baa baa baa");
 }

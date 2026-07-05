@@ -2,62 +2,73 @@
 //   Quest 21: Waking the Golem              ~ Hearthspire Approach ~
 // ══════════════════════════════════════════════════════════════════
 //
-//   The brass plate reads: 'ADMISSIONS. Wind me thrice.'
+//   The brass plate reads: 'ADMISSIONS. All returns through the
+//   slot. THE SLOT DECIDES. — The Management.' And beneath, in
+//   smaller letters: 'a slot is a package-shaped hole.'
 //
 //   ── YOUR TASK ──────────────────────────────────────────────────
-//   Methods are abilities that belong to a thing; they live in an
-//   `impl` block. The golem needs three:
+//   Methods can take parameters after `self`. The judging-rune
+//   compares TWO instances — the parcel it's called on, and the
+//   slot it's offered:
 //
-//     Golem::new()      →  a fresh golem with 0 charge
-//     .wind_up()        →  adds 1 charge (changes the golem: &mut self)
-//     .is_awake()       →  true at 3 or more charge (only looks: &self)
+//       fn fits_through(&self, slot: &Package) -> bool
 //
-//   Carve all three into the impl block, then press `c` in the game.
+//   Borrow the second instance (judging shouldn't swallow the
+//   slot), and be strict: STRICTLY narrower and STRICTLY shorter,
+//   `<` not `<=`, or the slot stays shut.
+//
+//   Carve the method into the impl block, then press `c`.
 // ──────────────────────────────────────────────────────────────────
 
-struct Golem {
-    charge: u32,
+struct Package {
+    width: u32,
+    height: u32,
 }
 
-impl Golem {
-    // TODO: fn new() -> Golem
-
-    // TODO: fn wind_up(&mut self)
-
-    // TODO: fn is_awake(&self) -> bool
+impl Package {
+    // TODO: fn fits_through(&self, slot: &Package) -> bool
 }
 
 fn main() {
-    let mut golem = Golem::new();
-    golem.wind_up();
-    golem.wind_up();
-    golem.wind_up();
+    let slot = Package { width: 30, height: 40 };
+    let field_guide = Package { width: 22, height: 28 };
     println!(
-        "The golem {}.",
-        if golem.is_awake() { "grinds awake: 'ADMISSIONS. WELCOME.'" } else { "snores on" }
+        "The Field Guide {}.",
+        if field_guide.fits_through(&slot) {
+            "slides through — the golem grinds awake: 'ADMISSIONS. WELCOME.'"
+        } else {
+            "does not fit. The golem snores on"
+        }
     );
 }
 
 // ─── The Management's acceptance test (leave this part alone) ─────
 #[test]
-fn fresh_golems_sleep_deeply() {
-    let golem = Golem::new();
-    assert!(!golem.is_awake());
+fn the_field_guide_fits() {
+    let slot = Package { width: 30, height: 40 };
+    let field_guide = Package { width: 22, height: 28 };
+    assert!(field_guide.fits_through(&slot));
 }
 
 #[test]
-fn two_turns_are_not_enough() {
-    let mut golem = Golem::new();
-    golem.wind_up();
-    golem.wind_up();
-    assert!(!golem.is_awake());
+fn the_grand_atlas_does_not() {
+    let slot = Package { width: 30, height: 40 };
+    let atlas = Package { width: 45, height: 60 };
+    assert!(!atlas.fits_through(&slot));
 }
 
 #[test]
-fn thrice_wound_is_wide_awake() {
-    let mut golem = Golem::new();
-    golem.wind_up();
-    golem.wind_up();
-    golem.wind_up();
-    assert!(golem.is_awake());
+fn a_slot_sized_package_stays_out() {
+    // Strictly smaller — a package EXACTLY the slot's size jams. The
+    // Management has opinions about jams.
+    let slot = Package { width: 30, height: 40 };
+    let exact = Package { width: 30, height: 40 };
+    assert!(!exact.fits_through(&slot));
+}
+
+#[test]
+fn width_alone_is_not_enough() {
+    let slot = Package { width: 30, height: 40 };
+    let tall_and_thin = Package { width: 10, height: 55 };
+    assert!(!tall_and_thin.fits_through(&slot));
 }

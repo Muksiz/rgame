@@ -1,7 +1,8 @@
 //! Wild runes: the little spirits that rustle in the tall grass. Meeting one
 //! poses a small Rust question; answer true and the rune is inscribed in your
-//! grimoire. Each zone grows its own kinds, themed on that zone's lessons —
-//! wandering the grass becomes gentle spaced repetition.
+//! grimoire. Each zone grows its own kinds, themed on that zone's chapter of
+//! the book — wandering the grass becomes gentle spaced repetition, and no
+//! zone's grass ever quizzes past its chapter.
 
 pub struct WildRune {
     pub id: u8,
@@ -27,7 +28,7 @@ pub fn in_zone(zone: usize) -> Vec<&'static WildRune> {
 }
 
 pub static WILDS: [WildRune; 16] = [
-    // ── Emberwick: println!, mut, numeric types ─────────────────────────────
+    // ── Emberwick, ch. 3: println!, mut, functions, statements & expressions ─
     WildRune {
         id: 1,
         zone: 0,
@@ -59,16 +60,16 @@ pub static WILDS: [WildRune; 16] = [
     WildRune {
         id: 3,
         zone: 0,
-        name: "the Cast Rune",
-        stir: "Two runes argue in the grass — one whole, one pointy. They notice you.",
-        prompt: "How do you multiply an i32 named `n` with an f64 named `f`?",
+        name: "the Arrow Rune",
+        stir: "A slender rune loosed from somewhere flies past → and circles back, curious.",
+        prompt: "In `fn double(x: i32) -> i32`, what does the `->` mean?",
         options: [
-            "n * f — numbers are numbers",
-            "(n as f64) * f",
-            "f.to_i32() * n",
+            "The type the function returns",
+            "A pointer dereference",
+            "The function runs asynchronously",
         ],
-        answer: 1,
-        lore: "Rust never mixes number-kinds silently. `as` converts one, then they get along fine.",
+        answer: 0,
+        lore: "The arrow points at what comes out of the little machine — the out-door, as the village children call it.",
     },
     WildRune {
         id: 4,
@@ -84,65 +85,12 @@ pub static WILDS: [WildRune; 16] = [
         answer: 1,
         lore: "A semicolon quietly sets a value down. Leave it off the last line, and the value walks out with you.",
     },
-    // ── Whispering Woods: functions, if/else, loops ─────────────────────────
+    // ── Whispering Woods, ch. 4: ownership, borrows, slices ─────────────────
     WildRune {
         id: 5,
         zone: 1,
-        name: "the Arrow Rune",
-        stir: "A slender rune loosed from somewhere flies past → and circles back, curious.",
-        prompt: "In `fn double(x: i32) -> i32`, what does the `->` mean?",
-        options: [
-            "The function type it returns",
-            "A pointer dereference",
-            "The function runs asynchronously",
-        ],
-        answer: 0,
-        lore: "The arrow points at what comes out of the little machine. Wren would call it the out-door.",
-    },
-    WildRune {
-        id: 6,
-        zone: 1,
-        name: "the Else Rune",
-        stir: "The grass parts two ways at once. A rune sits at the fork, waiting for your answer.",
-        prompt: "What does `if` in Rust evaluate to?",
-        options: [
-            "Nothing — if is only a statement",
-            "A value: `let y = if x > 0 { 1 } else { -1 };` works",
-            "Always a bool",
-        ],
-        answer: 1,
-        lore: "In Rust the fork in the path is itself a value. Choose a branch, carry home what you find.",
-    },
-    WildRune {
-        id: 7,
-        zone: 1,
-        name: "the Loop Rune",
-        stir: "A rune jogs past you. A moment later it jogs past you. A moment later it jogs—",
-        prompt: "Which loop is guaranteed to run at least once?",
-        options: ["for x in 0..0", "while false", "loop { ... }"],
-        answer: 2,
-        lore: "`loop` runs until a `break` sets it free. (The game's rune-checker keeps a ten-second net, just in case.)",
-    },
-    WildRune {
-        id: 8,
-        zone: 1,
-        name: "the Shadow Rune",
-        stir: "Your shadow detaches, stretches, and becomes a second, newer shadow.",
-        prompt: "What does shadowing mean: `let x = 5; let x = x + 1;` ?",
-        options: [
-            "A compile error — x already exists",
-            "A brand-new x replaces the old one; even its type may change",
-            "It mutates the original x in place",
-        ],
-        answer: 1,
-        lore: "A new binding may quietly stand where an old one stood. The woods do this with trees, too.",
-    },
-    // ── Silverford: ownership, borrows, String vs &str ──────────────────────
-    WildRune {
-        id: 9,
-        zone: 2,
-        name: "the River Rune",
-        stir: "A rune drifts by on the current. If you take it, the river won't have it anymore.",
+        name: "the Move Rune",
+        stir: "A rune scurries off with an acorn. The acorn's former keeper looks at their empty paws.",
         prompt: "After `let b = a;` where a is a String, what is true?",
         options: [
             "Both a and b own the text",
@@ -150,52 +98,52 @@ pub static WILDS: [WildRune; 16] = [
             "b is a reference to a",
         ],
         answer: 1,
-        lore: "A String has one owner, like a boat has one tiller. Hand it over and your hands are empty.",
+        lore: "A String has one owner, like a basket has one handle. Hand it over and your hands are empty.",
     },
     WildRune {
-        id: 10,
-        zone: 2,
+        id: 6,
+        zone: 1,
+        name: "the Clone Rune",
+        stir: "The rune splits into two identical runes. They wave at each other, delighted.",
+        prompt: "What does `spell.clone()` give you, for a String named spell?",
+        options: [
+            "A second name for the same String",
+            "A read-only view of spell",
+            "An independent copy — both are usable afterwards",
+        ],
+        answer: 2,
+        lore: "Two of a thing, honestly made, each with its own life. The woods approve of twins.",
+    },
+    WildRune {
+        id: 7,
+        zone: 1,
         name: "the Borrow Rune",
         stir: "A polite rune asks whether it might hold your satchel. Just for a moment. It promises.",
         prompt: "How many mutable references to a value may exist at once?",
         options: ["One", "Two", "As many as you like"],
         answer: 0,
-        lore: "One borrower may change a thing at a time — that's how the river keeps everyone's letters dry.",
+        lore: "One borrower may change a thing at a time — that's how the woods keep everyone's letters dry.",
     },
     WildRune {
-        id: 11,
-        zone: 2,
-        name: "the Turbofish",
-        stir: "Something silver leaps from the water: ::<> !! The legendary Turbofish!",
-        prompt: "What is the turbofish `::<>` for, as in `parse::<i32>()`?",
+        id: 8,
+        zone: 1,
+        name: "the Slice Rune",
+        stir: "A thin rune peeks at just the corner of your map, and swears that's all it needs.",
+        prompt: "What does `&s[..3]` give you, for a String named s?",
         options: [
-            "Spawning a new thread",
-            "Telling a generic function which type you mean",
-            "Casting between numeric types",
+            "A new String holding three letters",
+            "A borrowed view of the first three letters — nothing copied",
+            "The last three letters",
         ],
         answer: 1,
-        lore: "When the compiler can't guess your type, the Turbofish carries the answer upstream. Anglers speak of it in whispers.",
+        lore: "To see a part, you needn't take the whole. A slice is a window cut just wide enough.",
     },
+    // ── Silverford, ch. 5.1–5.2: structs, fields, update syntax, Debug ──────
     WildRune {
-        id: 12,
+        id: 9,
         zone: 2,
-        name: "the Str Rune",
-        stir: "Two runes share one raincoat: a big warm one, and a thin quick one peeking out.",
-        prompt: "What's the difference between String and &str?",
-        options: [
-            "None — they're synonyms",
-            "String is owned and growable; &str borrows a view of text",
-            "&str is the faster String for ASCII",
-        ],
-        answer: 1,
-        lore: "One owns the letter, one reads it over your shoulder. Both are welcome at the dock.",
-    },
-    // ── Hearthspire: structs, impl, enums & match ───────────────────────────
-    WildRune {
-        id: 13,
-        zone: 3,
         name: "the Struct Rune",
-        stir: "Mist gathers itself into a neat little shape with named parts.",
+        stir: "River-fog gathers itself into a neat little shape with named parts.",
         prompt: "What is a struct?",
         options: [
             "A type that groups named fields into one value",
@@ -206,7 +154,46 @@ pub static WILDS: [WildRune; 16] = [
         lore: "Give scattered things one roof and a name each, and suddenly they're a home.",
     },
     WildRune {
-        id: 14,
+        id: 10,
+        zone: 2,
+        name: "the Dot Rune",
+        stir: "A small rune hops from crate to crate along the dock, tapping each label precisely.",
+        prompt: "How do you read the `pages` field of a struct value named book?",
+        options: ["pages(book)", "book::pages", "book.pages"],
+        answer: 2,
+        lore: "One small dot, and the bundle opens to exactly the fact you asked for. Dockhands dream of such filing.",
+    },
+    WildRune {
+        id: 11,
+        zone: 2,
+        name: "the Update Rune",
+        stir: "Something silver leaps from the water wearing last year's scales — the same fish, one part new.",
+        prompt: "What does `Rod { sharpness: 9, ..old }` build?",
+        options: [
+            "A new Rod: sharpness 9, every other field from `old`",
+            "It changes `old` in place",
+            "A Rod with only a sharpness field",
+        ],
+        answer: 0,
+        lore: "Mostly the old thing, one part new. The river does this with itself constantly, and calls it staying the same.",
+    },
+    WildRune {
+        id: 12,
+        zone: 2,
+        name: "the Derive Rune",
+        stir: "A rune clears its throat and reads your satchel's entire contents aloud, unprompted.",
+        prompt: "What lets `{:?}` print your struct?",
+        options: [
+            "Structs print with {:?} automatically",
+            "#[derive(Debug)] above the definition",
+            "Adding a to_string field",
+        ],
+        answer: 1,
+        lore: "Opt in with one line, and the compiler writes the whole reading-aloud spell for you. It's very good at it.",
+    },
+    // ── Hearthspire, ch. 5.3: methods, &mut self, associated functions ──────
+    WildRune {
+        id: 13,
         zone: 3,
         name: "the Method Rune",
         stir: "A rune bows: it evidently belongs to something, and knows exactly what.",
@@ -220,32 +207,42 @@ pub static WILDS: [WildRune; 16] = [
         lore: "A method borrows the thing it serves. The Great Library approves of borrowing done properly.",
     },
     WildRune {
+        id: 14,
+        zone: 3,
+        name: "the Winding Rune",
+        stir: "A rune turns a tiny key in its own back, winding itself tighter and tighter.",
+        prompt: "A method that changes the struct it's called on takes...?",
+        options: ["&self", "no self at all", "&mut self"],
+        answer: 2,
+        lore: "To change a thing you must hold the pen, not just read the page. One winder at a time, says the Management.",
+    },
+    WildRune {
         id: 15,
         zone: 3,
-        name: "the Match Rune",
-        stir: "The mist offers you several doors at once, and insists you consider every one.",
-        prompt: "What does the compiler require of a `match` on an enum?",
+        name: "the Summoning Rune",
+        stir: "With a pop, a rune appears out of nowhere — summoned, apparently, by no one in particular.",
+        prompt: "How is an associated function like `new` called?",
         options: [
-            "Arms may cover whichever cases you like",
-            "Every possible variant must be handled",
-            "At most four arms",
+            "golem.new() — on a value, with a dot",
+            "Golem::new() — on the type, with ::",
+            "new(Golem) — plain and simple",
         ],
         answer: 1,
-        lore: "A match must answer for every possibility. That's not strictness — it's the librarian counting everyone in at closing.",
+        lore: "Some abilities belong to the kind, not the individual. You knock on the type's own door: two colons, twice.",
     },
     WildRune {
         id: 16,
         zone: 3,
-        name: "the Option Rune",
-        stir: "A rune holds out a small box. It may contain Some thing. It may contain None.",
-        prompt: "What is Option<T> for?",
+        name: "the Mirror Rune",
+        stir: "The mist shows you a rune admiring its reflection. The reflection is, of course, also a rune.",
+        prompt: "Inside `impl Book`, what does `Self` (capital S) mean?",
         options: [
-            "Marking code as optional to compile",
-            "A value that is either Some(T) or None — no nulls, ever",
-            "Choosing compiler optimization levels",
+            "The type Book itself",
+            "The instance the method was called on",
+            "The parent module",
         ],
-        answer: 1,
-        lore: "Rust has no null lurking in the dark; absence gets a name and a box. The mist finds this very tidy.",
+        answer: 0,
+        lore: "Inside its own impl block, a type may call itself Self — every home needs a name for 'here'.",
     },
 ];
 

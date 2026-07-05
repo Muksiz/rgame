@@ -1,23 +1,25 @@
-// Reference solution — Quest 8: a `while` loop, one firefly at a time.
+// Reference solution — Quest 8: the label becomes a String, the keeping kind,
+// and the tallies stick.
 
-fn fill_the_jar(capacity: u32) -> u32 {
-    let mut caught = 0;
-    while caught < capacity {
-        caught += 1;
+fn jar_label(caught: u32) -> String {
+    let mut label = String::from("fireflies: ");
+    for _ in 0..caught {
+        label.push_str("*");
     }
-    caught
+    label
 }
 
 fn main() {
-    println!("Fireflies in the jar: {}", fill_the_jar(5));
+    println!("The jar reads: '{}'", jar_label(3));
 }
 
 #[test]
-fn the_jar_fills_up() {
-    assert_eq!(fill_the_jar(5), 5);
+fn every_catch_leaves_a_mark() {
+    assert_eq!(jar_label(3), "fireflies: ***");
+    assert_eq!(jar_label(5), "fireflies: *****");
 }
 
 #[test]
-fn an_empty_jar_needs_no_catching() {
-    assert_eq!(fill_the_jar(0), 0);
+fn an_empty_jar_is_still_labeled() {
+    assert_eq!(jar_label(0), "fireflies: ");
 }

@@ -32,10 +32,19 @@ last time.
 
 ---
 
-## 1. The book-shaped curriculum
+## 1. The book-shaped curriculum — DONE
 
-Right now a complete beginner can't play along with a book: the quests leap
-ahead of any reading order — `Vec<T>` and `Option<T>` in the Woods, `as`
+**Shipped**: all 20 rewritten quests (1–3 already fit), their templates and
+twin solutions, the 16 wild-rune questions re-themed to their zone's chapter,
+the NPC idle lines audited (Briar, Maren's neighbors kept their stories;
+Fenn, Sil, Sable got new phrasing to match their new lessons), and the
+epilogue's "wings we haven't touched" list corrected now that ownership *is*
+touched. A grep sweep pins the banished tokens out of every template and
+solution. The Turbofish, whose question was chapter-10 material, has returned
+upstream — the Update Rune leaps in its pool now. Original notes follow.
+
+Before this, a complete beginner couldn't play along with a book: the quests
+leapt ahead of any reading order — `Vec<T>` and `Option<T>` in the Woods, `as`
 casting in Emberwick, enums/`match`/`Result`/`?` on Hearthspire (chapter
 6/8/9 material). The fix: each section of the world becomes solvable after
 reading exactly one chapter of the Brown edition of *The Rust Programming

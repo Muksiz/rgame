@@ -1,28 +1,55 @@
-// Reference solution — Quest 23: `?` unwraps Ok or returns Err early.
+// Reference solution — Quest 23: an associated function makes the page from
+// nothing; a &mut self method fills it. The capstone, standing together.
 
-fn find_page(total_pages: u32, page: u32) -> Result<u32, String> {
-    if page == 0 || page > total_pages {
-        return Err(format!("no page {page} in a {total_pages}-page book"));
-    }
-    Ok(page)
+struct CataloguePage {
+    number: u32,
+    entries: u32,
 }
 
-fn read_two_pages(total_pages: u32, first: u32, second: u32) -> Result<u32, String> {
-    let a = find_page(total_pages, first)?;
-    let b = find_page(total_pages, second)?;
-    Ok(a + b)
+impl CataloguePage {
+    fn new(number: u32) -> Self {
+        Self { number, entries: 0 }
+    }
+
+    fn record_entry(&mut self) {
+        self.entries += 1;
+    }
+
+    fn is_filled(&self) -> bool {
+        self.entries >= 3
+    }
+}
+
+fn rewrite_the_missing_page() -> CataloguePage {
+    let mut page = CataloguePage::new(58);
+    page.record_entry(); // A Field Guide to Polite Dragons — returned
+    page.record_entry(); // On Time: A Memoir — renewed
+    page.record_entry(); // The River Delivers: Collected Letters — new
+    page
 }
 
 fn main() {
-    println!("{:?}", read_two_pages(312, 58, 100));
+    let page = rewrite_the_missing_page();
+    println!(
+        "Page {} rewritten: {} entries. {}",
+        page.number,
+        page.entries,
+        if page.is_filled() { "The catalogue is whole." } else { "Still a gap..." }
+    );
 }
 
 #[test]
-fn two_real_pages_add_up() {
-    assert_eq!(read_two_pages(312, 58, 100), Ok(158));
+fn the_page_is_made_fresh_by_the_type() {
+    let page = CataloguePage::new(58);
+    assert_eq!(page.number, 58);
+    assert_eq!(page.entries, 0, "a fresh page starts empty");
+    assert!(!page.is_filled());
 }
 
 #[test]
-fn a_missing_page_stops_the_reading() {
-    assert!(read_two_pages(312, 400, 1).is_err());
+fn the_missing_page_is_made_whole() {
+    let page = rewrite_the_missing_page();
+    assert_eq!(page.number, 58);
+    assert_eq!(page.entries, 3);
+    assert!(page.is_filled());
 }

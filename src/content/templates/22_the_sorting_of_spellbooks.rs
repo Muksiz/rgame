@@ -2,66 +2,77 @@
 //   Quest 22: The Sorting of Spellbooks     ~ Hearthspire Approach ~
 // ══════════════════════════════════════════════════════════════════
 //
-//   Sage Alderly: "Every spellbook belongs to a school, every
-//   school has its shelf and its motto. A `match` handles it:
-//   every school, every case, nothing forgotten — the rune itself
-//   refuses to compile if you miss one."
+//   Sage Alderly: "Fifty years of homecomings pile up on the
+//   returns cart, and the cart keeps its own count — books waiting,
+//   books shelved. It can already ANSWER (that's `all_shelved`,
+//   below, a looking-method). What it cannot yet do is SHELVE."
 //
 //   ── YOUR TASK ──────────────────────────────────────────────────
-//   Finish both match-runes. A match on an enum looks like:
+//   A method that CHANGES the very struct it's called on borrows it
+//   with the pen — `&mut self`:
 //
-//       match school {
-//           School::Ember => 1,
-//           School::Tide  => 2,
-//           ...
+//       fn shelve_one(&mut self) {
+//           // one off the waiting pile, one onto the shelved count
 //       }
 //
-//   Shelves:  Ember → 1, Tide → 2, Gale → 3, Stone → 4.
-//   Mottos:   Ember → "warm hands, warm heart"
-//             Tide  → "everything flows"
-//             Gale  → "lightly now"
-//             Stone → "patience, patience"
+//   Compare with `all_shelved(&self)`, which only looks. Same
+//   pen-rules as the echo cave: the caller's binding must be `mut`
+//   (the sorting below already is), and the pen is only held for
+//   the length of the call.
 //
-//   Replace both `todo!()`s, then press `c` in the game.
-//   Your journey ends — or rather, begins — here.
+//   Carve in `shelve_one`, then press `c` in the game.
 // ──────────────────────────────────────────────────────────────────
 
-enum School {
-    Ember,
-    Tide,
-    Gale,
-    Stone,
+struct ReturnsCart {
+    waiting: u32,
+    shelved: u32,
 }
 
-fn shelf_for(school: School) -> u32 {
-    todo!("match every school to its shelf")
+impl ReturnsCart {
+    fn all_shelved(&self) -> bool {
+        self.waiting == 0
+    }
+
+    // TODO: fn shelve_one(&mut self) — waiting down one, shelved up one
 }
 
-fn motto_for(school: School) -> &'static str {
-    todo!("match every school to its motto")
+fn the_evening_sorting() -> ReturnsCart {
+    let mut cart = ReturnsCart { waiting: 3, shelved: 0 };
+    cart.shelve_one();
+    cart.shelve_one();
+    cart.shelve_one();
+    cart
 }
 
 fn main() {
+    let cart = the_evening_sorting();
     println!(
-        "Shelf {} hums: '{}'",
-        shelf_for(School::Ember),
-        motto_for(School::Ember)
+        "{} shelved, {} waiting. {}",
+        cart.shelved,
+        cart.waiting,
+        if cart.all_shelved() { "The books are humming." } else { "The cart sulks on." }
     );
 }
 
-// ─── The Library's final word (leave this part alone) ─────────────
+// ─── The Library's final count (leave this part alone) ────────────
 #[test]
-fn every_shelf_is_known() {
-    assert_eq!(shelf_for(School::Ember), 1);
-    assert_eq!(shelf_for(School::Tide), 2);
-    assert_eq!(shelf_for(School::Gale), 3);
-    assert_eq!(shelf_for(School::Stone), 4);
+fn every_homecoming_is_counted() {
+    let cart = the_evening_sorting();
+    assert_eq!(cart.shelved, 3);
+    assert_eq!(cart.waiting, 0);
+    assert!(cart.all_shelved());
 }
 
 #[test]
-fn every_motto_is_remembered() {
-    assert_eq!(motto_for(School::Ember), "warm hands, warm heart");
-    assert_eq!(motto_for(School::Tide), "everything flows");
-    assert_eq!(motto_for(School::Gale), "lightly now");
-    assert_eq!(motto_for(School::Stone), "patience, patience");
+fn a_loaded_cart_knows_it() {
+    let cart = ReturnsCart { waiting: 2, shelved: 0 };
+    assert!(!cart.all_shelved());
+}
+
+#[test]
+fn one_shelving_at_a_time() {
+    let mut cart = ReturnsCart { waiting: 2, shelved: 5 };
+    cart.shelve_one();
+    assert_eq!(cart.waiting, 1);
+    assert_eq!(cart.shelved, 6);
 }

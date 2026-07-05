@@ -1,29 +1,47 @@
-// Reference solution — Quest 16: borrow with &str instead of taking the String.
+// Reference solution — Quest 16: field init shorthand in the issuing, and a
+// `mut` binding so the stamp can go on.
 
-fn show_token(token: &str) -> String {
-    format!("Wick squints at it: '{token}'. Genuine!")
+struct Token {
+    number: u32,
+    holder: String,
+    stamped: bool,
 }
 
-fn crossing_paperwork() -> (String, String) {
-    let token = String::from("Silverford Token No. 7");
-    let receipt = show_token(&token);
-    (token, receipt)
+fn issue(number: u32, holder: String) -> Token {
+    Token {
+        number,
+        holder,
+        stamped: false,
+    }
+}
+
+fn crossing_paperwork() -> Token {
+    let mut token = issue(7, String::from("the rune-smith"));
+    token.stamped = true;
+    token
 }
 
 fn main() {
-    let (token, receipt) = crossing_paperwork();
-    println!("{receipt}");
-    println!("Returned to your pocket: {token}");
+    let token = crossing_paperwork();
+    println!(
+        "Token No. {} — held by {}, {}.",
+        token.number,
+        token.holder,
+        if token.stamped { "stamped and seaworthy" } else { "NOT VALID" }
+    );
 }
 
 #[test]
-fn the_token_comes_back() {
-    let (token, _) = crossing_paperwork();
-    assert_eq!(token, "Silverford Token No. 7");
+fn the_token_is_issued_correctly() {
+    let token = issue(7, String::from("the rune-smith"));
+    assert_eq!(token.number, 7);
+    assert_eq!(token.holder, "the rune-smith");
+    assert!(!token.stamped, "fresh tokens are unstamped until inspection");
 }
 
 #[test]
-fn the_receipt_is_written() {
-    let (_, receipt) = crossing_paperwork();
-    assert!(receipt.contains("Genuine"));
+fn the_crossing_token_is_stamped() {
+    let token = crossing_paperwork();
+    assert_eq!(token.number, 7);
+    assert!(token.stamped);
 }

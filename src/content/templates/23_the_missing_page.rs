@@ -2,48 +2,80 @@
 //   Quest 23: The Missing Page                   ~ Hearthspire Approach ~
 // ══════════════════════════════════════════════════════════════════
 //
-//   Scribe Faye: "One last rune before you rest, rune-smith. Some
-//   books are missing pages — the Field Guide, mercifully, is not
-//   one of them. I need a rune that reads two pages and, if either
-//   one doesn't exist, says so plainly instead of guessing."
+//   Scribe Faye: "The great catalogue is missing page fifty-eight,
+//   torn out who-knows-when. I mean to rewrite it fresh tonight.
+//   One last rune, rune-smith, and it's one ability short of ready."
 //
 //   ── YOUR TASK ──────────────────────────────────────────────────
-//   `find_page` already returns a `Result<u32, String>` — `Ok(page)`
-//   if it exists, `Err(reason)` if it doesn't. The `?` operator
-//   unwraps an `Ok` for you, or ends the function early by handing
-//   the `Err` straight back to *your* caller:
+//   A fresh page isn't made by asking an existing page — there's no
+//   `self` to ask. It's made by the TYPE, with an *associated
+//   function*: no `self` parameter at all, called with `::` on the
+//   type's name, exactly like `String::from`:
 //
-//       let page = find_page(total_pages, wanted)?;
+//       let page = CataloguePage::new(58);
 //
-//   Fix `read_two_pages` so it uses `?` on both lookups, then press
-//   `c` in the game. Your journey ends here.
+//   Inside the impl block, `Self` means the type itself:
+//
+//       fn new(number: u32) -> Self {
+//           Self { number, entries: 0 }     // shorthand welcome
+//       }
+//
+//   Write BOTH halves of the rune — this is the capstone, and it's
+//   only pieces you already know, standing together:
+//
+//     CataloguePage::new(number)  ->  a fresh page, zero entries
+//     .record_entry()             ->  &mut self, one more entry
+//
+//   Then press `c` in the game. The catalogue — and your journey
+//   down this road — will be whole.
 // ──────────────────────────────────────────────────────────────────
 
-fn find_page(total_pages: u32, page: u32) -> Result<u32, String> {
-    if page == 0 || page > total_pages {
-        return Err(format!("no page {page} in a {total_pages}-page book"));
-    }
-    Ok(page)
+struct CataloguePage {
+    number: u32,
+    entries: u32,
 }
 
-fn read_two_pages(total_pages: u32, first: u32, second: u32) -> Result<u32, String> {
-    // TODO: use `?` on each find_page call instead of holding the raw Result
-    let a = find_page(total_pages, first);
-    let b = find_page(total_pages, second);
-    Ok(a + b)
+impl CataloguePage {
+    // TODO: fn new(number: u32) -> Self — a fresh page, zero entries
+
+    // TODO: fn record_entry(&mut self) — one more entry on the page
+
+    fn is_filled(&self) -> bool {
+        self.entries >= 3
+    }
+}
+
+fn rewrite_the_missing_page() -> CataloguePage {
+    let mut page = CataloguePage::new(58);
+    page.record_entry(); // A Field Guide to Polite Dragons — returned
+    page.record_entry(); // On Time: A Memoir — renewed
+    page.record_entry(); // The River Delivers: Collected Letters — new
+    page
 }
 
 fn main() {
-    println!("{:?}", read_two_pages(312, 58, 100));
+    let page = rewrite_the_missing_page();
+    println!(
+        "Page {} rewritten: {} entries. {}",
+        page.number,
+        page.entries,
+        if page.is_filled() { "The catalogue is whole." } else { "Still a gap..." }
+    );
 }
 
 // ─── Faye checks the catalogue against the shelf (leave alone) ────
 #[test]
-fn two_real_pages_add_up() {
-    assert_eq!(read_two_pages(312, 58, 100), Ok(158));
+fn the_page_is_made_fresh_by_the_type() {
+    let page = CataloguePage::new(58);
+    assert_eq!(page.number, 58);
+    assert_eq!(page.entries, 0, "a fresh page starts empty");
+    assert!(!page.is_filled());
 }
 
 #[test]
-fn a_missing_page_stops_the_reading() {
-    assert!(read_two_pages(312, 400, 1).is_err());
+fn the_missing_page_is_made_whole() {
+    let page = rewrite_the_missing_page();
+    assert_eq!(page.number, 58);
+    assert_eq!(page.entries, 3);
+    assert!(page.is_filled());
 }

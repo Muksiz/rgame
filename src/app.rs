@@ -136,8 +136,8 @@ pub enum Key {
 
 pub static EPILOGUE: &[&str] = &[
     "The tall doors of the Great Library swing wide, and warm lamplight spills down the steps and into the mist. Somewhere above, the shelves go up and up until they look like a night full of square stars.",
-    "You think of the whole road at once: a lantern blooming gold over Emberwick, sheep folding into meadow grass, a token handed back across a rain-specked dock, a letter mended mid-sentence. Twelve small runes. One quiet journey.",
-    "Ferris climbs out of your satchel and settles on your shoulder, watching the lamplight. \"You know,\" the little crab says, \"most spellbooks end where the good part starts. Ownership, lifetimes, traits... whole wings of this place we haven't touched.\"",
+    "You think of the whole road at once: a lantern blooming gold over Emberwick, sheep folding into meadow grass, a token handed back across a rain-specked dock, a letter mended mid-sentence. Twenty-three small runes. One quiet journey.",
+    "Ferris climbs out of your satchel and settles on your shoulder, watching the lamplight. \"You know,\" the little crab says, \"most spellbooks end where the good part starts. Enums, lifetimes, traits... whole wings of this place we haven't touched.\"",
     "\"But that,\" Ferris yawns, \"is a journey for another evening. For now: armchairs.\"\n\n~ Thank you for playing RUNE & ROAD ~\n\nThe world stays open — wander back down the road whenever you like.",
 ];
 

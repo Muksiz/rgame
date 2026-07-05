@@ -2,37 +2,51 @@
 //   Quest 9: A Spell for Wren                  ~ Whispering Woods ~
 // ══════════════════════════════════════════════════════════════════
 //
-//   Wren: "A spell that makes every step count DOUBLE! Twice the
-//   walking with the same feet! Grandmother says a function is a
-//   little machine with a door in and a door out."
+//   Wren: "I wrote my FIRST incantation — 'double step'! — and I
+//   want to cast it TWICE, once for each foot, obviously. But the
+//   casting-rune EATS it on the first go! Grandmother says that's
+//   ownership. I say it's rude."
 //
 //   ── YOUR TASK ──────────────────────────────────────────────────
-//   Write the whole function yourself this time. The shape of a
-//   Rust function is:
+//   Grandmother is right: a `String` has exactly one owner, and
+//   passing it into a function *moves* it there for good — after
+//   the first `cast(spell)`, the spell is gone from this scope.
 //
-//       fn name(input: Type) -> ReturnType {
-//           // the last expression (no semicolon) is returned
-//       }
+//   The honest fix: `.clone()` makes an independent copy, letters
+//   and all. Feed the FIRST cast a clone, and the original survives
+//   for the second:
 //
-//   Wren's spell is called `double_step`. It takes the paces as
-//   an `i32` and returns them doubled, also as an `i32`.
+//       let first = cast(spell.clone());
 //
-//   Build it below, then press `c` in the game.
+//   Fix the practice session, then press `c` in the game.
 // ──────────────────────────────────────────────────────────────────
 
-// TODO: write `double_step` here.
+fn cast(incantation: String) -> String {
+    format!("~ {incantation} ~")
+}
+
+fn practice_twice() -> (String, String) {
+    let spell = String::from("double step");
+
+    // TODO: this first cast eats the spell whole — clone it here.
+    let first = cast(spell);
+
+    // ...so this second cast has nothing left to say.
+    let second = cast(spell);
+
+    (first, second)
+}
 
 fn main() {
-    println!("Seven paces become {}!", double_step(7));
+    let (first, second) = practice_twice();
+    println!("First casting:  {first}");
+    println!("Second casting: {second}");
 }
 
 // ─── Wren's hop-test (leave this part alone) ──────────────────────
 #[test]
-fn small_hops() {
-    assert_eq!(double_step(3), 6);
-}
-
-#[test]
-fn a_grand_journey() {
-    assert_eq!(double_step(21), 42);
+fn both_castings_sparkle() {
+    let (first, second) = practice_twice();
+    assert_eq!(first, "~ double step ~");
+    assert_eq!(second, "~ double step ~");
 }

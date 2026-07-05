@@ -1,31 +1,21 @@
-// Reference solution — Quest 12: a loop, a String, and careful spaces.
+// Reference solution — Quest 12: the echo-rune borrows mutably at both ends.
 
-fn echo(word: &str, times: u32) -> String {
-    let mut result = String::new();
-    for _ in 0..times {
-        if !result.is_empty() {
-            result.push(' ');
-        }
-        result.push_str(word);
-    }
-    result
+fn add_echo(call: &mut String) {
+    call.push_str(" baa");
+}
+
+fn settle_the_sheep() -> String {
+    let mut call = String::from("baa");
+    add_echo(&mut call);
+    add_echo(&mut call);
+    call
 }
 
 fn main() {
-    println!("The cave answers: {}", echo("baa", 3));
+    println!("The cave answers: {}", settle_the_sheep());
 }
 
 #[test]
 fn a_sleepy_triple() {
-    assert_eq!(echo("baa", 3), "baa baa baa");
-}
-
-#[test]
-fn a_single_polite_echo() {
-    assert_eq!(echo("hello", 1), "hello");
-}
-
-#[test]
-fn no_trailing_space() {
-    assert_eq!(echo("ho", 2), "ho ho", "single spaces between, none at the end");
+    assert_eq!(settle_the_sheep(), "baa baa baa");
 }

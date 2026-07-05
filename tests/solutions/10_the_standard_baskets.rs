@@ -1,25 +1,20 @@
-// Reference solution — Quest 10: array indices start at 0, so the third
-// basket is index 2.
+// Reference solution — Quest 10: the stamping-rune returns the basket, and
+// the caller catches it — ownership in, ownership back out.
 
-fn basket_capacities() -> [u32; 4] {
-    [5, 6, 7, 8]
+fn stamp(basket: String) -> String {
+    format!("{basket} [checked]")
 }
 
-fn third_basket_capacity() -> u32 {
-    let baskets = basket_capacities();
-    baskets[2]
+fn morning_round() -> String {
+    let basket = String::from("Basket no. 3");
+    stamp(basket)
 }
 
 fn main() {
-    println!("The third basket holds {}.", third_basket_capacity());
+    println!("Back from the stamping table: '{}'", morning_round());
 }
 
 #[test]
-fn there_are_four_standard_baskets() {
-    assert_eq!(basket_capacities(), [5, 6, 7, 8]);
-}
-
-#[test]
-fn the_third_basket_is_the_third() {
-    assert_eq!(third_basket_capacity(), 7);
+fn the_basket_comes_back_stamped() {
+    assert_eq!(morning_round(), "Basket no. 3 [checked]");
 }

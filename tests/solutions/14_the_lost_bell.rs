@@ -1,32 +1,28 @@
-// Reference solution — Quest 14: Some when found, None when not.
+// Reference solution — Quest 14: a three-letter slice, taken through a
+// welcoming &str parameter.
 
-fn search_for_the_bell(found_today: bool) -> Option<u32> {
-    if found_today { Some(7) } else { None }
+fn tonights_grounds(strip: &str) -> &str {
+    &strip[..3]
 }
 
-fn evening_report(found_today: bool) -> String {
-    match search_for_the_bell(found_today) {
-        Some(marker) => format!("Found it! Marker {marker}."),
-        None => String::from("No luck today. Tomorrow, then."),
-    }
+fn plan_the_search() -> String {
+    // Ridge, Hollow, Ford, Glade, Pond, Waterfall — a week of grounds.
+    let strip = String::from("RHFGPW");
+    let tonight = tonights_grounds(&strip);
+    format!("tonight: {tonight}")
 }
 
 fn main() {
-    println!("{}", evening_report(true));
+    println!("{}", plan_the_search());
 }
 
 #[test]
-fn some_evenings_it_turns_up() {
-    assert_eq!(search_for_the_bell(true), Some(7));
+fn an_evening_is_three_grounds() {
+    assert_eq!(plan_the_search(), "tonight: RHF");
 }
 
 #[test]
-fn some_evenings_it_does_not() {
-    assert_eq!(search_for_the_bell(false), None);
-}
-
-#[test]
-fn the_report_reads_true() {
-    assert_eq!(evening_report(true), "Found it! Marker 7.");
-    assert_eq!(evening_report(false), "No luck today. Tomorrow, then.");
+fn a_scrap_of_writing_works_too() {
+    // A string literal is already a &str — a welcoming rune takes it as-is.
+    assert_eq!(tonights_grounds("GPWRHF"), "GPW");
 }

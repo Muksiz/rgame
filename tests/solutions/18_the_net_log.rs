@@ -1,25 +1,31 @@
-// Reference solution — Quest 18: narrow the slice to the first three days.
+// Reference solution — Quest 18: a tuple struct, built like a call, read by
+// position.
 
-fn early_week_total(week: &[u32]) -> u32 {
-    let early = &week[..3];
-    let mut total = 0;
-    for count in early {
-        total += count;
-    }
-    total
+struct EarlyWeek(u32, u32, u32);
+
+fn read_chart() -> EarlyWeek {
+    EarlyWeek(2, 4, 6)
+}
+
+fn early_total(days: EarlyWeek) -> u32 {
+    days.0 + days.1 + days.2
 }
 
 fn main() {
-    let week = [2, 4, 6, 100, 100, 100, 100];
-    println!("Early-week total: {}", early_week_total(&week));
+    let days = read_chart();
+    println!("Tuesday's count: {}", days.1);
+    println!("Early-week total: {}", early_total(read_chart()));
 }
 
 #[test]
-fn only_the_early_days_count() {
-    assert_eq!(early_week_total(&[2, 4, 6, 100, 100, 100, 100]), 12);
+fn the_early_week_is_bundled() {
+    let days = read_chart();
+    assert_eq!(days.0, 2);
+    assert_eq!(days.1, 4);
+    assert_eq!(days.2, 6);
 }
 
 #[test]
-fn a_short_week_still_works() {
-    assert_eq!(early_week_total(&[1, 1, 1]), 3);
+fn the_tally_reads_twelve() {
+    assert_eq!(early_total(read_chart()), 12);
 }

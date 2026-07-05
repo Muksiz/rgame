@@ -3,46 +3,64 @@
 // ══════════════════════════════════════════════════════════════════
 //
 //   Hermit Morrow: "The river brought me a letter. In two pieces,
-//   as usual. Word-slices and owned words are different creatures:
-//   `&str` is a window onto words; `String` is words you keep.
-//   The mending must produce the keeping kind."
+//   as usual — I mend those by hand. It's the ARCHIVE that's
+//   defeated me: I want the archive-rune to read a whole record
+//   aloud, every field at once, without me writing the formatting
+//   out like a scribe with a quill cramp."
 //
 //   ── YOUR TASK ──────────────────────────────────────────────────
-//   Join the two borrowed halves into one owned `String`, with a
-//   single space between them. The easiest mending-tool:
+//   The `{:?}` rune-marks print a value in *debug form* — the whole
+//   struct, every field named. But a struct must OPT IN by deriving
+//   the ability. One line, directly above the definition:
 //
-//       format!("{first} {second}")
+//       #[derive(Debug)]
+//       struct Letter { ... }
 //
-//   Replace the `todo!()`, then press `c` in the game.
+//   That attribute asks the compiler to write the entire
+//   printing-spell for you. (It's very good at it. Try `{:#?}`
+//   afterwards, too — same record, spread airily over many lines.)
+//
+//   Add the line, then press `c` in the game.
 // ──────────────────────────────────────────────────────────────────
 
-fn mend_message(first_half: &str, second_half: &str) -> String {
-    todo!()
+// TODO: the archive-rune can't read this record aloud until it
+// derives Debug.
+struct Letter {
+    sender: String,
+    pieces: u32,
+    year: u32,
 }
 
-fn sign_message(message: String) -> String {
-    format!("{message} — with love, M.")
+fn todays_delivery() -> Letter {
+    Letter {
+        sender: String::from("M."),
+        pieces: 2, // the river is enthusiastic about delivery
+        year: 892,
+    }
 }
 
-fn the_whole_letter() -> String {
-    let mended = mend_message("meet me", "where the river sings");
-    sign_message(mended)
+fn archive_line(letter: &Letter) -> String {
+    format!("{letter:?}")
 }
 
 fn main() {
-    println!("{}", the_whole_letter());
+    let letter = todays_delivery();
+    println!("The archive-rune reads: {}", archive_line(&letter));
+    println!("And in the airy form:\n{letter:#?}");
 }
 
-// ─── Morrow's careful reading (leave this part alone) ─────────────
+// ─── Morrow's careful records (leave this part alone) ─────────────
 #[test]
-fn the_halves_are_mended() {
+fn the_record_reads_aloud_whole() {
     assert_eq!(
-        mend_message("meet me", "where the river sings"),
-        "meet me where the river sings"
+        archive_line(&todays_delivery()),
+        "Letter { sender: \"M.\", pieces: 2, year: 892 }"
     );
 }
 
 #[test]
-fn the_letter_is_signed() {
-    assert!(the_whole_letter().ends_with("— with love, M."));
+fn the_letter_is_from_an_old_friend() {
+    let letter = todays_delivery();
+    assert_eq!(letter.sender, "M.");
+    assert_eq!(letter.pieces, 2);
 }
