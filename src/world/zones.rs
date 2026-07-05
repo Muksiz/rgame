@@ -266,6 +266,36 @@ fn barrier(b: &mut MapBuilder, x: i32, gate_ys: std::ops::RangeInclusive<i32>, t
     }
 }
 
+/// A little fenced yard behind a cottage: a low fence around a patch of
+/// flowerbeds and shrubs, with a single gap left for the garden gate. Pure
+/// decoration — the plants are the world's own flower/bush/plant tiles, and
+/// the whole plot stays walkable through the gap so nothing is ever sealed
+/// off. `gate` names the one border tile left open (must sit on the border).
+fn garden(b: &mut MapBuilder, x: i32, y: i32, w: i32, h: i32, gate: (i32, i32)) {
+    b.rect(x, y, w, h, Tile::Grass);
+    for dx in 0..w {
+        b.set(x + dx, y, Tile::Fence);
+        b.set(x + dx, y + h - 1, Tile::Fence);
+    }
+    for dy in 0..h {
+        b.set(x, y + dy, Tile::Fence);
+        b.set(x + w - 1, y + dy, Tile::Fence);
+    }
+    b.set(gate.0, gate.1, Tile::Grass); // the way in
+    // Beds and shrubs inside, in a stable scatter (Plant is the potted one,
+    // and it's the only solid thing — you can wander the beds between them).
+    for dy in 1..h - 1 {
+        for dx in 1..w - 1 {
+            let tile = match (dx * 3 + dy * 5) % 8 {
+                0..=4 => Tile::Flower,
+                5 | 6 => Tile::Bush,
+                _ => Tile::Plant,
+            };
+            b.set(x + dx, y + dy, tile);
+        }
+    }
+}
+
 fn emberwick() -> Zone {
     let seed = 11;
     let mut b = MapBuilder::new(seed);
@@ -355,6 +385,12 @@ fn emberwick() -> Zone {
     b.prefab(50, 34, atlas::BUSH_BIG, atlas::BUSH_BIG_SIZE, None);
     b.prefab(102, 34, atlas::BUSH_BIG, atlas::BUSH_BIG_SIZE, None);
     b.prefab(89, 24, atlas::BUSH_BIG, atlas::BUSH_BIG_SIZE, None);
+
+    // Fenced kitchen gardens out behind a couple of the cottages: Tilly's,
+    // south of hers, and Alder's, north of the workshop — flowerbeds and
+    // shrubs behind a low fence, a gap left for the gate.
+    garden(&mut b, 76, 51, 6, 5, (78, 51));
+    garden(&mut b, 127, 12, 6, 5, (129, 16));
 
     // Festival square, now a proper market: cobbles, the unlit lantern, a
     // cosy campfire, the big blue-awninged market stall, and a round

@@ -6,9 +6,6 @@ Playtest findings, jotted here between sessions — anything from a one-pixel
 nit to "this feels wrong". These take priority over everything below: fix
 first, then return to the roadmap. Remove a note once it's done.
 
-Add backyards and fences to some of the houses. Look for plant and flower
-sprites on the internet and fetch/use those to decorate the house yards.
-
 Watchman Fitch's quest should be last for the first location of the game since he is standing
 next to where you progress to the second main location of the game.
 
