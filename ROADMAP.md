@@ -6,7 +6,104 @@ Playtest findings, jotted here between sessions — anything from a one-pixel
 nit to "this feels wrong". These take priority over everything below: fix
 first, then return to the roadmap. Remove a note once it's done.
 
-*(nothing right now)*
+The Ferris pet that follows the player around should be with him from the start.
+They have known each other for some time and the crab can talk.
+
+Only one of the playable characters has a walking animation. Figure out if
+it's possible to copy the walking animation to the rest of the characters.
+
+Remove the birds flying around in the first location. Keep the butterflies.
+
+The walking speed is still a tiny bit too fast. Make it slightly slower.
+
+The chicken/hen pen in the beginning of the game is still visually not corret
+in the corners. The sides look good but the corners do not connect visually.
+Also make it so that the player can interract with the chickens. Some may say
+something funny to the player, some deep philosophical quotes, some may just
+produce a chicken sound when you interract.
+
+Add more of the big trees to the first location. Those look really nice.
+
+Find some fireplace- and other fitting sounds for when you enter a house.
+Currently it's dead silent inside of houses.
+
+Add backyards and fences to some of the houses. Look for plant and flower
+sprites on the internet and fetch/use those to decorate the house yards.
+
+Lower the rate at which grimoires randomly appear. They appear waay too
+often currently.
+
+Poppy's bakery appears to have sunk into the ground. It does not visually
+look correct. Same thing with Granny Sorrel's Cottage.
+
+When I walk in a straight line and press down another movement key to begin
+walking diagonally there is a small hiccup which seems to jump the character
+and camera view.
+
+The really small bushes you should be able to walt through. Currently those have
+collision.
+
+The textures behind the tent on the market square are not uniform and it looks
+glitched out. Look at it. The character should also be able to walk behind the tent
+which currently is not possible.
+
+The stone slabs of the market overlap parts of the road which I do not like.
+
+The deepest well in the valley looks like a block of water instead of a well.
+Try to find some premade well.
+
+Make the day and night cycle last forever. The player will be able to toggle
+between day and night manually by the campfires.
+
+Tone down the music that is played during the day. The calm ambient night music
+with the crickets in the background is perfect.
+
+Elder Rowan should not call the player "dear". A little more formal but friendly
+tone. Elder Rowan mentions that the spell is written down in his kitchen but I can't
+find his kitchen. If his kitchen does not exist create it and have the answer written
+down there somewhere since he mentions it. Don't call the player "dear" in the quest file
+either. There's the text "Rowan dabs her eye". Elder Rowan is a male and should be adressed
+as he, not she.
+
+02_the_market_sign.rs can be solved by simply just doing let apples = 12 + 9;
+Come up with a better task for learning how to shadow in Rust. Completely redo it.
+
+Watchman Fitch's quest should be last for the first location of the game since he is standing
+next to where you progress to the second main location of the game.
+
+I do not like the character model of Cartographer Reed. Find a new one. If all or most project
+character models are already used fetch new ones from the internet. Cartographer Reed also talks
+too much. The dialog is too long for him.
+
+07_the_map_pins.rs is too much for a beginner to do in one challenge. Rewrite the challenge making
+it shorter.
+
+An animation should play when the logs clear and you are able to enter the Whispering Woods.
+
+The whispering woods soundtrack is too happy. It should be a calm ambient soundtrack, maybe even
+a little creepy for the whispering woods.
+
+Make it so that the fireflies in Whispering Woods do not follow the camera, but are instead
+pinned to a location like the butterflies.
+
+I do not like Pip's character model, replace it. Also make a Python joke here since the character's
+name is Pip. 
+
+I do not like Basket-weaver Briar's model or name. Completely redesign that character.
+
+The Echo Cave entrance does not look like a cave entrance at all. I'm sure there is some premade cave
+models on the internet. Replace the cave with one of those.
+
+I would like for there to be some sort of city in the Whispering Woods as well. It feels pretty weird how
+many NPC's are just scattered around the road in a forest. If there was a city with people living there
+it would make more sense. Find textures that fit the description of house in the dark forest.
+
+The small grass with an animation in Silverford Riverlands should not have collision, you should be able
+to walk through it. There are too many big stones. Those big stones should have collision but there should
+not be as many of them as there are now.
+
+The doors of the great library do not look correct. The windows inside are nice, add windows to more houses
+in the game's different locations.
 
 ---
 
