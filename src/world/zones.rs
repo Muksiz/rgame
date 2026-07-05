@@ -750,7 +750,7 @@ fn whispering_woods() -> Zone {
                 quest: Some(8),
                 idle: &[
                     "The trick is patience. They won't be caught in a hurry, fireflies.",
-                    "Jar's full and glowing! Best night-light I've ever had. Thank you, truly.",
+                    "Jar's full and glowing — thank you! Everyone thinks I'm named for apple seeds. I prefer the OTHER pip, though: the little helper that fetches a package and installs it for you, neat as you please. One at a time, mind.",
                 ],
             },
             Npc {

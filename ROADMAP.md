@@ -21,11 +21,7 @@ An animation should play when the logs clear and you are able to enter the Whisp
 The whispering woods soundtrack is too happy. It should be a calm ambient soundtrack, maybe even
 a little creepy for the whispering woods.
 
-Make it so that the fireflies in Whispering Woods do not follow the camera, but are instead
-pinned to a location like the butterflies.
-
-I do not like Pip's character model, replace it. Also make a Python joke here since the character's
-name is Pip. 
+I do not like Pip's character model, replace it.
 
 I do not like Basket-weaver Briar's model or name. Completely redesign that character.
 
