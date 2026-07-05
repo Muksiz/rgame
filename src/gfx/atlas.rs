@@ -349,6 +349,16 @@ pub const WOODS_FLOOR_B: u16 = 703;
 pub const WOODS_FLOOR_C: u16 = 704;
 pub const WOODS_TUFT_A: u16 = 705;
 pub const WOODS_TUFT_B: u16 = 706;
+// The companion at your heels: a very small crab in Ferris's exact colors
+// (rustacean.net's #F74C00 / #A52B00), hand-pixeled like the other critters.
+// Idle, a claws-up wave/startle, two scuttle frames, curled asleep, and just
+// the eyestalks peeking over tall grass.
+pub const CRAB_IDLE: u16 = 707;
+pub const CRAB_WAVE: u16 = 708;
+pub const CRAB_WALK_A: u16 = 709;
+pub const CRAB_WALK_B: u16 = 710;
+pub const CRAB_CURL: u16 = 711;
+pub const CRAB_PEEK: u16 = 712;
 pub const HOUSE_SIZE: (i32, i32) = (5, 5);
 pub const SHED_SIZE: (i32, i32) = (3, 3);
 pub const STALL_SIZE: (i32, i32) = (5, 5);

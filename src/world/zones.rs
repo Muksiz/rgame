@@ -497,6 +497,11 @@ fn emberwick() -> Zone {
             Critter::new(CritterKind::Chicken, (58, 48)),
             Critter::new(CritterKind::Chicken, (61, 47)),
             Critter::new(CritterKind::Chicken, (56, 49)),
+            // The stray: a very small crab curled in the gap between the
+            // storehouse and the old lean-to shed. Feed it thrice (at three
+            // different hours — see content::sides) and it walks the road
+            // with you forever.
+            Critter::new(CritterKind::Crab, (140, 47)),
         ],
         signs: vec![
             Sign {
@@ -1485,6 +1490,17 @@ mod tests {
                     gate,
                     zone.name
                 );
+            }
+            // The stray crab must be feedable: somebody has to reach it.
+            for critter in &zone.critters {
+                if critter.kind == CritterKind::Crab {
+                    assert!(
+                        adjacent_reachable(&seen, critter.home),
+                        "the stray crab at {:?} is unreachable in {}",
+                        critter.home,
+                        zone.name
+                    );
+                }
             }
         }
     }
