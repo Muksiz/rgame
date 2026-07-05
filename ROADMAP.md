@@ -23,14 +23,90 @@ already exist start behaving like they were here before you arrived and will
 still be here after you leave. Each step multiplies the value of the day/night
 clock, the interiors, and the cast that roadmap one built.
 
-Ordering: **NPC daily schedules → a companion at your heels → the world map →
-foley & jingles.** Schedules come first because everything else reads off a
-world where people go places; sound comes last because it polishes whatever
-exists by then, same as last time.
+Ordering: **the book-shaped curriculum → NPC daily schedules → the world map →
+foley & jingles.** The curriculum rewrite comes first because it's the reason
+the game exists — a beginner should be able to play it with the book open;
+schedules next because everything else reads off a world where people go
+places; sound comes last because it polishes whatever exists by then, same as
+last time.
 
 ---
 
-## 1. NPC daily schedules
+## 1. The book-shaped curriculum
+
+Right now a complete beginner can't play along with a book: the quests leap
+ahead of any reading order — `Vec<T>` and `Option<T>` in the Woods, `as`
+casting in Emberwick, enums/`match`/`Result`/`?` on Hearthspire (chapter
+6/8/9 material). The fix: each section of the world becomes solvable after
+reading exactly one chapter of the Brown edition of *The Rust Programming
+Language* (rust-book.cs.brown.edu):
+
+- **Emberwick (zone 0, quests 1–7)** — ch. 3 *Common Programming Concepts*
+- **Whispering Woods (zone 1, quests 8–14)** — ch. 4 *Understanding Ownership*
+- **Silverford (zone 2, quests 15–19)** — ch. 5.1–5.2 *Defining & Using Structs*
+- **Hearthspire (zone 3, quests 20–23)** — ch. 5.3 *Method Syntax*
+
+(Three chapters, four zones: chapter 5 splits naturally at 5.2/5.3 — struct
+data in the harbor, method syntax on the mountain road.)
+
+**Content-only; the world doesn't move.** Quest ids, zones (7/7/5/4), NPCs,
+titles, filenames and story beats all stay — the villagers' chores are
+independent of which Rust concept fixes them, and the keepsakes stay pinned
+to ids 6 (storm-lantern) and 17 (fishing rod). What changes per quest:
+`lesson`, `intro`/`reminder`/`success`/`hints` in `content/quests.rs`, the
+template, and its twin solution. Quests 1–3 (`println!`, shadowing, `mut`)
+already fit ch. 3 and stay as they are.
+
+The new lesson per quest:
+
+- **Emberwick / ch. 3** — 4 *Open or Closed*: `bool`, comparisons,
+  `if`/`else if`/`else`, `if` in a `let` (3.2+3.5) · 5 *The Toll Board*:
+  `const`, integer types & literals, arithmetic incl. integer division and
+  remainder (3.1+3.2) · 6 *The Deep, Deep Well*: functions — typed params,
+  `->`, statement vs expression, the semicolon-less tail (3.3) · 7 *The Map
+  Pins*: tuples & arrays, `for` over an array and a range, `while` (3.2+3.5).
+  Comments (3.4) are all over every template; quest 5 points at them.
+- **Woods / ch. 4** — 8 *Counting Fireflies*: `String` lives on the heap,
+  `String::from`, `push_str`, scope & drop (4.1) · 9 *A Spell for Wren*:
+  moves and use-after-move, fixed with `.clone()` (4.1) · 10 *The Standard
+  Baskets*: passing to a function moves, returning hands ownership back
+  (4.1) · 11 *Mushrooms & Manners*: shared borrows `&T` — asking to look,
+  not to keep (4.2) · 12 *The Echo Cave*: `&mut T`, one at a time, no
+  alias+mutate — an echo is a reference (4.2) · 13 *The Winter Hollow*:
+  fixing ownership errors — never return `&` to a local, return the owned
+  value (4.3) · 14 *The Lost Bell*: slices, `&s[..n]`, `&str` params over
+  `&String` (4.4–4.5).
+- **Silverford / ch. 5.1–5.2** — 15 *The Dock Ledger*: define a struct,
+  instantiate, dot-access · 16 *The Ferry Token*: `mut` instance, field init
+  shorthand in a builder fn · 17 *The Borrowed Rod*: struct update syntax
+  `..other` · 18 *The Net Log*: tuple structs · 19 *A Message in a Bottle*:
+  `#[derive(Debug)]`, `{:?}`/`{:#?}`, functions borrowing `&Struct`.
+- **Hearthspire / ch. 5.3** — 20 *The Lost Book*: `impl`, first `&self`
+  method · 21 *Waking the Golem*: methods with parameters, two instances
+  (`can_hold`-shaped) · 22 *The Sorting of Spellbooks*: `&mut self` methods ·
+  23 *The Missing Page*: associated functions, `Self::new`, `::` calls — the
+  capstone weaves struct + methods.
+
+Everything past ch. 5 is banished from templates and solutions: no `Vec`, no
+`Option`/`Result`/`match`/`?`, no `as`, no `enum`, no `.iter()`, no closures.
+A quest may lean on any *earlier* chapter (Silverford templates can borrow;
+Emberwick's can't even reference).
+
+**In lockstep:** the 16 wild-rune questions in `content/wilds.rs` are
+zone-tied and follow the same rule — a zone's grass never quizzes past its
+chapter (zone 1's current function/loop questions move down to zone 0 topics'
+replacements; zones 2–3 become struct/method questions). NPC idle lines in
+`world/zones.rs` get audited for now-changed concept references; stories
+stay, so most survive.
+
+Invariants (already tested, must keep passing): template fails untouched,
+twin solution passes, `#[test]` blocks identical between the pair
+(`tests/solve_through.rs`); the full journey still plays start to epilogue
+(`tests/journey.rs`); ids/zones monotonic (`quests.rs`); keepsakes at 6 and
+17 (`items.rs`). Verify with the full suite plus a grep sweep for the
+banished tokens.
+
+## 2. NPC daily schedules
 
 The clock already turns morning → midday → evening → night, and the cast
 already sleeps after dark. Now they *live* by it: each named NPC gets an
@@ -56,7 +132,7 @@ Invariants (to test): every anchor is standable and BFS-reachable in its
 zone; talk-reach works at every anchor; the active quest's giver is always at
 their canonical spot; nothing about schedules touches `SaveData`.
 
-## 2. A companion at your heels — DONE
+## 3. A companion at your heels — DONE
 
 **Shipped** (ahead of schedules, by request): the stray is a very small crab
 in Ferris's exact colors (rustacean.net's #F74C00, hand-pixeled `from_art`
@@ -92,7 +168,7 @@ Invariants (to test): the companion is never left standing in a wall or lost
 across a warp; render matrix covers world-with-companion; save round-trips
 with and without the flag.
 
-## 3. The world map
+## 4. The world map
 
 Press `m` (or find it in the rest menu): a parchment-styled map screen of the
 whole journey. The zones are procedural but *deterministic*, so the map can be
@@ -115,7 +191,7 @@ the road west to east with the gates drawn as the seams they are.
 Invariants (to test): the map screen renders for every combination of
 visited-zone flags; `m` round-trips back to the world; snapshot scene added.
 
-## 4. Foley & jingles
+## 5. Foley & jingles
 
 The world has music; now it gets *sounds*. The shell derives all audio by
 diffing `App` state across frames, which was fine for screens and zones but
