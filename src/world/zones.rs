@@ -20,7 +20,7 @@ const CAVE: &str = concat!("  ^^^^^  \n", "^^^^^^^^^\n", "^^^% %^^^\n", "^^%   %
 // Void, with a warp on each door tile leading back out.
 
 const BAKERY_ROOM: &str = concat!(
-    "###############\n",
+    "####W#####W####\n",
     "#.hh......SSS.#\n",
     "#.............#\n",
     "#..stts...oo..#\n",
@@ -46,7 +46,7 @@ const ROWAN_ROOM: &str = concat!(
 );
 
 const COTTAGE_ROOM: &str = concat!(
-    "###########\n",
+    "###W###W###\n",
     "#.nh......#\n",
     "#.u....ts.#\n",
     "#.........#\n",
@@ -57,7 +57,7 @@ const COTTAGE_ROOM: &str = concat!(
 );
 
 const WORKSHOP_ROOM: &str = concat!(
-    "#############\n",
+    "####W###W####\n",
     "#.nh.....xx.#\n",
     "#.u......xx.#\n",
     "#...........#\n",
@@ -70,7 +70,7 @@ const WORKSHOP_ROOM: &str = concat!(
 
 // The door in the back wall leads down to the cellar (dark — bring a light).
 const STORE_ROOM: &str = concat!(
-    "######+######\n",
+    "###W##+##W###\n",
     "#.oo.....oo.#\n",
     "#.oox....xo.#\n",
     "#...........#\n",
