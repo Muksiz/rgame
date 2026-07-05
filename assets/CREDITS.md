@@ -102,14 +102,19 @@ SFX below are all by **Juhani Junkala** (https://juhanijunkala.com), **CC0**;
 the night ambiences and the owl come from other artists and are credited under
 their own headings further down.
 
-- `audio/music/` — one loop per overworld zone, from *Chiptune Adventures*
-  (https://opengameart.org/content/4-chiptunes-adventure): `emberwick.ogg`
-  ("Stage 1"), `whispering-woods.ogg` ("Stage 2"), `silverford.ogg` ("Stage
-  Select"), `hearthspire.ogg` ("Boss Fight" — the Hearthspire Approach is
-  guarded by the Stone Golem, so the fit was too good to pass up). Interiors
-  (zone 4+) stay quiet. `title.ogg` is the "Title Screen" track from *5
-  Chiptunes (Action)* (https://opengameart.org/content/5-chiptunes-action, same
-  artist), looping through the title and char-select screens.
+- `audio/music/` — one loop per overworld zone. Three are from *Chiptune
+  Adventures* (https://opengameart.org/content/4-chiptunes-adventure):
+  `emberwick.ogg` ("Stage 1"), `silverford.ogg` ("Stage Select"),
+  `hearthspire.ogg` ("Boss Fight" — the Hearthspire Approach is guarded by the
+  Stone Golem, so the fit was too good to pass up). The Whispering Woods,
+  though, wanted something calmer and stranger than a chiptune:
+  `whispering-woods.ogg` is **"Lanterns in the Hollowed Forest"** by **Tsorthan
+  Grove** (https://opengameart.org/content/lanterns-in-the-hollowed-forest,
+  **CC0**) — a soft-horror loop of whispers drifting from the branches, re-encoded
+  from FLAC to Ogg Vorbis. Interiors (zone 4+) stay quiet. `title.ogg` is the
+  "Title Screen" track from *5 Chiptunes (Action)*
+  (https://opengameart.org/content/5-chiptunes-action, Juhani Junkala), looping
+  through the title and char-select screens.
 - `audio/sfx/` — `cast.ogg`, `pass.ogg` and `fizzle.ogg`, trimmed from *The
   Essential Retro Video Game Sound Effects Collection*
   (https://opengameart.org/content/512-sound-effects-8-bit-style): a menu

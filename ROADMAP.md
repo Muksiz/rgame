@@ -18,9 +18,6 @@ too much. The dialog is too long for him.
 
 An animation should play when the logs clear and you are able to enter the Whispering Woods.
 
-The whispering woods soundtrack is too happy. It should be a calm ambient soundtrack, maybe even
-a little creepy for the whispering woods.
-
 I do not like Pip's character model, replace it.
 
 I do not like Basket-weaver Briar's model or name. Completely redesign that character.
