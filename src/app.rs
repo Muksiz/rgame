@@ -19,6 +19,11 @@ pub const TICK_SECS: f32 = 0.05;
 /// repeats held keys at this pace and the renderer glides the player across
 /// exactly this window, so feet and pixels agree.
 pub const STEP_SECS: f32 = 0.12;
+/// Walking both axes at once covers √2 ground per step, so diagonal steps come
+/// a touch slower to keep the traveller honest. The shell stretches the held
+/// repeat by this and the renderer stretches the glide to match, so a diagonal
+/// hold glides corner-to-corner with no freeze between steps.
+pub const DIAGONAL_STRETCH: f32 = 1.4;
 
 const TOAST_TICKS: u64 = 110;
 /// How long a zone-arrival banner slides across the screen.
@@ -277,6 +282,13 @@ pub struct App {
     /// above stays butter-smooth at any frame rate. Headless renders leave
     /// it at zero and lose nothing.
     pub subtick: f32,
+    /// The sub-tick fraction captured at the moment of the last step. Held
+    /// steps fire off a wall clock that isn't aligned to the tick grid, so
+    /// `walked_at` alone rounds the departure to the nearest tick and the
+    /// glide would start a pixel or two ahead — snapping every step. Pairing
+    /// it with this fraction lets the glide start exactly at the departure
+    /// square. Cosmetic, never saved; headless leaves it zero.
+    pub walk_subtick: f32,
     pub completed: BTreeSet<u8>,
     pub accepted: BTreeSet<u8>,
     pub hints: BTreeMap<u8, usize>,
@@ -317,6 +329,7 @@ impl App {
             walked_at: 0,
             prev_player: player,
             subtick: 0.0,
+            walk_subtick: 0.0,
             completed: BTreeSet::new(),
             accepted: BTreeSet::new(),
             hints: BTreeMap::new(),
@@ -819,6 +832,7 @@ impl App {
             }
             self.player = target;
             self.walked_at = self.tick;
+            self.walk_subtick = self.subtick;
             if tile == Tile::TallGrass && !self.zone().interior {
                 self.rustle_grass();
             }

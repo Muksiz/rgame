@@ -1489,9 +1489,19 @@ fn player_glide(app: &App) -> (i32, i32) {
     if dx.abs() > 1 || dy.abs() > 1 {
         return (0, 0);
     }
-    let step_ticks = crate::app::STEP_SECS / crate::app::TICK_SECS;
+    // A diagonal step covers √2 ground, so the shell spaces its held repeats a
+    // little wider; stretch the glide to match, or the sprite reaches the tile
+    // early and freezes until the next step — a visible lurch every diagonal.
+    let mut step_ticks = crate::app::STEP_SECS / crate::app::TICK_SECS;
+    if dx != 0 && dy != 0 {
+        step_ticks *= crate::app::DIAGONAL_STRETCH;
+    }
+    // The step departed part-way through a tick (`walk_subtick`), so measure
+    // the glide from that exact moment — not the rounded tick — to start it
+    // squarely at the departure square instead of a pixel or two ahead.
     let now = app.tick as f32 + app.subtick;
-    let left = 1.0 - ((now - app.walked_at as f32) / step_ticks).clamp(0.0, 1.0);
+    let started = app.walked_at as f32 + app.walk_subtick;
+    let left = 1.0 - ((now - started) / step_ticks).clamp(0.0, 1.0);
     (
         (dx as f32 * left * TILE as f32).round() as i32,
         (dy as f32 * left * TILE as f32).round() as i32,
@@ -2415,6 +2425,35 @@ mod tests {
 
     // A traveller you pick at char-select must never meet a copy of themselves
     // wandering the world: no NPC may wear a sprite from the playable roster.
+    // The step-glide must start squarely at the departure square and, for a
+    // held diagonal, ease over the stretched interval instead of arriving
+    // early and freezing until the next step.
+    #[test]
+    fn glide_starts_full_and_stretches_diagonals() {
+        let mut app = App::new();
+        // A step from (5,5) east to (6,5), captured the instant it happened.
+        app.tick = 10;
+        app.walked_at = 10;
+        app.walk_subtick = 0.0;
+        app.subtick = 0.0;
+        app.prev_player = (5, 5);
+        app.player = (6, 5);
+        // At the step moment the drawn position is the whole departure offset.
+        assert_eq!(player_glide(&app), (-(TILE as i32), 0));
+
+        // 2.4 ticks on (one straight step's worth): a straight move has landed.
+        app.tick = 12;
+        app.subtick = 0.4;
+        assert_eq!(player_glide(&app), (0, 0));
+
+        // A diagonal step of the same age is still in flight — its glide is
+        // stretched by DIAGONAL_STRETCH, so it hasn't frozen on the tile yet.
+        app.prev_player = (5, 5);
+        app.player = (6, 6);
+        let (gx, gy) = player_glide(&app);
+        assert!(gx < 0 && gx == gy, "diagonal glide still moving: {gx},{gy}");
+    }
+
     #[test]
     fn no_npc_shares_a_playable_sprite() {
         let playable: Vec<u16> = atlas::PLAYABLE.iter().map(|p| p.cast).collect();

@@ -21,8 +21,9 @@ const TICK_SECS: f32 = rgame::app::TICK_SECS;
 const REPEAT_AFTER: f32 = 0.14;
 const REPEAT_EVERY: f32 = rgame::app::STEP_SECS;
 /// Walking both axes at once covers √2 ground per step, so diagonal repeats
-/// come a touch slower to keep the traveller honest.
-const DIAGONAL_STRETCH: f32 = 1.4;
+/// come a touch slower to keep the traveller honest. Shared with the renderer
+/// so the glide stretches by the same factor and never freezes mid-diagonal.
+const DIAGONAL_STRETCH: f32 = rgame::app::DIAGONAL_STRETCH;
 
 fn conf() -> mq::Conf {
     mq::Conf {
