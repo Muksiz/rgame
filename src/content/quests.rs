@@ -190,19 +190,17 @@ pub static QUESTS: [Quest; 23] = [
         lesson: "tuples, arrays & loops",
         template: include_str!("templates/07_the_map_pins.rs"),
         intro: &[
-            "You're the one straightening out the village's little troubles, I hear. Good — my survey's a shambles, and it's the last thing standing between you and the east road. A landmark is two numbers, column and row, that belong TOGETHER — a tuple, `(12, 4)`, one thing holding two. The well needs pinning, and every pin gets filed as a code: column times a hundred, plus row.",
-            "Then the road itself. Four legs between the gateposts, measured and written in a fixed row — an array, `[i32; 4]`, four slots exactly. The rune should walk the array with a `for` loop and add the legs up. I will NOT have it guessing.",
-            "Last: my survey chain is five paces long, and I throw it end over end until a distance is covered. A `while` loop, throwing until it's done, counting the throws. Get all that right and the map is finally trustworthy — which matters more than you'd think, past the village gate.",
+            "You're the one straightening out the village's little troubles, I hear. Good — my survey's a shambles, and it's the last thing between you and the east road. Two runes should do it.",
+            "First: a landmark is two numbers that travel TOGETHER — a tuple, `(column, row)`. The old well wants pinning at column 12, row 4. Then the road east: four legs measured in a fixed row — an array, `[i32; 4]` — that a `for` loop should walk and sum. Get both right and the map's finally honest.",
         ],
-        reminder: "The survey's still short: the well pin is a tuple `(12, 4)`, the pin-code wants it destructured (`let (col, row) = pin;`), the road wants a `for` loop over the array, and the chain wants a `while` loop — five paces a throw.",
+        reminder: "The survey's still short: the well pin is the tuple `(12, 4)`, and the road wants a `for` loop summing its four legs.",
         success: &[
-            "The map redraws itself, pins snapping to their codes, the road summing true, the chain-count landing exact. Reed studies it from three angles, finds nothing loose, and looks almost disappointed about that.",
+            "The map redraws itself — the well pin snapping to its mark, the road summing true. Reed studies it from three angles, finds nothing loose, and looks almost disappointed about that.",
             "\"There. A map I can trust. Yours, too, from here — the road east is clear, and the Whispering Woods are patient, but not THAT patient. Go on.\"",
         ],
         hints: &[
-            "A tuple bundles values with parentheses: `(12, 4)`. Pull them back apart by destructuring — `let (col, row) = pin;` — or by position, `pin.0` and `pin.1`.",
-            "A `for` loop visits every element of an array in order: `for leg in legs { total += leg; }` (a range works too: `for i in 0..4`).",
-            "A `while` loop runs as long as its condition holds: `while covered < distance { covered += 5; throws += 1; }`",
+            "A tuple bundles values with parentheses: `(12, 4)`. Read them back by position — `pin.0`, `pin.1` — or by destructuring, `let (col, row) = pin;`.",
+            "A `for` loop visits every element of an array: `for leg in legs { total += leg; }`. Start a `mut` total at 0 and add each leg.",
         ],
     },
     Quest {

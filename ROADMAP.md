@@ -16,9 +16,6 @@ I do not like the character model of Cartographer Reed. Find a new one. If all o
 character models are already used fetch new ones from the internet. Cartographer Reed also talks
 too much. The dialog is too long for him.
 
-07_the_map_pins.rs is too much for a beginner to do in one challenge. Rewrite the challenge making
-it shorter.
-
 An animation should play when the logs clear and you are able to enter the Whispering Woods.
 
 The whispering woods soundtrack is too happy. It should be a calm ambient soundtrack, maybe even
