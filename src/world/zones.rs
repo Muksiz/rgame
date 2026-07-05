@@ -392,7 +392,7 @@ fn emberwick() -> Zone {
         gate: Some((231, 36)),
         locked_msg: "A fallen oak blocks the road. Maybe help the villagers first — starting with Elder Rowan at the festival square.",
         unlock_msg: "The villagers roll the old oak aside, cheering. The road east lies open!",
-        weather: Some(Weather::Petals),
+        weather: None,
         daylight: 0.95,
         interior: false,
         border: Border::Forest,
@@ -1640,10 +1640,11 @@ mod tests {
                 zone.name,
                 zone.daylight
             );
-            assert_eq!(
-                zone.interior,
-                zone.weather.is_none(),
-                "{}: only interiors go without weather",
+            // Interiors never carry weather; the open air may be clear
+            // (Emberwick's skies) or hold a drifting effect.
+            assert!(
+                !(zone.interior && zone.weather.is_some()),
+                "{}: interiors never carry weather",
                 zone.name
             );
         }
