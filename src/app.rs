@@ -89,7 +89,6 @@ impl DayPhase {
             _ => DayPhase::Night,
         }
     }
-
 }
 
 /// The open-sky brightness at clock position `t`: a smooth arc from a soft

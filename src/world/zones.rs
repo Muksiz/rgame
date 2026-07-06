@@ -1624,7 +1624,10 @@ mod tests {
         }
         assert!(has_hearth(BAKERY), "Poppy's ovens never go cold");
         assert!(!has_hearth(ECHO_CAVE), "no fire lit in the Echo Cave");
-        assert!(!has_hearth(EMBERWICK), "the overworld has zone music instead");
+        assert!(
+            !has_hearth(EMBERWICK),
+            "the overworld has zone music instead"
+        );
     }
 
     #[test]
