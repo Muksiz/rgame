@@ -312,6 +312,18 @@ fn emberwick() -> Zone {
     b.prefab(90, 52, atlas::TREE_BIG_PINK, atlas::TREE_BIG_SIZE, None);
     b.prefab(118, 52, atlas::TREE_BIG_ORANGE, atlas::TREE_BIG_SIZE, None);
     b.prefab(170, 30, atlas::TREE_BIG_ORANGE, atlas::TREE_BIG_SIZE, None);
+    // And more of them out where the village thins (a playtest asked for
+    // more old growth): the west approach, the north meadows, the south
+    // fields and the long east stretch toward the woods.
+    b.prefab(18, 26, atlas::TREE_BIG_GREEN, atlas::TREE_BIG_SIZE, None);
+    b.prefab(30, 46, atlas::TREE_BIG_PINK, atlas::TREE_BIG_SIZE, None);
+    b.prefab(26, 12, atlas::TREE_BIG_ORANGE, atlas::TREE_BIG_SIZE, None);
+    b.prefab(140, 8, atlas::TREE_BIG_GREEN, atlas::TREE_BIG_SIZE, None);
+    b.prefab(74, 6, atlas::TREE_BIG_PINK, atlas::TREE_BIG_SIZE, None);
+    b.prefab(150, 56, atlas::TREE_BIG_GREEN, atlas::TREE_BIG_SIZE, None);
+    b.prefab(186, 16, atlas::TREE_BIG_PINK, atlas::TREE_BIG_SIZE, None);
+    b.prefab(196, 44, atlas::TREE_BIG_GREEN, atlas::TREE_BIG_SIZE, None);
+    b.prefab(210, 26, atlas::TREE_BIG_ORANGE, atlas::TREE_BIG_SIZE, None);
     b.prefab(50, 34, atlas::BUSH_BIG, atlas::BUSH_BIG_SIZE, None);
     b.prefab(102, 34, atlas::BUSH_BIG, atlas::BUSH_BIG_SIZE, None);
     b.prefab(89, 24, atlas::BUSH_BIG, atlas::BUSH_BIG_SIZE, None);

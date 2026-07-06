@@ -6,8 +6,6 @@ Playtest findings, jotted here between sessions — anything from a one-pixel
 nit to "this feels wrong". These take priority over everything below: fix
 first, then return to the roadmap. Remove a note once it's done.
 
-Add more of the big trees to the first location. Those look really nice.
-
 Find some fireplace- and other fitting sounds for when you enter a house.
 Currently it's dead silent inside of houses.
 
