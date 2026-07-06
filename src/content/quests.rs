@@ -102,7 +102,7 @@ pub static QUESTS: [Quest; 23] = [
         reminder: "The ledger still sulks. It says a value 'cannot be assigned twice'. There's a keyword for letting things change... three letters, very polite.",
         success: &[
             "The ledger flips its own pages and neatly writes '17' at the bottom. Poppy slides a warm honey-oat loaf into your satchel.",
-            "\"In Rust-runes everything sits still unless you ask it kindly to move. `mut`, hm? I'll remember that. Watchman Fitch was grumbling about his gate-rune too — try the east archway.\"",
+            "\"In Rust-runes everything sits still unless you ask it kindly to move. `mut`, hm? I'll remember that. Cartographer Reed was muttering over her map table too — just past the well.\"",
         ],
         hints: &[
             "Variables in Rust are immutable by default — `let loaves = 12;` can never change afterwards.",
@@ -112,25 +112,23 @@ pub static QUESTS: [Quest; 23] = [
     Quest {
         id: 4,
         zone: 0,
-        title: "Open or Closed",
-        npc: "Watchman Fitch",
-        file_name: "04_open_or_closed.rs",
-        lesson: "booleans, comparisons & if/else",
-        template: include_str!("templates/04_open_or_closed.rs"),
+        title: "The Map Pins",
+        npc: "Cartographer Reed",
+        file_name: "04_the_map_pins.rs",
+        lesson: "tuples, arrays & loops",
+        template: include_str!("templates/04_the_map_pins.rs"),
         intro: &[
-            "Halt. ...Oh, it's you, the lantern-and-ledger one. Word travels fast in a village this size. I've got a gate-rune that's supposed to sort out who pays what — and right now it charges everybody full price. Even the children. ESPECIALLY the children, somehow.",
-            "The rules are simple enough for a human: under twelve or a local, free through. Seventy or older, half toll — two coins. Everyone else, the full four. It's the rune that can't keep it straight.",
-            "It wants a `bool` first — true or false, waived or not, built straight out of comparisons joined with `||` for 'or'. Then an `if`, an `else if`, an `else` — and in Rust the whole `if` is an *expression*, so it can sit right inside a `let` and BE the price.",
+            "You're the one who fixed Rowan's lantern and untangled Tansy's tallies, I hear. Good — my survey's a shambles, and this map isn't worth trusting until it's sorted. Two runes should do it.",
+            "First: a landmark is two numbers that travel TOGETHER — a tuple, `(column, row)`. The old well wants pinning at column 12, row 4. Then the road east: four legs measured in a fixed row — an array, `[i32; 4]` — that a `for` loop should walk and sum. Get both right and the map's finally honest.",
         ],
-        reminder: "The gate-rune still charges everybody. `age < 12 || is_local` decides the waiver, and the price wants an `else if age >= 70` branch for the elders' half toll.",
+        reminder: "The survey's still short: the well pin is the tuple `(12, 4)`, and the road wants a `for` loop summing its four legs.",
         success: &[
-            "The gate-rune hums once, waves a passing child through free, and quietly charges old Wilfred two coins instead of four. Wilfred is so pleased he pays three. Fitch actually smiles, which unsettles a nearby pigeon.",
-            "\"Clean and honest, that. Every crosser, the right coins, no arguing. Old Hobb's toll-board could use the same treatment — he's just past the well, muttering at a sign that won't hold a number.\"",
+            "The map redraws itself — the well pin snapping to its mark, the road summing true. Reed studies it from three angles, finds nothing loose, and looks almost disappointed about that.",
+            "\"There. A map I can trust. Old Hobb's toll-board could use the same treatment — he's just past the well, muttering at a sign that won't hold a number.\"",
         ],
         hints: &[
-            "A `bool` is just `true` or `false` — a comparison like `age < 12` already produces one. Join two with `||` (or): `age < 12 || is_local`.",
-            "`if` is an expression, so it can sit in a `let`: `let coins = if waived { 0 } else { 4 };`",
-            "Chain a middle case with `else if`: `if waived { 0 } else if age >= 70 { 2 } else { 4 }`.",
+            "A tuple bundles values with parentheses: `(12, 4)`. Read them back by position — `pin.0`, `pin.1` — or by destructuring, `let (col, row) = pin;`.",
+            "A `for` loop visits every element of an array: `for leg in legs { total += leg; }`. Start a `mut` total at 0 and add each leg.",
         ],
     },
     Quest {
@@ -149,7 +147,7 @@ pub static QUESTS: [Quest; 23] = [
         reminder: "The board still can't find TOLL_PRICE or BOARD_SLOTS. `const NAME: u32 = value;`, carved in at the top. Then `/` for the even split and `%` for the tea tin.",
         success: &[
             "The board resets itself with a satisfying click — four coins, four slots, the evening's takings split even and the tea tin honestly accounted. Hobb nods once, gruffly pleased.",
-            "\"Now THAT'LL hold. Whole numbers dividing like whole numbers should — no halves, no pretending. Reed's over by the map table if you're looking for more work. And Bram's been on about his well again.\"",
+            "\"Now THAT'LL hold. Whole numbers dividing like whole numbers should — no halves, no pretending. Bram's been on about his well again — just down the lane.\"",
         ],
         hints: &[
             "`const` declares a value that can never change, known before the program even runs: `const TOLL_PRICE: u32 = 4;` — the type is spelled out, the name in capitals.",
@@ -173,7 +171,7 @@ pub static QUESTS: [Quest; 23] = [
         reminder: "The rune still keeps the answer to itself — that trailing semicolon has to go. And the judging-rune wants writing whole: `fn deepest_in_the_valley(depth: u32) -> bool`, true past eighteen strides.",
         success: &[
             "\"TWENTY STRIDES!\" Bram bellows down the well, and the well, politely, echoes it back. \"Deepest in the valley! Millbrook can keep their eighteen!\" He looks enormously satisfied, and presses his old storm-lantern into your hands — 'for the dark places past the village', he says.",
-            "\"So the last line of the function, no semicolon, is what comes out. A little machine with a door in and a door out. Sensible! Reed's up at the map table, if you haven't met her — pins on the village map, apparently very particular ones.\"",
+            "\"So the last line of the function, no semicolon, is what comes out. A little machine with a door in and a door out. Sensible! Watchman Fitch is grumbling about his gate-rune too, out by the east archway.\"",
         ],
         hints: &[
             "A function's body is a block, and the block's final *expression* — the last line with no semicolon — is its return value.",
@@ -184,23 +182,25 @@ pub static QUESTS: [Quest; 23] = [
     Quest {
         id: 7,
         zone: 0,
-        title: "The Map Pins",
-        npc: "Cartographer Reed",
-        file_name: "07_the_map_pins.rs",
-        lesson: "tuples, arrays & loops",
-        template: include_str!("templates/07_the_map_pins.rs"),
+        title: "Open or Closed",
+        npc: "Watchman Fitch",
+        file_name: "07_open_or_closed.rs",
+        lesson: "booleans, comparisons & if/else",
+        template: include_str!("templates/07_open_or_closed.rs"),
         intro: &[
-            "You're the one straightening out the village's little troubles, I hear. Good — my survey's a shambles, and it's the last thing between you and the east road. Two runes should do it.",
-            "First: a landmark is two numbers that travel TOGETHER — a tuple, `(column, row)`. The old well wants pinning at column 12, row 4. Then the road east: four legs measured in a fixed row — an array, `[i32; 4]` — that a `for` loop should walk and sum. Get both right and the map's finally honest.",
+            "Halt. ...Oh, it's you, the lantern-and-ledger one. Word travels fast in a village this size. I've got a gate-rune that's supposed to sort out who pays what — and right now it charges everybody full price. Even the children. ESPECIALLY the children, somehow.",
+            "The rules are simple enough for a human: under twelve or a local, free through. Seventy or older, half toll — two coins. Everyone else, the full four. It's the rune that can't keep it straight.",
+            "It wants a `bool` first — true or false, waived or not, built straight out of comparisons joined with `||` for 'or'. Then an `if`, an `else if`, an `else` — and in Rust the whole `if` is an *expression*, so it can sit right inside a `let` and BE the price.",
         ],
-        reminder: "The survey's still short: the well pin is the tuple `(12, 4)`, and the road wants a `for` loop summing its four legs.",
+        reminder: "The gate-rune still charges everybody. `age < 12 || is_local` decides the waiver, and the price wants an `else if age >= 70` branch for the elders' half toll.",
         success: &[
-            "The map redraws itself — the well pin snapping to its mark, the road summing true. Reed studies it from three angles, finds nothing loose, and looks almost disappointed about that.",
-            "\"There. A map I can trust. Yours, too, from here — the road east is clear, and the Whispering Woods are patient, but not THAT patient. Go on.\"",
+            "The gate-rune hums once, waves a passing child through free, and quietly charges old Wilfred two coins instead of four. Wilfred is so pleased he pays three. Fitch actually smiles, which unsettles a nearby pigeon.",
+            "\"Clean and honest, that. Every crosser, the right coins, no arguing. Go on, then — the road east is clear, and the Whispering Woods are patient, but not THAT patient.\"",
         ],
         hints: &[
-            "A tuple bundles values with parentheses: `(12, 4)`. Read them back by position — `pin.0`, `pin.1` — or by destructuring, `let (col, row) = pin;`.",
-            "A `for` loop visits every element of an array: `for leg in legs { total += leg; }`. Start a `mut` total at 0 and add each leg.",
+            "A `bool` is just `true` or `false` — a comparison like `age < 12` already produces one. Join two with `||` (or): `age < 12 || is_local`.",
+            "`if` is an expression, so it can sit in a `let`: `let coins = if waived { 0 } else { 4 };`",
+            "Chain a middle case with `else if`: `if waived { 0 } else if age >= 70 { 2 } else { 4 }`.",
         ],
     },
     Quest {

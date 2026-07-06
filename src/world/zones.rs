@@ -517,7 +517,7 @@ fn emberwick() -> Zone {
             Npc {
                 name: "Watchman Fitch",
                 pos: (222, 36),
-                quest: Some(4),
+                quest: Some(7),
                 idle: &[
                     "Everyone pays the toll. Well. Almost everyone. It's complicated.",
                     "The gate-rune waves the right folk through now, free and fair. Pigeon's still recovering from the shock of my smiling.",
@@ -544,7 +544,7 @@ fn emberwick() -> Zone {
             Npc {
                 name: "Cartographer Reed",
                 pos: (116, 22),
-                quest: Some(7),
+                quest: Some(4),
                 idle: &[
                     "A landmark's just two numbers that agree to travel together. Simple, once it works.",
                     "Every pin sits true now. This map's the first thing I've trusted in months — thank you.",

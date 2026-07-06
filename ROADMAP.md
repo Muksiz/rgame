@@ -6,9 +6,6 @@ Playtest findings, jotted here between sessions — anything from a one-pixel
 nit to "this feels wrong". These take priority over everything below: fix
 first, then return to the roadmap. Remove a note once it's done.
 
-Watchman Fitch's quest should be last for the first location of the game since he is standing
-next to where you progress to the second main location of the game.
-
 I do not like the character model of Cartographer Reed. Find a new one. If all or most project
 character models are already used fetch new ones from the internet. Cartographer Reed also talks
 too much. The dialog is too long for him.
@@ -85,13 +82,15 @@ already fit ch. 3 and stay as they are.
 
 The new lesson per quest:
 
-- **Emberwick / ch. 3** — 4 *Open or Closed*: `bool`, comparisons,
-  `if`/`else if`/`else`, `if` in a `let` (3.2+3.5) · 5 *The Toll Board*:
-  `const`, integer types & literals, arithmetic incl. integer division and
-  remainder (3.1+3.2) · 6 *The Deep, Deep Well*: functions — typed params,
-  `->`, statement vs expression, the semicolon-less tail (3.3) · 7 *The Map
-  Pins*: tuples & arrays, `for` over an array and a range, `while` (3.2+3.5).
-  Comments (3.4) are all over every template; quest 5 points at them.
+- **Emberwick / ch. 3** — 4 *The Map Pins*: tuples & arrays, `for` over an
+  array (3.2+3.5) · 5 *The Toll Board*: `const`, integer types & literals,
+  arithmetic incl. integer division and remainder (3.1+3.2) · 6 *The Deep,
+  Deep Well*: functions — typed params, `->`, statement vs expression, the
+  semicolon-less tail (3.3) · 7 *Open or Closed*: `bool`, comparisons,
+  `if`/`else if`/`else`, `if` in a `let` (3.2+3.5). Comments (3.4) are all
+  over every template; quest 5 points at them.
+  (Reordered so Watchman Fitch's gate quest — right by the road east — is
+  the last thing in Emberwick, not the fourth of seven.)
 - **Woods / ch. 4** — 8 *Counting Fireflies*: `String` lives on the heap,
   `String::from`, `push_str`, scope & drop (4.1) · 9 *A Spell for Wren*:
   moves and use-after-move, fixed with `.clone()` (4.1) · 10 *The Standard
