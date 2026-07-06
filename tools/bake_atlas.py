@@ -846,6 +846,28 @@ WELL_ART = """
 ................................
 """
 
+# A cave mouth: a dark arched opening set into a rocky face, so the Echo Cave
+# entrance reads as a cave instead of a gap in a pile of cliffs. Walkable — the
+# warp sits on it — so the arch darkens to near-black at its heart.
+CAVE_MOUTH_ART = """
+..SSSSSSSSSSSS..
+.SSssssssssssSS.
+SSskkkkkkkkkksSS
+SskkkkkkkkkkkksS
+SskkkvvvvvvkkksS
+SskkvvvvvvvvkksS
+SskvvvvvvvvvvksS
+SskvvvvvvvvvvksS
+SskvvvvvvvvvvksS
+SskkvvvvvvvvkksS
+SskkkvvvvvvkkksS
+SSskkkkkkkkkksSS
+.SSssssssssssSS.
+..SSSSSSSSSSSS..
+SS..........SS..
+................
+"""
+
 PALETTE = {
     "w": (240, 238, 230, 255),
     "o": (222, 120, 80, 255),
@@ -1318,6 +1340,8 @@ def main(sheet_path, chars_path):
         ("FENCE_SE", fence_corner(sheet, east=False, south=False)),
         # ── the village draw-well, hand-pixeled (see WELL_ART) ──
         *from_art_prefab("WELL", WELL_ART, PALETTE, 2, 2),
+        # a dark cave mouth for the Echo Cave entrance
+        ("CAVE_MOUTH", from_art(CAVE_MOUTH_ART, PALETTE)),
     ]
 
     rows = (len(cells) + COLS - 1) // COLS

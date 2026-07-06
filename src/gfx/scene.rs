@@ -294,7 +294,7 @@ fn world_scene(fb: &mut Frame, atlas: &Atlas, app: &App) {
 
     ambient_life(fb, atlas, app, cam_x, cam_y, dl);
     if let Some(kind) = zone.weather {
-        weather(fb, kind, app.tick, dl);
+        weather(fb, kind, app.tick, dl, cam_x, cam_y);
     }
 }
 
@@ -669,6 +669,8 @@ fn tile_sprites(
             };
             (ground, Some(id))
         }
+        // The Echo Cave's dark arched entrance, sat on the biome ground.
+        Tile::CaveMouth => (ground, Some(atlas::CAVE_MOUTH)),
         Tile::Stall => (
             atlas::COBBLE,
             Some(if h.is_multiple_of(2) {
@@ -1766,7 +1768,7 @@ fn daylight_icon(fb: &mut Frame, cx: i32, cy: i32, dl: f32) {
 
 /// Pixel-space port of `ui::effects` — particles drift over the world but
 /// under the HUD, and never repaint what's beneath them.
-fn weather(fb: &mut Frame, kind: Weather, tick: u64, dl: f32) {
+fn weather(fb: &mut Frame, kind: Weather, tick: u64, dl: f32, cam_x: i32, cam_y: i32) {
     let (w, h) = (fb.w as i64 / 8, fb.h as i64 / 8); // 8px particle grid
     match kind {
         Weather::Petals => {
@@ -1787,7 +1789,7 @@ fn weather(fb: &mut Frame, kind: Weather, tick: u64, dl: f32) {
                 );
             }
         }
-        Weather::Fireflies => fireflies(fb, tick, dl),
+        Weather::Fireflies => world_fireflies(fb, tick, dl, cam_x, cam_y),
         Weather::Rain => {
             for gx in 0..(fb.w as i64 / 4) {
                 let col = hash2(gx as i32, 0, 0x0A1D);
@@ -1817,6 +1819,48 @@ fn weather(fb: &mut Frame, kind: Weather, tick: u64, dl: f32) {
                         fb.fill_a(gx as i32 * 8, y + 2, 8, 1, (170, 174, 190), 28);
                     }
                 }
+            }
+        }
+    }
+}
+
+/// Fireflies over the living world, pinned to the ground rather than the
+/// screen: each hovers around a fixed world spot (like the butterflies) and
+/// only bobs in place, so walking through the Woods slides past them instead of
+/// dragging them along. Anchored to a toroidal grid of world cells so the field
+/// stays dense everywhere while only a screenful is ever iterated. Brighter and
+/// thicker the darker it gets.
+fn world_fireflies(fb: &mut Frame, tick: u64, dl: f32, cam_x: i32, cam_y: i32) {
+    let dim = 1.0 - dl;
+    let cell = 14i32; // world-pixel spacing between potential fireflies
+    let margin = 8i32;
+    let x0 = (cam_x - margin).div_euclid(cell);
+    let x1 = (cam_x + fb.width() + margin).div_euclid(cell);
+    let y0 = (cam_y - margin).div_euclid(cell);
+    let y1 = (cam_y + fb.height() + margin).div_euclid(cell);
+    // More cells host a firefly the deeper the dark: a sparse daytime glimmer,
+    // a thick dusk swarm.
+    let threshold = (70.0 + 150.0 * dim) as u32; // out of 256
+    for cy in y0..=y1 {
+        for cx in x0..=x1 {
+            let h = hash2(cx, cy, 0xF1FE);
+            if h % 256 >= threshold {
+                continue;
+            }
+            // A stable jitter within the cell, so the field never looks gridded.
+            let jx = (hash2(cx, cy, 0x101) % cell as u32) as i32;
+            let jy = (hash2(cx, cy, 0x202) % cell as u32) as i32;
+            let t = tick as f32;
+            let wob_x = ((t / 13.0 + h as f32).sin() * 3.0) as i32;
+            let wob_y = ((t / 17.0 + h as f32 * 2.0).cos() * 2.0) as i32;
+            let x = cx * cell + jx + wob_x - cam_x;
+            let y = cy * cell + jy + wob_y - cam_y;
+            if x < -4 || y < -4 || x >= fb.width() + 4 || y >= fb.height() + 4 {
+                continue;
+            }
+            if (tick / 6 + h as u64 * 3) % 11 < 5 {
+                fb.fill_a(x - 2, y - 2, 6, 6, (226, 232, 130), 36);
+                fb.fill(x, y, 2, 2, (240, 244, 160));
             }
         }
     }

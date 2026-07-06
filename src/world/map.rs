@@ -53,6 +53,9 @@ pub enum Tile {
     Fence,
     Cliff,
     Rock,
+    /// The dark mouth of a cave, set into a rocky face — walkable (the warp
+    /// into the cave sits on it), and drawn as a dark arched opening.
+    CaveMouth,
     Campfire,
     Lantern,
     Gate,
@@ -115,6 +118,7 @@ impl Tile {
                 // trees and the big bush prefabs actually block.
                 | Tile::Bush
                 | Tile::Reed
+                | Tile::CaveMouth
                 | Tile::Path
                 | Tile::Plaza
                 | Tile::Bridge

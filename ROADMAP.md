@@ -22,9 +22,6 @@ I do not like Pip's character model, replace it.
 
 I do not like Basket-weaver Briar's model or name. Completely redesign that character.
 
-The Echo Cave entrance does not look like a cave entrance at all. I'm sure there is some premade cave
-models on the internet. Replace the cave with one of those.
-
 I would like for there to be some sort of city in the Whispering Woods as well. It feels pretty weird how
 many NPC's are just scattered around the road in a forest. If there was a city with people living there
 it would make more sense. Find textures that fit the description of house in the dark forest.

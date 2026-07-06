@@ -624,6 +624,9 @@ fn whispering_woods() -> Zone {
     ]);
     b.clearing(111, 52, 1); // the moon-mint stays a step off the cave path
     b.stamp(118, 52, CAVE);
+    // A dark, arched cave mouth where the rocky jaw opens — the walkable warp
+    // tile itself, so the entrance actually reads as a cave you step into.
+    b.set(CAVE_MOUTH.0, CAVE_MOUTH.1, Tile::CaveMouth);
 
     // Mossy old gate across the east road.
     barrier(&mut b, 233, 30..=34, Tile::Tree);

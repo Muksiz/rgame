@@ -382,6 +382,8 @@ pub const FENCE_SE: u16 = 740;
 /// rim — hand-pixeled (WELL_ART in the bake script), placed as a prefab.
 pub const WELL: u16 = 741;
 pub const WELL_SIZE: (i32, i32) = (2, 2);
+/// A dark cave mouth for the Echo Cave entrance (`Tile::CaveMouth`).
+pub const CAVE_MOUTH: u16 = 745;
 pub const HOUSE_SIZE: (i32, i32) = (5, 5);
 pub const SHED_SIZE: (i32, i32) = (3, 3);
 pub const STALL_SIZE: (i32, i32) = (5, 5);
