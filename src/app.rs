@@ -17,8 +17,9 @@ use crate::world::zones;
 pub const TICK_SECS: f32 = 0.05;
 /// How long one walking step takes while a movement key is held. The shell
 /// repeats held keys at this pace and the renderer glides the player across
-/// exactly this window, so feet and pixels agree.
-pub const STEP_SECS: f32 = 0.12;
+/// exactly this window, so feet and pixels agree. (Eased from 0.12 after a
+/// playtest called the pace a tiny bit too fast.)
+pub const STEP_SECS: f32 = 0.135;
 /// Walking both axes at once covers √2 ground per step, so diagonal steps come
 /// a touch slower to keep the traveller honest. The shell stretches the held
 /// repeat by this and the renderer stretches the glide to match, so a diagonal
@@ -31,8 +32,9 @@ pub const BANNER_TICKS: u64 = 55;
 /// Typewriter reveal speed by option: slow, normal, fast (characters per tick).
 const REVEAL_SPEEDS: [usize; 3] = [1, 2, 4];
 /// One tall-grass step in this many rustles up a wild rune (on average). Kept
-/// deliberately uncommon so the grass stays a place to wander, not a gauntlet.
-const ENCOUNTER_RARITY: u32 = 18;
+/// deliberately uncommon so the grass stays a place to wander, not a gauntlet
+/// (doubled from 18 after a playtest found runes stirring way too often).
+const ENCOUNTER_RARITY: u32 = 36;
 
 // ── the day/night clock ─────────────────────────────────────────────────────
 // Time now flows: one full day is morning → day → evening → night and round

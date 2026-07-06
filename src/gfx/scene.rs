@@ -2518,9 +2518,9 @@ mod tests {
         // At the step moment the drawn position is the whole departure offset.
         assert_eq!(player_glide(&app), (-(TILE as i32), 0));
 
-        // 2.4 ticks on (one straight step's worth): a straight move has landed.
+        // 2.7 ticks on (one straight step's worth): a straight move has landed.
         app.tick = 12;
-        app.subtick = 0.4;
+        app.subtick = 0.7;
         assert_eq!(player_glide(&app), (0, 0));
 
         // A diagonal step of the same age is still in flight — its glide is

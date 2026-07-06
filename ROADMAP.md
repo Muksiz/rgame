@@ -11,8 +11,6 @@ it's possible to copy the walking animation to the rest of the characters.
 
 Remove the birds flying around in the first location. Keep the butterflies.
 
-The walking speed is still a tiny bit too fast. Make it slightly slower.
-
 The chicken/hen pen in the beginning of the game is still visually not corret
 in the corners. The sides look good but the corners do not connect visually.
 Also make it so that the player can interract with the chickens. Some may say
@@ -26,9 +24,6 @@ Currently it's dead silent inside of houses.
 
 Add backyards and fences to some of the houses. Look for plant and flower
 sprites on the internet and fetch/use those to decorate the house yards.
-
-Lower the rate at which grimoires randomly appear. They appear waay too
-often currently.
 
 Poppy's bakery appears to have sunk into the ground. It does not visually
 look correct. Same thing with Granny Sorrel's Cottage.
