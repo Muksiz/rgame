@@ -2,40 +2,45 @@
 //   Quest 2: The Market Sign                     ~ Emberwick Village ~
 // ══════════════════════════════════════════════════════════════════
 //
-//   Tansy: "Nine more apples came in from the orchard cart, but my
-//   sign-rune won't say so. And it's completely forgotten the pears!
-//   One thing at a time, sign-rune. ONE THING AT A TIME."
+//   Tansy: "Grandmother's counting-rune tallies the apples one chalk
+//   stroke at a time — one | per apple, bless it — but the sign out
+//   front wants a proper NUMBER, and the rune point-blank refuses to
+//   change kinds mid-thought."
 //
 //   ── YOUR TASK ──────────────────────────────────────────────────
-//   Two small things, both on the same sign:
+//   `apples` starts life as TEXT (the chalk tally) and must end up
+//   a NUMBER (its stroke count). Plain assignment fails twice over:
+//   the binding isn't `mut`, and even `mut` can't change a value's
+//   type. The Rust way is *shadowing* — bind the SAME name again
+//   with a fresh `let`, and it may carry a brand-new kind of value:
 //
-//   1. `apples` needs the new nine counted in. You can bind the SAME
-//      name again with a new `let` — this is called *shadowing*, and
-//      it quietly replaces the old value with a new one:
-//
-//          let apples = apples + 9;
-//
-//   2. The sign only ever mentions apples. `format!`/`println!` can
-//      take more than one value — just add another `{}` (or, tidier,
-//      name the value right inside the braces: `{pears}`).
+//       let apples = apples.len();
 //
 //   Fix the sign, then press `c` in the game.
 // ──────────────────────────────────────────────────────────────────
 
-fn market_tally() -> String {
-    let apples = 12;
-    // Nine more apples arrived from the orchard cart — same name, new count.
-    let pears = 7;
+fn market_sign() -> String {
+    // Grandmother's counting-rune chalks one stroke per apple:
+    let apples = "|||||||||||||||||||||";
+    let slate = format!("tally: {apples}");
 
-    format!("{} apples on the stall today", apples)
+    // The sign out front wants the number, not the strokes.
+    // One small word is missing at the start of this line:
+    apples = apples.len();
+
+    let pears = 7;
+    format!("{slate} - {apples} apples and {pears} pears on the stall today")
 }
 
 fn main() {
-    println!("{}", market_tally());
+    println!("{}", market_sign());
 }
 
 // ─── Tansy counts twice, just to be sure (leave this part alone) ──
 #[test]
 fn the_sign_reads_true() {
-    assert_eq!(market_tally(), "21 apples and 7 pears on the stall today");
+    assert_eq!(
+        market_sign(),
+        "tally: ||||||||||||||||||||| - 21 apples and 7 pears on the stall today"
+    );
 }

@@ -69,21 +69,21 @@ pub static QUESTS: [Quest; 23] = [
         title: "The Market Sign",
         npc: "Tansy",
         file_name: "02_the_market_sign.rs",
-        lesson: "shadowing & multi-value formatting",
+        lesson: "shadowing (let, again)",
         template: include_str!("templates/02_the_market_sign.rs"),
         intro: &[
             "Oh! You're the one who lit Rowan's lantern. I heard the whole square cheer from here. I've got a much SMALLER problem, but it's driving me up the wall.",
-            "Nine more apples came in from the orchard cart this morning, and my sign-rune won't say so — it's stuck on this morning's count. And it's forgotten the pears exist entirely. One thing at a time, I keep telling it. ONE THING AT A TIME.",
-            "You can bind a name again with `let` to quietly swap in a new value — Grandmother calls it 'shadowing'. And the sign should just... say both fruits. Can you fix it?",
+            "Grandmother's counting-rune tallies the apples one chalk stroke at a time — one | per apple, bless it — but the sign out front wants a proper NUMBER, and the rune point-blank refuses to change kinds mid-thought.",
+            "Grandmother swore by 'shadowing': bind the same name again with `let`, and it may carry a new value — even a whole new KIND of value. The strokes know their own count, if you ask with `.len()`. Can you fix it?",
         ],
-        reminder: "Still says twelve apples and not a word about pears. Shadow `apples` with the new count, and give the sign a second `{}` for the pears.",
+        reminder: "Still chalk strokes where a number should be. You can't assign over `apples` — it isn't `mut`, and the kind is changing anyway. Bind it AGAIN with a fresh `let`.",
         success: &[
-            "The chalk rearranges itself mid-air: '21 apples and 7 pears on the stall today.' Tansy claps once, delighted.",
+            "The chalk rearranges itself mid-air: 'tally, then a proper 21 apples and 7 pears on the stall today.' Tansy claps once, delighted.",
             "\"PERFECT. Oh — Poppy's ledger is being just as stubborn, if you've got another minute. She's right through that door.\"",
         ],
         hints: &[
-            "Shadowing: bind the same name again with a new `let` to replace the old value — `let apples = apples + 9;`.",
-            "`format!`/`println!` can hold more than one value: add a second placeholder, `{pears}`, right in the string.",
+            "Assigning `apples = ...` fails twice over: the binding isn't `mut`, and the new value isn't even text anymore. Shadowing sidesteps both — write `let` in front.",
+            "`let apples = apples.len();` — the new `apples` is the count of the old one's chalk strokes. That one small `let` is the whole quest.",
         ],
     },
     Quest {

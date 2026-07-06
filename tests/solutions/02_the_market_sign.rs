@@ -1,19 +1,24 @@
-// Reference solution — Quest 2: shadow `apples` with the new count, and
-// mention both fruits in the format string.
+// Reference solution — Quest 2: shadow `apples` with a fresh `let`, so the
+// same name can turn from chalk-stroke text into its numeric count.
 
-fn market_tally() -> String {
-    let apples = 12;
-    let apples = apples + 9;
+fn market_sign() -> String {
+    let apples = "|||||||||||||||||||||";
+    let slate = format!("tally: {apples}");
+
+    let apples = apples.len();
+
     let pears = 7;
-
-    format!("{apples} apples and {pears} pears on the stall today")
+    format!("{slate} - {apples} apples and {pears} pears on the stall today")
 }
 
 fn main() {
-    println!("{}", market_tally());
+    println!("{}", market_sign());
 }
 
 #[test]
 fn the_sign_reads_true() {
-    assert_eq!(market_tally(), "21 apples and 7 pears on the stall today");
+    assert_eq!(
+        market_sign(),
+        "tally: ||||||||||||||||||||| - 21 apples and 7 pears on the stall today"
+    );
 }

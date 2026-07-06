@@ -465,7 +465,7 @@ fn emberwick() -> Zone {
                 pos: (85, 36),
                 quest: Some(2),
                 idle: &[
-                    "Nine more apples came in this morning and my sign won't say so. Rude, honestly.",
+                    "Grandmother's rune counts apples in chalk strokes and the sign wants numbers. They are NOT speaking.",
                     "Twenty-one apples, seven pears, and the sign finally agrees with me. You're good at this.",
                 ],
             },

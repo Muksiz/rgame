@@ -9,9 +9,6 @@ first, then return to the roadmap. Remove a note once it's done.
 Add backyards and fences to some of the houses. Look for plant and flower
 sprites on the internet and fetch/use those to decorate the house yards.
 
-02_the_market_sign.rs can be solved by simply just doing let apples = 12 + 9;
-Come up with a better task for learning how to shadow in Rust. Completely redo it.
-
 Watchman Fitch's quest should be last for the first location of the game since he is standing
 next to where you progress to the second main location of the game.
 
