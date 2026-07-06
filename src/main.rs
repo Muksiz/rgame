@@ -72,9 +72,12 @@ fn dir_of(key: Key) -> Option<(i32, i32)> {
 }
 
 const MUSIC_VOLUME: f32 = 0.5;
-/// Night ambience sits a touch below the daytime loops — quieter is calmer,
-/// and it wants to feel like the world settling rather than a new song
-/// starting.
+/// The daytime zone loops sit well under the title theme — a playtest found
+/// them loud against the night's calm, so day now hums along at nearly the
+/// night ambience's level instead of singing over the world.
+const DAY_MUSIC_VOLUME: f32 = 0.32;
+/// Night ambience stays soft — it wants to feel like the world settling
+/// rather than a new song starting.
 const NIGHT_VOLUME: f32 = 0.4;
 /// The calm melody over the night beds sits softest of all — it should feel
 /// like it drifts in from somewhere over the hills.
@@ -414,7 +417,7 @@ async fn main() {
                 if on {
                     (&night_music[z], NIGHT_VOLUME)
                 } else {
-                    (&zone_music[z], MUSIC_VOLUME)
+                    (&zone_music[z], DAY_MUSIC_VOLUME)
                 }
             };
             if let Some(old) = playing_zone.as_ref() {
