@@ -38,11 +38,12 @@ const REVEAL_SPEEDS: [usize; 3] = [1, 2, 4];
 const ENCOUNTER_RARITY: u32 = 36;
 
 // ── the day/night clock ─────────────────────────────────────────────────────
-// Time now flows: one full day is morning → day → evening → night and round
-// again. The lengths are Jani's, in real minutes, converted to 50ms ticks
-// (20 ticks a second). Outdoor places follow this shared sky; interiors keep
-// their own steady lamplight (see `App::daylight`). A campfire can jump the
-// clock straight to the next rest (`App::sleep_at_campfire`).
+// Time no longer flows on its own (a playtest chose a world that waits): the
+// clock parks at an anchor and only a campfire rest moves it, toggling
+// between a bright day and a starry night. The phase lengths below keep
+// defining the sky's brightness arc (`sky_daylight`) and where the anchors
+// sit within it. Outdoor places follow this shared sky; interiors keep their
+// own steady lamplight (see `App::daylight`).
 const TICKS_PER_MIN: u32 = 20 * 60;
 const MORNING_LEN: u32 = 10 * TICKS_PER_MIN; // 10 real minutes
 const DAY_LEN_MIN: u32 = 20 * TICKS_PER_MIN; // 20
@@ -53,6 +54,12 @@ pub const DAY_LEN: u32 = MORNING_LEN + DAY_LEN_MIN + EVENING_LEN + NIGHT_LEN;
 const DAY_START: u32 = MORNING_LEN; // when the sun is fully up
 const EVENING_START: u32 = MORNING_LEN + DAY_LEN_MIN;
 const NIGHT_START: u32 = MORNING_LEN + DAY_LEN_MIN + EVENING_LEN;
+/// Where a campfire rest parks the clock: early midday, sun high.
+const DAY_ANCHOR: u32 = MORNING_LEN + DAY_LEN_MIN / 4;
+/// And the deep of night, stars out, folk asleep.
+const NIGHT_ANCHOR: u32 = NIGHT_START + NIGHT_LEN / 2;
+/// A fresh journey opens on a bright late morning.
+const JOURNEY_START: u32 = MORNING_LEN * 9 / 10;
 
 /// The four times of day. Which one it is drives the sky, the HUD clock, and
 /// whether the folk of the world are up and about or fast asleep.
@@ -83,15 +90,6 @@ impl DayPhase {
         }
     }
 
-    /// The tick this phase begins at — where sleeping lands you.
-    fn start(self) -> u32 {
-        match self {
-            DayPhase::Morning => 0,
-            DayPhase::Day => DAY_START,
-            DayPhase::Evening => EVENING_START,
-            DayPhase::Night => NIGHT_START,
-        }
-    }
 }
 
 /// The open-sky brightness at clock position `t`: a smooth arc from a soft
@@ -232,14 +230,14 @@ pub enum Screen {
     /// The collection of wild runes inscribed so far.
     Grimoire,
     /// Resting at a campfire: the screen fades to ember-dark, a scrap of Rust
-    /// lore drifts past, and waking rolls the clock on to the next rest.
+    /// lore drifts past, and waking flips the world's clock.
     Resting {
         /// Index into `content::lore::LORE`.
         lore: usize,
         /// Ticks since lying down — drives the fade-in and the ember glow.
         t: u32,
-        /// The phase you'll wake into (Night after a daytime rest; Morning
-        /// after sleeping through the night).
+        /// The phase you'll wake into (Night after a daytime rest; a bright
+        /// Day after sleeping through the night).
         wake: DayPhase,
     },
     Casting {
@@ -466,7 +464,8 @@ impl App {
         self.tick += 1;
         if !matches!(self.screen, Screen::Title { .. }) {
             self.play_ticks += 1;
-            self.day_ticks = (self.day_ticks + 1) % DAY_LEN;
+            // `day_ticks` deliberately holds still: day and night wait for
+            // the player, and only a campfire rest turns the clock.
         }
         if let Some((_, until)) = &self.toast
             && self.tick > *until
@@ -655,7 +654,7 @@ impl App {
         self.grass_steps = 0;
         self.flags.clear();
         self.play_ticks = 0;
-        self.day_ticks = 0; // every journey opens on a fresh morning
+        self.day_ticks = JOURNEY_START; // every journey opens on a bright morning
         self.companion_snap();
         self.screen = Screen::World;
         self.toast(format!(
@@ -1139,11 +1138,12 @@ impl App {
         ));
     }
 
-    /// Sit down by the fire. A daytime rest carries you into the night; a
-    /// night-time rest sees you through to a fresh morning.
+    /// Sit down by the fire. The campfires are the world's clock now: a
+    /// daytime rest carries you into the night, a night-time rest back to a
+    /// bright new day — and between fires, the sky simply waits.
     fn rest_at_campfire(&mut self) {
         let wake = if self.phase() == DayPhase::Night {
-            DayPhase::Morning
+            DayPhase::Day
         } else {
             DayPhase::Night
         };
@@ -1168,14 +1168,17 @@ impl App {
         }
         match code {
             Key::Enter | Key::Char(' ') | Key::Char('e') | Key::Esc => {
-                self.day_ticks = wake.start();
+                self.day_ticks = match wake {
+                    DayPhase::Night => NIGHT_ANCHOR,
+                    _ => DAY_ANCHOR,
+                };
                 self.screen = Screen::World;
                 let msg = match wake {
                     DayPhase::Night => {
                         "You wake to a sky full of stars. The world has gone quiet and gone to sleep around you."
                     }
                     _ => {
-                        "Dawn. You wake beside cold ashes to a world washed new — and the folk of it already stirring."
+                        "Morning is well along when you wake beside cold ashes — the world washed new, the folk of it already stirring."
                     }
                 };
                 self.toast(msg);
@@ -1493,8 +1496,10 @@ mod tests {
         assert_eq!(DayPhase::at(EVENING_START), DayPhase::Evening);
         assert_eq!(DayPhase::at(NIGHT_START), DayPhase::Night);
         assert_eq!(DayPhase::at(DAY_LEN), DayPhase::Morning); // wraps around
-        // Sleeping lands on the top of a phase.
-        assert_eq!(DayPhase::Night.start(), NIGHT_START);
+        // The campfire anchors land where they claim to.
+        assert_eq!(DayPhase::at(NIGHT_ANCHOR), DayPhase::Night);
+        assert_eq!(DayPhase::at(DAY_ANCHOR), DayPhase::Day);
+        assert_eq!(DayPhase::at(JOURNEY_START), DayPhase::Morning);
         // The sky stays a real brightness the whole day round, dark at the
         // dead of night, bright at midday, and never leaves 0..=1.
         for t in (0..DAY_LEN).step_by(500) {
@@ -1647,10 +1652,18 @@ mod tests {
         }
     }
 
+    /// The campfires are the world's clock: the sky holds still between
+    /// rests, and each rest toggles day and night.
     #[test]
-    fn a_campfire_carries_you_to_night_and_back_to_morning() {
+    fn campfires_toggle_day_and_night_and_the_sky_waits_between() {
         let mut app = App::new();
         app.screen = Screen::World;
+        // Left alone, the clock does not move.
+        let before = app.day_ticks;
+        for _ in 0..500 {
+            app.on_tick();
+        }
+        assert_eq!(app.day_ticks, before, "the sky should wait for the player");
         // Emberwick's festival campfire.
         let fire = (0..MAP_H)
             .flat_map(|y| (0..MAP_W).map(move |x| (x, y)))
@@ -1677,13 +1690,14 @@ mod tests {
         assert_eq!(app.phase(), DayPhase::Night);
         assert!(app.is_night());
 
-        // Rest again from the night: wake to a fresh morning.
+        // Rest again from the night: wake to a bright new day.
         app.on_key(Key::Char('e'));
         for _ in 0..5 {
             app.on_tick();
         }
         app.on_key(Key::Enter);
-        assert_eq!(app.phase(), DayPhase::Morning);
+        assert_eq!(app.phase(), DayPhase::Day);
+        assert!(!app.is_night());
     }
 
     #[test]

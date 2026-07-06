@@ -2365,7 +2365,7 @@ fn resting(fb: &mut Frame, atlas: &Atlas, app: &App, lore_idx: usize, t: u32, wa
 
     let footer = match wake {
         DayPhase::Night => "enter — drift off (you'll wake to night)",
-        _ => "enter — sleep till the morning",
+        _ => "enter — sleep till the new day",
     };
     let w = font::text_width(footer, 1);
     font::text(fb, ix + iw - w - 2, iy + ih - 8, footer, DIM, 1);

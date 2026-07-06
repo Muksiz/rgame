@@ -9,9 +9,6 @@ first, then return to the roadmap. Remove a note once it's done.
 Add backyards and fences to some of the houses. Look for plant and flower
 sprites on the internet and fetch/use those to decorate the house yards.
 
-Make the day and night cycle last forever. The player will be able to toggle
-between day and night manually by the campfires.
-
 Tone down the music that is played during the day. The calm ambient night music
 with the crickets in the background is perfect.
 
@@ -170,6 +167,10 @@ twin solution passes, `#[test]` blocks identical between the pair
 banished tokens.
 
 ## 2. NPC daily schedules
+
+*(Amended in playtest: the clock no longer turns on its own — the sky waits
+at day or night and campfire rests toggle it. Schedules should key off those
+two player-driven states rather than four flowing phases.)*
 
 The clock already turns morning → midday → evening → night, and the cast
 already sleeps after dark. Now they *live* by it: each named NPC gets an
