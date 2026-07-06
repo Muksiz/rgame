@@ -4,9 +4,10 @@ use std::sync::mpsc::Receiver;
 use crate::checker::{self, Outcome};
 use crate::content::items::{self, Item};
 use crate::content::quests::{self, QUESTS, Quest};
-use crate::content::{books, ferris, lore, sides, stones, wilds};
+use crate::content::{books, critters, ferris, lore, sides, stones, wilds};
 use crate::gfx::atlas::PLAYABLE;
 use crate::save::{self, SaveData};
+use crate::world::entity::CritterKind;
 use crate::world::map::hash2;
 use crate::world::map::{MAP_H, MAP_W, Tile, Zone};
 use crate::world::zones;
@@ -1004,6 +1005,22 @@ impl App {
             .any(|&(x, y)| matches!(self.zone().tile(x, y), Tile::Water | Tile::Reed));
         if water && self.has_item(Item::FishingRod) {
             self.go_fishing();
+            return;
+        }
+        // A hen within reach: she has something to say. Usually "cluck".
+        let hen = spots.iter().copied().find(|&(x, y)| {
+            self.zone()
+                .critters
+                .iter()
+                .any(|c| c.kind == CritterKind::Chicken && c.pos == (x, y))
+        });
+        if let Some((x, y)) = hen {
+            let h = hash2(x, y, 0xC1CC ^ self.day_ticks);
+            self.screen = Screen::Dialogue(Dialogue::new(
+                "A chicken",
+                vec![critters::chicken(h).to_string()],
+                DialogueKind::Flavor,
+            ));
             return;
         }
         // Nothing else in reach — then a word with your oldest friend, who is
@@ -2033,6 +2050,30 @@ mod tests {
             panic!("Ferris sleeps too soundly");
         };
         assert_eq!(d.speaker, "Ferris");
+    }
+
+    /// The pen's hens have things to say (mostly "cluck").
+    #[test]
+    fn the_pen_hens_answer_a_friendly_e() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        let hen = app.zones[0]
+            .critters
+            .iter()
+            .find(|c| c.kind == CritterKind::Chicken)
+            .expect("Emberwick keeps hens")
+            .pos;
+        app.player = (hen.0 - 1, hen.1);
+        assert!(
+            app.zone().tile(app.player.0, app.player.1).walkable(),
+            "no standing room beside the hen"
+        );
+        app.on_key(Key::Char('e'));
+        let Screen::Dialogue(d) = &app.screen else {
+            panic!("the hen said nothing at all");
+        };
+        assert_eq!(d.speaker, "A chicken");
+        assert!(matches!(d.kind, DialogueKind::Flavor));
     }
 
     /// The companion trails exactly one step behind, never in scenery —

@@ -200,6 +200,22 @@ def cell(sheet, c, r):
     return sheet.crop((x, y, x + TILE, y + TILE))
 
 
+def fence_corner(sheet, east, south):
+    """A fence corner joining a horizontal run (toward east/west) with a
+    vertical one (toward south/north): half of each rail sprite so both
+    reach their tile edge, and the stout post pasted over the joint."""
+    h = cell(sheet, 52, 23)  # the horizontal rails (FENCE)
+    v = h.transpose(Image.ROTATE_90)  # the vertical rails (FENCE_V)
+    out = Image.new("RGBA", (TILE, TILE), (0, 0, 0, 0))
+    half = TILE // 2
+    hx = 0 if not east else half
+    out.alpha_composite(h.crop((hx, 0, hx + half, TILE)), (hx, 0))
+    vy = 0 if not south else half
+    out.alpha_composite(v.crop((0, vy, TILE, vy + half)), (0, vy))
+    out.alpha_composite(cell(sheet, 45, 23))  # FENCE_POST covers the joint
+    return out
+
+
 def kenney_sheet(sheet_path, name):
     """A sibling Kenney sheet living next to the main one (same 1px margins)."""
     return Image.open(Path(sheet_path).parent / name).convert("RGBA")
@@ -1235,6 +1251,13 @@ def main(sheet_path, chars_path):
             ("WALK_WOMAN" if i == 0 else None, frame)
             for i, frame in enumerate(na_walks("Woman"))
         ],
+        # ── fence corners (playtest note: the pen's corners didn't join).
+        # Named by where the corner sits on its enclosure: NW joins runs
+        # heading east and south, and so around. ──
+        ("FENCE_NW", fence_corner(sheet, east=True, south=True)),
+        ("FENCE_NE", fence_corner(sheet, east=False, south=True)),
+        ("FENCE_SW", fence_corner(sheet, east=True, south=False)),
+        ("FENCE_SE", fence_corner(sheet, east=False, south=False)),
     ]
 
     rows = (len(cells) + COLS - 1) // COLS

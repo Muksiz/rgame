@@ -6,12 +6,6 @@ Playtest findings, jotted here between sessions — anything from a one-pixel
 nit to "this feels wrong". These take priority over everything below: fix
 first, then return to the roadmap. Remove a note once it's done.
 
-The chicken/hen pen in the beginning of the game is still visually not corret
-in the corners. The sides look good but the corners do not connect visually.
-Also make it so that the player can interract with the chickens. Some may say
-something funny to the player, some deep philosophical quotes, some may just
-produce a chicken sound when you interract.
-
 Add more of the big trees to the first location. Those look really nice.
 
 Find some fireplace- and other fitting sounds for when you enter a house.

@@ -613,13 +613,18 @@ fn tile_sprites(
         Tile::Floor => (interior_floor(zone_id, h), None),
         Tile::Fence => {
             // Fences follow their run: rails along a row, posts-and-rails up
-            // a column, and a stout post at corners, junctions and ends.
+            // a column, proper joined pieces at the corners, and a stout post
+            // at junctions and lone ends.
             let fency = |t: Tile| matches!(t, Tile::Fence | Tile::Gate);
-            let row = fency(zone.tile(x - 1, y)) || fency(zone.tile(x + 1, y));
-            let col = fency(zone.tile(x, y - 1)) || fency(zone.tile(x, y + 1));
-            let id = match (row, col) {
-                (true, false) => atlas::FENCE,
-                (false, true) => atlas::FENCE_V,
+            let (w, e) = (fency(zone.tile(x - 1, y)), fency(zone.tile(x + 1, y)));
+            let (n, s) = (fency(zone.tile(x, y - 1)), fency(zone.tile(x, y + 1)));
+            let id = match (w, e, n, s) {
+                (_, _, false, false) => atlas::FENCE,
+                (false, false, _, _) => atlas::FENCE_V,
+                (false, true, false, true) => atlas::FENCE_NW,
+                (true, false, false, true) => atlas::FENCE_NE,
+                (false, true, true, false) => atlas::FENCE_SW,
+                (true, false, true, false) => atlas::FENCE_SE,
                 _ => atlas::FENCE_POST,
             };
             (ground_base(zone, h), Some(id))

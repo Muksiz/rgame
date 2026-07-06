@@ -371,6 +371,13 @@ pub const CRAB_PEEK: u16 = 712;
 pub const WALK_CHILD: u16 = 713;
 pub const WALK_MANGREEN: u16 = 721;
 pub const WALK_WOMAN: u16 = 729;
+// Fence corners, named by where they sit on their enclosure: NW joins runs
+// heading east and south, and so around. Composited in the bake script from
+// halves of the straight rails with the stout post over the joint.
+pub const FENCE_NW: u16 = 737;
+pub const FENCE_NE: u16 = 738;
+pub const FENCE_SW: u16 = 739;
+pub const FENCE_SE: u16 = 740;
 pub const HOUSE_SIZE: (i32, i32) = (5, 5);
 pub const SHED_SIZE: (i32, i32) = (3, 3);
 pub const STALL_SIZE: (i32, i32) = (5, 5);
