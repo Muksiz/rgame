@@ -137,35 +137,40 @@ pub const CAST_VILLAGER3: u16 = 184;
 pub const CAST_VILLAGER4: u16 = 188;
 pub const CAST_PRINCESS: u16 = 192;
 /// The player's stride: two frames per facing, same facing order as CAST.
-/// Only the default look (the Boy) has a baked walk-cycle; the others walk on
-/// their idle facings, turning to look where they go.
+/// Every playable has one now — the Boy's lives here; the other three were
+/// appended later (WALK_*, below) so no earlier id shifted.
 pub const PLAYER_WALK: u16 = 196;
 
-/// The characters a new traveller may choose to play as: a display look and
-/// the cast member whose four idle facings they wear. The name is the player's
-/// to invent — no suggestions here. The first (the Boy) is the one with a full
-/// stride animation.
+/// The characters a new traveller may choose to play as: a display look, the
+/// cast member whose four idle facings they wear, and their own walk-cycle
+/// (two stride frames per facing, same layout as PLAYER_WALK). The name is
+/// the player's to invent — no suggestions here.
 pub struct Playable {
     pub look: &'static str,
     pub cast: u16,
+    pub walk: u16,
 }
 
 pub const PLAYABLE: [Playable; 4] = [
     Playable {
         look: "the young traveller",
         cast: CAST_BOY,
+        walk: PLAYER_WALK,
     },
     Playable {
         look: "the curious sprout",
         cast: CAST_CHILD,
+        walk: WALK_CHILD,
     },
     Playable {
         look: "the greenwood ranger",
         cast: CAST_MANGREEN,
+        walk: WALK_MANGREEN,
     },
     Playable {
         look: "the roaming herbalist",
         cast: CAST_WOMAN,
+        walk: WALK_WOMAN,
     },
 ];
 // Biome grounds (plain + two decorated variants each) and per-biome props,
@@ -359,6 +364,13 @@ pub const CRAB_WALK_A: u16 = 709;
 pub const CRAB_WALK_B: u16 = 710;
 pub const CRAB_CURL: u16 = 711;
 pub const CRAB_PEEK: u16 = 712;
+// Walk cycles for the rest of the char-select roster (the Boy's is
+// PLAYER_WALK): two stride frames per facing, down/up/left/right. The Child
+// has no Walk strip in the pack, so its stride pairs the compact sheet's
+// step row with its idle row.
+pub const WALK_CHILD: u16 = 713;
+pub const WALK_MANGREEN: u16 = 721;
+pub const WALK_WOMAN: u16 = 729;
 pub const HOUSE_SIZE: (i32, i32) = (5, 5);
 pub const SHED_SIZE: (i32, i32) = (3, 3);
 pub const STALL_SIZE: (i32, i32) = (5, 5);

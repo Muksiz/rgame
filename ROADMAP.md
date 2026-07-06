@@ -6,9 +6,6 @@ Playtest findings, jotted here between sessions — anything from a one-pixel
 nit to "this feels wrong". These take priority over everything below: fix
 first, then return to the roadmap. Remove a note once it's done.
 
-Only one of the playable characters has a walking animation. Figure out if
-it's possible to copy the walking animation to the rest of the characters.
-
 The chicken/hen pen in the beginning of the game is still visually not corret
 in the corners. The sides look good but the corners do not connect visually.
 Also make it so that the player can interract with the chickens. Some may say

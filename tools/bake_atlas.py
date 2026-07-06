@@ -180,6 +180,20 @@ def na_walks(folder):
     return frames
 
 
+def na_steps(folder):
+    """A two-frame stride per facing (same layout as na_walks) for cast
+    members that ship only the compact SpriteSheet.png: its second row is a
+    step pose per facing, paired here with the idle row above it."""
+    sheet = Image.open(NA_DIR / folder / "SpriteSheet.png").convert("RGBA")
+    frames = []
+    for d in range(4):
+        for row in (1, 0):
+            frames.append(
+                sheet.crop((d * TILE, row * TILE, d * TILE + TILE, row * TILE + TILE))
+            )
+    return frames
+
+
 def cell(sheet, c, r):
     """Cut one 16x16 tile from a Kenney sheet (1px margins)."""
     x, y = c * 17, r * 17
@@ -1205,6 +1219,22 @@ def main(sheet_path, chars_path):
         ("CRAB_WALK_B", from_art(CRAB_WALK_B, PALETTE)),
         ("CRAB_CURL", from_art(CRAB_CURL, PALETTE)),
         ("CRAB_PEEK", from_art(CRAB_PEEK, PALETTE)),
+        # ── walk cycles for the rest of the char-select roster (playtest
+        # note: only the Boy strode). Same two-frames-per-facing layout as
+        # PLAYER_WALK. The Child ships no Walk strip, so its stride pairs
+        # the compact SpriteSheet's step row with its idle row (na_steps). ──
+        *[
+            ("WALK_CHILD" if i == 0 else None, frame)
+            for i, frame in enumerate(na_steps("Child"))
+        ],
+        *[
+            ("WALK_MANGREEN" if i == 0 else None, frame)
+            for i, frame in enumerate(na_walks("ManGreen"))
+        ],
+        *[
+            ("WALK_WOMAN" if i == 0 else None, frame)
+            for i, frame in enumerate(na_walks("Woman"))
+        ],
     ]
 
     rows = (len(cells) + COLS - 1) // COLS

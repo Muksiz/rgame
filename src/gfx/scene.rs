@@ -280,12 +280,11 @@ fn world_scene(fb: &mut Frame, atlas: &Atlas, app: &App) {
         // The player rides their glide position, not the tile grid.
         let (px, py) = (ppx - cam_x, ppy - cam_y);
         let dir = facing_cell(app.facing);
-        // A fresh step plays the stride — but only the default look has a baked
-        // walk-cycle; the others walk on their idle facing, turning to look
-        // where they go. Standing still always rests on the idle.
+        // A fresh step plays the stride (every playable has a walk-cycle);
+        // standing still rests on the idle facing.
         let walking = app.tick.saturating_sub(app.walked_at) < 4;
-        let id = if walking && app.player_char == 0 {
-            atlas::PLAYER_WALK + dir * 2 + ((app.tick / 2) % 2) as u16
+        let id = if walking {
+            app.player_look().walk + dir * 2 + ((app.tick / 2) % 2) as u16
         } else {
             app.player_look().cast + dir
         };
