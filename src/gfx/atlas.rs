@@ -349,10 +349,10 @@ pub const WOODS_FLOOR_B: u16 = 703;
 pub const WOODS_FLOOR_C: u16 = 704;
 pub const WOODS_TUFT_A: u16 = 705;
 pub const WOODS_TUFT_B: u16 = 706;
-// The companion at your heels: a very small crab in Ferris's exact colors
-// (rustacean.net's #F74C00 / #A52B00), hand-pixeled like the other critters.
-// Idle, a claws-up wave/startle, two scuttle frames, curled asleep, and just
-// the eyestalks peeking over tall grass.
+// Ferris, the companion at your heels: a very small crab in his namesake's
+// exact colors (rustacean.net's #F74C00 / #A52B00), hand-pixeled like the
+// other critters. Idle, a claws-up wave/startle, two scuttle frames, curled
+// asleep, and just the eyestalks peeking over tall grass.
 pub const CRAB_IDLE: u16 = 707;
 pub const CRAB_WAVE: u16 = 708;
 pub const CRAB_WALK_A: u16 = 709;

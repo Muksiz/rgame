@@ -206,11 +206,6 @@ fn world_scene(fb: &mut Frame, atlas: &Atlas, app: &App) {
     let ent_light = dl.max(0.55);
 
     for critter in &zone.critters {
-        // The tamed stray isn't a critter anymore — it walks at your heels
-        // (drawn below), not curled behind the storehouse.
-        if critter.kind == CritterKind::Crab && app.has_companion() {
-            continue;
-        }
         if let Some((px, py)) = to_screen(critter.pos.0, critter.pos.1) {
             let id = match critter.kind {
                 CritterKind::Chicken => atlas::CHICKEN,
@@ -218,21 +213,16 @@ fn world_scene(fb: &mut Frame, atlas: &Atlas, app: &App) {
                 CritterKind::Frog => atlas::FROG,
                 CritterKind::Moth => atlas::MOTH,
                 CritterKind::Cat => atlas::CAT,
-                CritterKind::Crab => atlas::CRAB_CURL,
             };
-            // Little lives fidget: a one-pixel hop on each critter's own beat
-            // — except the stray crab, which is busy being a pebble.
+            // Little lives fidget: a one-pixel hop on each critter's own beat.
             let phase = hash2(critter.pos.0, critter.pos.1, 0xC1717) as u64;
-            let hop = (critter.kind != CritterKind::Crab
-                && (app.tick / 4 + phase).is_multiple_of(6)) as i32;
+            let hop = (app.tick / 4 + phase).is_multiple_of(6) as i32;
             blob_shadow(fb, px + 4, py + 13, 8, 2);
             fb.sprite(atlas, id, px, py - hop, ent_light);
         }
     }
 
-    if app.has_companion() {
-        companion(fb, atlas, app, cam_x, cam_y, ent_light);
-    }
+    companion(fb, atlas, app, cam_x, cam_y, ent_light);
 
     let active = app.active_quest().map(|q| q.id);
     let night = app.is_night();
@@ -1493,10 +1483,11 @@ fn ambient_life(fb: &mut Frame, atlas: &Atlas, app: &App, cam_x: i32, cam_y: i32
 /// Pixel offset of the player's drawn position from their logical tile: eases
 /// from the departure square to zero across one step's length. Warps and
 /// gate-crossings (any hop longer than a step) arrive instantly.
-/// The little crab at your heels. It rides the same step-glide as the player,
-/// one square behind: scuttling when you walk, sitting when you stand (with a
-/// claws-up wave now and then), only its eyestalks over tall grass, a startled
-/// hop when a wild rune stirs, and a doze — z and all — once the world sleeps.
+/// Ferris, the little crab at your heels since the road began. He rides the
+/// same step-glide as the player, one square behind: scuttling when you walk,
+/// sitting when you stand (with a claws-up wave now and then), only his
+/// eyestalks over tall grass, a startled hop when a wild rune stirs, and a
+/// doze — z and all — once the world sleeps.
 fn companion(fb: &mut Frame, atlas: &Atlas, app: &App, cam_x: i32, cam_y: i32, light: f32) {
     // Freshly gathered in (a door, a gate, a load): stacked under the player,
     // where it stays tucked away until the first step apart.
@@ -2332,12 +2323,10 @@ fn resting(fb: &mut Frame, atlas: &Atlas, app: &App, lore_idx: usize, t: u32, wa
     fb.clear((10, 8, 9));
 
     let (cx, bottom) = (fb.width() / 2, fb.height());
-    // The little crab curls up in the ember-light beside you.
-    if app.has_companion() {
-        fb.sprite_scaled(atlas, atlas::CRAB_CURL, cx + 68, bottom - 46, 2, 0.85);
-        let bob = ((app.tick / 14) % 3) as i32;
-        font::text(fb, cx + 92, bottom - 26 - bob, "z", (150, 120, 96), 1);
-    }
+    // Ferris curls up in the ember-light beside you.
+    fb.sprite_scaled(atlas, atlas::CRAB_CURL, cx + 68, bottom - 46, 2, 0.85);
+    let bob = ((app.tick / 14) % 3) as i32;
+    font::text(fb, cx + 92, bottom - 26 - bob, "z", (150, 120, 96), 1);
     // A low bank of embers along the bottom, breathing with the tick.
     for i in 0..70i32 {
         let base = cx - 60 + (hash2(i, 1, 0xF16E) % 120) as i32;

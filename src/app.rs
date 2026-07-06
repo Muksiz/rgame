@@ -4,10 +4,9 @@ use std::sync::mpsc::Receiver;
 use crate::checker::{self, Outcome};
 use crate::content::items::{self, Item};
 use crate::content::quests::{self, QUESTS, Quest};
-use crate::content::{books, lore, sides, stones, wilds};
+use crate::content::{books, ferris, lore, sides, stones, wilds};
 use crate::gfx::atlas::PLAYABLE;
 use crate::save::{self, SaveData};
-use crate::world::entity::CritterKind;
 use crate::world::map::hash2;
 use crate::world::map::{MAP_H, MAP_W, Tile, Zone};
 use crate::world::zones;
@@ -137,7 +136,7 @@ pub enum Key {
 pub static EPILOGUE: &[&str] = &[
     "The tall doors of the Great Library swing wide, and warm lamplight spills down the steps and into the mist. Somewhere above, the shelves go up and up until they look like a night full of square stars.",
     "You think of the whole road at once: a lantern blooming gold over Emberwick, sheep folding into meadow grass, a token handed back across a rain-specked dock, a letter mended mid-sentence. Twenty-three small runes. One quiet journey.",
-    "Ferris climbs out of your satchel and settles on your shoulder, watching the lamplight. \"You know,\" the little crab says, \"most spellbooks end where the good part starts. Enums, lifetimes, traits... whole wings of this place we haven't touched.\"",
+    "Ferris scuttles up your sleeve and settles on your shoulder, watching the lamplight — the same little crab who has walked every step of this road beside you. \"You know,\" he says, \"most spellbooks end where the good part starts. Enums, lifetimes, traits... whole wings of this place we haven't touched.\"",
     "\"But that,\" Ferris yawns, \"is a journey for another evening. For now: armchairs.\"\n\n~ Thank you for playing RUNE & ROAD ~\n\nThe world stays open — wander back down the road whenever you like.",
 ];
 
@@ -290,10 +289,10 @@ pub struct App {
     /// it with this fraction lets the glide start exactly at the departure
     /// square. Cosmetic, never saved; headless leaves it zero.
     pub walk_subtick: f32,
-    /// The companion's tile — the square the player last vacated, so the
-    /// little crab walks exactly one step behind. Maintained whether or not
-    /// it's earned yet (only drawn once `has_companion()`), ephemeral like
-    /// `walked_at`: never saved, it simply reappears at your side on load.
+    /// The companion's tile — the square the player last vacated, so Ferris
+    /// walks exactly one step behind. He has been at your heels since before
+    /// the road began; his spot is ephemeral like `walked_at`: never saved,
+    /// he simply reappears at your side on load.
     pub companion: (i32, i32),
     /// The square the companion stepped from, for its own render glide.
     /// Cosmetic, never saved.
@@ -410,12 +409,6 @@ impl App {
         &PLAYABLE[self.player_char.min(PLAYABLE.len() - 1)]
     }
 
-    /// Whether the little crab walks at your heels — derived from the meal
-    /// flags (fed at three different hours), never stored on its own.
-    pub fn has_companion(&self) -> bool {
-        sides::crab_tamed(&self.flags)
-    }
-
     /// Gather the companion in to the player's square — through doors, gates
     /// and zone edges it scurries along rather than being left behind, and on
     /// load it simply reappears at your side.
@@ -525,13 +518,10 @@ impl App {
         let tick = self.tick as u32;
 
         for i in 0..self.zones[zone_idx].critters.len() {
-            let (kind, pos, home) = {
+            let (pos, home) = {
                 let c = &self.zones[zone_idx].critters[i];
-                (c.kind, c.pos, c.home)
+                (c.pos, c.home)
             };
-            if kind == CritterKind::Crab {
-                continue; // the stray stays curled where it lies
-            }
             let h = hash2(pos.0, pos.1, tick.wrapping_add(i as u32 * 977));
             if h % 10 >= 4 {
                 continue; // mostly they just stand there, being pleasant
@@ -854,15 +844,8 @@ impl App {
             self.try_gate();
             return;
         }
-        // Once the stray follows at your heels it occupies no world tile —
-        // its old curl-spot behind the storehouse stops blocking the way.
-        let tamed = self.has_companion();
         let occupied = self.zone().npc_at(target.0, target.1).is_some()
-            || self
-                .zone()
-                .critters
-                .iter()
-                .any(|c| c.pos == target && !(c.kind == CritterKind::Crab && tamed));
+            || self.zone().critters.iter().any(|c| c.pos == target);
         if tile.walkable() && !occupied {
             // A second step landing on the same tick (the shell walking a
             // held diagonal) keeps the original departure square, so the
@@ -944,20 +927,6 @@ impl App {
             self.screen = Screen::Dialogue(dialogue);
             return;
         }
-        // The stray behind the storehouse: a very small crab with a very
-        // small appetite. Once it follows you it isn't out here anymore.
-        if !self.has_companion() {
-            let crab_near = spots.iter().any(|&(x, y)| {
-                self.zone()
-                    .critters
-                    .iter()
-                    .any(|c| c.kind == CritterKind::Crab && c.pos == (x, y))
-            });
-            if crab_near {
-                self.feed_crab();
-                return;
-            }
-        }
         // Anything with writing on it: signposts outside, notes left on
         // tables and crates indoors.
         let note = spots.iter().find_map(|&(x, y)| {
@@ -1033,7 +1002,25 @@ impl App {
             .any(|&(x, y)| matches!(self.zone().tile(x, y), Tile::Water | Tile::Reed));
         if water && self.has_item(Item::FishingRod) {
             self.go_fishing();
+            return;
         }
+        // Nothing else in reach — then a word with your oldest friend, who is
+        // never more than a step away. On an empty stretch of road, `e` is
+        // Ferris's cue: he always has an opinion ready.
+        self.chat_with_ferris();
+    }
+
+    /// Ferris pipes up: one remark, picked deterministically from where you
+    /// stand and the hour, so the same corner at the same time of day always
+    /// draws the same thought.
+    fn chat_with_ferris(&mut self) {
+        let h = hash2(self.player.0, self.player.1, 0xFE44 ^ self.day_ticks);
+        let line = ferris::chat(h, self.is_night());
+        self.screen = Screen::Dialogue(Dialogue::new(
+            "Ferris",
+            vec![line.to_string()],
+            DialogueKind::Flavor,
+        ));
     }
 
     /// Each shelf tile holds one book, assigned by walking order along the
@@ -1055,31 +1042,6 @@ impl App {
         let book = &books::BOOKS[ordinal % books::BOOKS.len()];
         let pages = book.pages.iter().map(|p| p.to_string()).collect();
         self.screen = Screen::Dialogue(Dialogue::new(book.title, pages, DialogueKind::Book));
-    }
-
-    /// A morsel for the stray crab. It takes one per hour of the day
-    /// (morning, midday, evening, night — the clock or a campfire rest moves
-    /// them along); the third meal wins its trust, and from then on the
-    /// little crab walks at your heels. The gentlest quest on the road.
-    fn feed_crab(&mut self) {
-        let fed_flag = match self.phase() {
-            DayPhase::Morning => sides::CRAB_FED[0],
-            DayPhase::Day => sides::CRAB_FED[1],
-            DayPhase::Evening => sides::CRAB_FED[2],
-            DayPhase::Night => sides::CRAB_FED[3],
-        };
-        if self.has_flag(fed_flag) {
-            self.toast(
-                "The little crab is still working on the last morsel. Perhaps at another hour.",
-            );
-            return;
-        }
-        let talk = sides::crab_talk(&self.flags, fed_flag);
-        self.screen = Screen::Dialogue(Dialogue::new(
-            "A very small crab",
-            talk.pages,
-            DialogueKind::Side(talk.set),
-        ));
     }
 
     /// The moon-mint patch off the cave path — Granny Sorrel's favor.
@@ -1268,7 +1230,7 @@ impl App {
         };
         if !self.accepted.contains(&quest.id) {
             self.toast(format!(
-                "Ferris peeks out: \"No quest yet! Go chat with {} first.\"",
+                "Ferris looks up from beside your boots: \"No quest yet! Go chat with {} first.\"",
                 quest.npc
             ));
             return;
@@ -1816,6 +1778,8 @@ mod tests {
         app.player = spot.expect("Silverford has a quiet riverbank somewhere");
         app.on_key(Key::Char('e'));
         assert_eq!(app.fish, 0, "fished without a rod");
+        // Rodless, `e` at the bank falls through to a chat with Ferris.
+        app.on_key(Key::Esc);
         app.completed.insert(17); // Juniper's spare rod
         app.on_key(Key::Char('e'));
         assert_eq!(app.fish, 1);
@@ -2017,59 +1981,56 @@ mod tests {
         assert_eq!(app.player, (warp.at.0, warp.at.1 + 1));
     }
 
-    /// Three meals at three hours of the day win the stray crab's trust.
+    /// Ferris has walked at your heels since before the road began — and he
+    /// talks: with nothing else in reach, `e` is a word with your oldest
+    /// friend.
     #[test]
-    fn feeding_the_stray_crab_thrice_tames_it() {
+    fn ferris_is_there_from_the_start_and_talks() {
         let mut app = App::new();
         app.screen = Screen::World;
-        let crab = app.zones[0]
-            .critters
-            .iter()
-            .find(|c| c.kind == CritterKind::Crab)
-            .expect("a stray crab curls behind the storehouse")
-            .home;
-        // The player can stand beside it (the gap is reachable, not scenery).
-        app.player = (crab.0 - 1, crab.1);
-        assert!(
-            app.zone().tile(app.player.0, app.player.1).walkable(),
-            "no standing room beside the stray"
-        );
-
-        // First morsel, in the morning.
-        assert_eq!(app.phase(), DayPhase::Morning);
+        // A quiet corner of Emberwick: nothing interactable in the 3x3 reach,
+        // so the chat fallback is what `e` finds.
+        let zone = &app.zones[0];
+        let mut spot = None;
+        'outer: for y in 1..MAP_H - 1 {
+            for x in 1..MAP_W - 1 {
+                let clear = (-1..=1).all(|dy| {
+                    (-1..=1).all(|dx| {
+                        let (tx, ty) = (x + dx, y + dy);
+                        zone.npc_at(tx, ty).is_none()
+                            && zone.sign_at(tx, ty).is_none()
+                            && !matches!(
+                                zone.tile(tx, ty),
+                                Tile::Bookshelf
+                                    | Tile::Herb
+                                    | Tile::Chest
+                                    | Tile::Runestone
+                                    | Tile::Campfire
+                            )
+                    })
+                });
+                if zone.tile(x, y).walkable() && clear {
+                    spot = Some((x, y));
+                    break 'outer;
+                }
+            }
+        }
+        app.player = spot.expect("Emberwick has a quiet corner somewhere");
         app.on_key(Key::Char('e'));
         let Screen::Dialogue(d) = &app.screen else {
-            panic!("the crab said nothing (well, clicked nothing)");
+            panic!("Ferris had nothing to say");
         };
-        assert!(matches!(d.kind, DialogueKind::Side(Some(_))));
+        assert_eq!(d.speaker, "Ferris", "the empty road should draw Ferris");
+        assert!(matches!(d.kind, DialogueKind::Flavor));
         click_through(&mut app);
-        assert_eq!(sides::crab_meals(&app.flags), 1);
-        assert!(!app.has_companion());
 
-        // The same hour won't do: it's still nibbling.
+        // After dark he answers too, in his quieter voice.
+        app.day_ticks = NIGHT_START + 10;
         app.on_key(Key::Char('e'));
-        assert!(matches!(app.screen, Screen::World), "double-fed the crab");
-        assert_eq!(sides::crab_meals(&app.flags), 1);
-
-        // Midday brings a second appetite, evening the third — and trust.
-        app.day_ticks = DAY_START;
-        app.on_key(Key::Char('e'));
-        click_through(&mut app);
-        assert_eq!(sides::crab_meals(&app.flags), 2);
-        app.day_ticks = EVENING_START;
-        app.on_key(Key::Char('e'));
-        click_through(&mut app);
-        assert_eq!(sides::crab_meals(&app.flags), 3);
-        assert!(app.has_companion(), "three meals should win its trust");
-
-        // Now it walks at your heels, and its curl-spot no longer blocks.
-        app.on_key(Key::Char('e'));
-        assert!(
-            matches!(app.screen, Screen::World),
-            "the tamed crab should have left the storehouse gap"
-        );
-        app.try_move(1, 0);
-        assert_eq!(app.player, crab, "the old curl-spot should be walkable");
+        let Screen::Dialogue(d) = &app.screen else {
+            panic!("Ferris sleeps too soundly");
+        };
+        assert_eq!(d.speaker, "Ferris");
     }
 
     /// The companion trails exactly one step behind, never in scenery —
@@ -2078,10 +2039,6 @@ mod tests {
     fn the_companion_follows_a_step_behind() {
         let mut app = App::new();
         app.screen = Screen::World;
-        for f in sides::CRAB_FED.iter().take(3) {
-            app.set_flag(f);
-        }
-        assert!(app.has_companion());
         app.player = app.zones[0].spawn;
         app.companion_snap();
         let mut walked = 0;
@@ -2107,9 +2064,6 @@ mod tests {
     fn the_companion_is_never_lost_across_a_warp() {
         let mut app = App::new();
         app.screen = Screen::World;
-        for f in sides::CRAB_FED.iter().take(3) {
-            app.set_flag(f);
-        }
         let warp = app.zones[0].warps[0]; // the bakery's front door
         app.player = (warp.at.0, warp.at.1 + 1);
         app.companion_snap();

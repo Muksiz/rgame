@@ -19,28 +19,6 @@ pub const NETTLE_MET: &str = "nettle.met";
 /// The chest in the storehouse cellar stands open.
 pub const CHEST_OPENED: &str = "cellar.chest";
 
-/// The stray crab's meals — one flag per hour of the day it has eaten at
-/// (morning, midday, evening, night, in `DayPhase` order). Three meals at
-/// three different hours and it trusts you (`crab_tamed`): from then on the
-/// little crab walks at your heels, forever.
-pub const CRAB_FED: [&str; 4] = [
-    "crab.fed.morning",
-    "crab.fed.day",
-    "crab.fed.evening",
-    "crab.fed.night",
-];
-
-/// How many morsels the stray behind the storehouse has taken so far.
-pub fn crab_meals(flags: &BTreeSet<String>) -> usize {
-    CRAB_FED.iter().filter(|f| flags.contains(**f)).count()
-}
-
-/// Fed thrice, trust won: the crab is a companion now, not a stray. Derived
-/// from the meal flags, never stored on its own — old saves stay valid.
-pub fn crab_tamed(flags: &BTreeSet<String>) -> bool {
-    crab_meals(flags) >= 3
-}
-
 /// Runestone flags are `runestone.1` .. `runestone.8`.
 pub fn runestone_flag(id: u8) -> String {
     format!("runestone.{id}")
@@ -116,39 +94,6 @@ pub fn talk(npc: &str, flags: &BTreeSet<String>) -> Option<SideTalk> {
     }
 }
 
-/// The stray crab taking a morsel at the hour `fed_flag`. The caller has
-/// already checked this hour's morsel hasn't been taken; the flag lands when
-/// the dialogue closes, like every side arc. The third meal is the one that
-/// matters: trust, a satchel-side family reunion, and a friend for the road.
-pub fn crab_talk(flags: &BTreeSet<String>, fed_flag: &'static str) -> SideTalk {
-    match crab_meals(flags) {
-        0 => SideTalk {
-            pages: vec![
-                "Curled in the gap behind the storehouse: a very small crab, orange as a coal. It is doing its best to look like a pebble. The pebbles are not fooled.".into(),
-                "You crouch and hold out a corner of your travel loaf. A long, careful pause. Then — snip — the morsel is gone, and the crab is a pebble again.".into(),
-                "*From somewhere in your satchel comes the faintest approving click.*".into(),
-            ],
-            set: Some(fed_flag),
-        },
-        1 => SideTalk {
-            pages: vec![
-                "The small crab is where you left it — but this time it sidles out to meet you, claws raised like a tiny fanfare.".into(),
-                "It takes the morsel straight from your fingers, watching you the whole while with eyes like polished seeds. Progress, measured in crumbs.".into(),
-            ],
-            set: Some(fed_flag),
-        },
-        _ => SideTalk {
-            pages: vec![
-                "The small crab is not behind the storehouse. It is beside your boot. It has, apparently, been walking with you for a while already, waiting to be noticed.".into(),
-                "It accepts the third morsel like a signature on a treaty. Then it climbs onto your boot, settles sideways, and faces the road.".into(),
-                "Ferris leans out of your satchel for a long, careful look, and gives one solemn click. Family, apparently — a very small, very distant cousin.".into(),
-                "*From here on, the little crab walks at your heels. The road gains eight small legs and two proud claws.*".into(),
-            ],
-            set: Some(fed_flag),
-        },
-    }
-}
-
 /// Little things carried because of side quests, shown in the journal's
 /// satchel — derived from flags, never stored, like every keepsake.
 pub fn carried(flags: &BTreeSet<String>) -> Vec<&'static str> {
@@ -173,15 +118,6 @@ pub fn journal_notes(flags: &BTreeSet<String>) -> Vec<&'static str> {
     }
     if flags.contains(NETTLE_MET) && !flags.contains(CHEST_OPENED) {
         v.push("Old Nettle's rusted key is stamped EMBERWICK STOREHOUSE.");
-    }
-    match crab_meals(flags) {
-        1 => v.push(
-            "The small crab behind the Emberwick storehouse took a morsel. Another, at a different hour, might go down well.",
-        ),
-        2 => v.push(
-            "Two morsels down - the small crab all but waves now. One more, at yet another hour of the day.",
-        ),
-        _ => {}
     }
     v
 }
@@ -216,30 +152,6 @@ mod tests {
         flags.insert(SORREL_DONE.to_string());
         flags.insert(CHEST_OPENED.to_string());
         assert!(carried(&flags).is_empty());
-    }
-
-    #[test]
-    fn three_meals_at_three_hours_tame_the_crab() {
-        let mut flags = BTreeSet::new();
-        assert_eq!(crab_meals(&flags), 0);
-        assert!(!crab_tamed(&flags));
-        // Each morsel's talk sets that hour's flag when the dialogue closes.
-        let first = crab_talk(&flags, CRAB_FED[0]);
-        assert_eq!(first.set, Some(CRAB_FED[0]));
-        flags.insert(CRAB_FED[0].to_string());
-        flags.insert(CRAB_FED[1].to_string());
-        assert_eq!(crab_meals(&flags), 2);
-        assert!(!crab_tamed(&flags), "two meals is not yet trust");
-        assert_eq!(journal_notes(&flags).len(), 1, "the journal keeps a note");
-        // Any three of the four hours will do — night counts.
-        let third = crab_talk(&flags, CRAB_FED[3]);
-        assert_eq!(third.set, Some(CRAB_FED[3]));
-        flags.insert(CRAB_FED[3].to_string());
-        assert!(crab_tamed(&flags));
-        assert!(
-            journal_notes(&flags).is_empty(),
-            "a tamed friend needs no reminder"
-        );
     }
 
     #[test]

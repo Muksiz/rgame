@@ -10,8 +10,9 @@
 //! `world` takes an optional zone (0-3 overworld, 4+ interiors) and
 //! `--pos x,y`; `--tick` drives animations; `--day <ticks>` sets the position
 //! in the day/night clock (0 = dawn; see `rgame::app::DAY_LEN`), so outdoor
-//! scenes can be shot at any hour; `--crab` tames the stray crab and sets it
-//! one tile west of the player, at heel. Default output: snapshot.png.
+//! scenes can be shot at any hour; `--crab` places Ferris one tile west of
+//! the player (headless shots otherwise leave him tucked under the player,
+//! where he isn't drawn). Default output: snapshot.png.
 
 use std::io::BufWriter;
 
@@ -51,11 +52,8 @@ fn main() {
         let (x, y) = pos.split_once(',').expect("--pos x,y");
         app.player = (x.parse().unwrap(), y.parse().unwrap());
     }
-    // `--crab`: the stray fed and tamed, sitting one tile behind the player.
+    // `--crab`: Ferris visible at heel instead of tucked under the player.
     if args.iter().any(|a| a == "--crab") {
-        for f in rgame::content::sides::CRAB_FED.iter().take(3) {
-            app.set_flag(f);
-        }
         app.companion = (app.player.0 - 1, app.player.1);
         app.companion_prev = app.companion;
     }

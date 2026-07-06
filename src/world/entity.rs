@@ -16,11 +16,6 @@ pub enum CritterKind {
     Frog,
     Moth,
     Cat,
-    /// The stray behind the Emberwick storehouse: a very small crab. It stays
-    /// curled where it lies (no wandering), can be fed (see `content::sides`),
-    /// and once it trusts you it leaves the critter list behind entirely —
-    /// drawn at your heels instead (`App::companion`).
-    Crab,
 }
 
 pub struct Critter {

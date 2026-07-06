@@ -6,9 +6,6 @@ Playtest findings, jotted here between sessions — anything from a one-pixel
 nit to "this feels wrong". These take priority over everything below: fix
 first, then return to the roadmap. Remove a note once it's done.
 
-The Ferris pet that follows the player around should be with him from the start.
-They have known each other for some time and the crab can talk.
-
 Only one of the playable characters has a walking animation. Figure out if
 it's possible to copy the walking animation to the rest of the characters.
 
@@ -252,6 +249,12 @@ a curl in the ember-light on the resting screen. Ferris vouches for it
 your side across warps/gates/loads; `--crab` previews it in the snapshot
 tool. Remaining polish ideas: a choice of friend at char-select, a slow
 blink at NPCs.
+
+**Amended in playtest**: the taming quest is retired. The little crab is
+Ferris himself, at your heels from the first morning — you two go way back —
+and he talks: with nothing else in reach, `e` is a chat with your oldest
+friend (`content/ferris.rs`, lines picked by `hash2` of spot and hour, with
+a quieter night set).
 
 A small friend who walks the road with you — earned, in keeping with the
 world, through a gentle side quest (a stray curled behind the storehouse who

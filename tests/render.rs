@@ -181,10 +181,7 @@ fn every_screen_renders() {
     render(&atlas, &app);
     app.day_ticks = 0;
 
-    // The companion at your heels: fed thrice, the little crab follows.
-    for f in rgame::content::sides::CRAB_FED.iter().take(3) {
-        app.set_flag(f);
-    }
+    // The companion at your heels: Ferris, with you from the first morning.
     let spawn = app.zones[0].spawn;
     app.player = spawn;
     app.companion = (spawn.0 - 1, spawn.1);
@@ -245,9 +242,6 @@ fn a_completed_game_still_renders() {
     }
     app.set_flag(rgame::content::sides::SORREL_DONE);
     app.set_flag(rgame::content::sides::CHEST_OPENED);
-    for f in rgame::content::sides::CRAB_FED {
-        app.set_flag(f);
-    }
     app.zone_idx = 3;
     app.player = app.zones[3].spawn;
     app.screen = Screen::World;

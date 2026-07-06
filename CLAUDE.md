@@ -12,7 +12,7 @@ roadmap, these notes always take priority over the numbered roadmap items —
 address them first. When a note has been dealt with, remove it from
 `ROADMAP.md` in the same change.
 
-Beyond the 23 main quests, the world has optional layers: enterable interiors behind every door, quest keepsakes that gate the world (the storm-lantern, the fishing rod), wild rune encounters in the tall grass feeding the Grimoire collection, flag-driven side quests (Granny Sorrel's moon-mint, Old Nettle hidden in the deep woods, the locked chest in the storehouse cellar, the stray crab behind the storehouse — a tiny Ferris who, fed thrice at different hours, follows at your heels forever), eight hidden runestones to collect, and a Great Library whose shelves hold real books about Rust.
+Beyond the 23 main quests, the world has optional layers: enterable interiors behind every door, quest keepsakes that gate the world (the storm-lantern, the fishing rod), wild rune encounters in the tall grass feeding the Grimoire collection, flag-driven side quests (Granny Sorrel's moon-mint, Old Nettle hidden in the deep woods, the locked chest in the storehouse cellar), Ferris — a tiny talking crab who has walked at your heels since before the road began (`e` with nothing else in reach chats with him, `content/ferris.rs`), eight hidden runestones to collect, and a Great Library whose shelves hold real books about Rust.
 
 ## Commands
 
