@@ -313,6 +313,13 @@ impl MapBuilder {
             for dy in -2..=2 {
                 for dx in -2..=2i32 {
                     let (nx, ny) = (x + dx, y + dy);
+                    // Buildings hold their ground: a lane may run right up to
+                    // a facade but never carves into its art. (A lane fringe
+                    // once shaved the bakery's bottom row off — the "sunken
+                    // house" of playtest fame.)
+                    if matches!(self.get(nx, ny), Tile::Facade(_) | Tile::FacadeDoor(_)) {
+                        continue;
+                    }
                     if dx.abs() <= 1 && dy.abs() <= 1 {
                         self.set(nx, ny, Tile::Path);
                     } else if !matches!(self.get(nx, ny), Tile::Path | Tile::Water | Tile::Bridge) {

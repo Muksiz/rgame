@@ -9,9 +9,6 @@ first, then return to the roadmap. Remove a note once it's done.
 Add backyards and fences to some of the houses. Look for plant and flower
 sprites on the internet and fetch/use those to decorate the house yards.
 
-Poppy's bakery appears to have sunk into the ground. It does not visually
-look correct. Same thing with Granny Sorrel's Cottage.
-
 When I walk in a straight line and press down another movement key to begin
 walking diagonally there is a small hiccup which seems to jump the character
 and camera view.

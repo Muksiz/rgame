@@ -1512,6 +1512,29 @@ mod tests {
     }
 
     #[test]
+    fn doorway_warps_keep_their_door_tiles() {
+        // A lane's grass fringe once shaved the facade row a door lived in
+        // off the bakery and Sorrel's cottage (the "sunken house" playtest
+        // note). Pin that every doorway warp still sits on door art; the
+        // Echo Cave's mouth and its inward exit are the deliberate
+        // non-doors.
+        for (i, zone) in zones().iter().enumerate() {
+            for warp in &zone.warps {
+                if warp.to_zone == ECHO_CAVE || i == ECHO_CAVE {
+                    continue;
+                }
+                let tile = zone.tile(warp.at.0, warp.at.1);
+                assert!(
+                    matches!(tile, Tile::Door | Tile::FacadeDoor(_)),
+                    "warp at {:?} in {} sits on {tile:?}, not a door",
+                    warp.at,
+                    zone.name
+                );
+            }
+        }
+    }
+
+    #[test]
     fn hearth_rooms_are_all_interiors() {
         let zones = zones();
         for (i, zone) in zones.iter().enumerate() {
