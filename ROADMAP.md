@@ -16,9 +16,6 @@ When I walk in a straight line and press down another movement key to begin
 walking diagonally there is a small hiccup which seems to jump the character
 and camera view.
 
-The really small bushes you should be able to walt through. Currently those have
-collision.
-
 The textures behind the tent on the market square are not uniform and it looks
 glitched out. Look at it. The character should also be able to walk behind the tent
 which currently is not possible.

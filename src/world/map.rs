@@ -111,6 +111,9 @@ impl Tile {
             Tile::Grass
                 | Tile::TallGrass
                 | Tile::Flower
+                // Low brush is for wading through, not walking around — only
+                // trees and the big bush prefabs actually block.
+                | Tile::Bush
                 | Tile::Path
                 | Tile::Plaza
                 | Tile::Bridge
