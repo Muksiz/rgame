@@ -1461,6 +1461,11 @@ fn ambient_life(fb: &mut Frame, atlas: &Atlas, app: &App, cam_x: i32, cam_y: i32
         fb.sprite(atlas, id, x, y, dl);
     }
 
+    // A bird now and then — but not over Emberwick, whose sky belongs to the
+    // butterflies (a playtest found the crossings there more busy than calm).
+    if app.zone_idx == crate::world::zones::EMBERWICK {
+        return;
+    }
     let phase = app.tick % 900;
     if phase < 300 {
         let lane = hash2((app.tick / 900) as i32, 13, 0xB1D);

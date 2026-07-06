@@ -9,8 +9,6 @@ first, then return to the roadmap. Remove a note once it's done.
 Only one of the playable characters has a walking animation. Figure out if
 it's possible to copy the walking animation to the rest of the characters.
 
-Remove the birds flying around in the first location. Keep the butterflies.
-
 The chicken/hen pen in the beginning of the game is still visually not corret
 in the corners. The sides look good but the corners do not connect visually.
 Also make it so that the player can interract with the chickens. Some may say
