@@ -139,6 +139,15 @@ the daytime loop after dark (`App::is_night()`), same filename per zone. All
 - `hearthspire.ogg` — "Winter Wind" by **wipics**
   (https://opengameart.org/content/winter-wind), off the mountain road.
 
+### Hearth
+
+`audio/music/fireplace.ogg` — the soft crackle looped inside the lived-in
+rooms (the bakery, the cottages, the workshop, the Great Library — see
+`zones::has_hearth`), so stepping indoors trades the zone music for a fire
+instead of dead silence. "Fireplace Sound loop" by **PagDev**
+(https://opengameart.org/content/fireplace-sound-loop), **CC0**; converted
+to mono OGG and trimmed in level, otherwise unmodified.
+
 ### Owl
 
 `audio/sfx/owl.ogg` — the lone night owl, hooted at random intervals under the

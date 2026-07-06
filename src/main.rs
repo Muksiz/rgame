@@ -80,6 +80,9 @@ const NIGHT_VOLUME: f32 = 0.4;
 /// like it drifts in from somewhere over the hills.
 const NIGHT_THEME_VOLUME: f32 = 0.35;
 const SFX_VOLUME: f32 = 0.7;
+/// The hearth is a room-tone, not a song: present the moment you notice it,
+/// easy to stop noticing.
+const HEARTH_VOLUME: f32 = 0.4;
 /// The owl is meant to be *far off* — a soft note under the ambience, never a
 /// jump-scare. Kept low on purpose.
 const OWL_VOLUME: f32 = 0.28;
@@ -118,6 +121,11 @@ static SFX_OWL: &[u8] = include_bytes!("../assets/audio/sfx/owl.ogg");
 /// The title/char-select theme — looped while the player is still in the
 /// menus, silent everywhere else. See `assets/CREDITS.md` for licensing.
 static TITLE_MUSIC: &[u8] = include_bytes!("../assets/audio/music/title.ogg");
+
+/// A soft fireplace crackle looped inside the lived-in rooms
+/// (`zones::has_hearth`), so a house isn't dead silent when the zone music
+/// stops at the door. See `assets/CREDITS.md` for licensing.
+static HEARTH_LOOP: &[u8] = include_bytes!("../assets/audio/music/fireplace.ogg");
 
 static SFX_CAST: &[u8] = include_bytes!("../assets/audio/sfx/cast.ogg");
 static SFX_PASS: &[u8] = include_bytes!("../assets/audio/sfx/pass.ogg");
@@ -221,6 +229,9 @@ async fn main() {
     let title_music = audio::load_sound_from_bytes(TITLE_MUSIC)
         .await
         .expect("title music is baked into the binary");
+    let hearth_loop = audio::load_sound_from_bytes(HEARTH_LOOP)
+        .await
+        .expect("hearth loop is baked into the binary");
     let sfx_cast = audio::load_sound_from_bytes(SFX_CAST)
         .await
         .expect("cast sfx is baked into the binary");
@@ -237,6 +248,7 @@ async fn main() {
     let mut playing_zone: Option<(usize, bool)> = None;
     let mut playing_theme = false;
     let mut playing_title = false;
+    let mut playing_hearth = false;
     let mut cue = Cue::None;
     // When the next owl hoot is due (`mq::get_time()` seconds); `None` while
     // it isn't night, so the first night schedules a fresh call.
@@ -402,6 +414,25 @@ async fn main() {
                 );
             }
             playing_zone = zone_track;
+        }
+
+        // Indoors, the fire keeps you company: the lived-in rooms loop a soft
+        // hearth crackle where the zone music leaves off. Caves and bare
+        // storerooms stay properly silent.
+        let want_hearth = past_menus && rgame::world::zones::has_hearth(app.zone_idx);
+        if want_hearth != playing_hearth {
+            if want_hearth {
+                audio::play_sound(
+                    &hearth_loop,
+                    PlaySoundParams {
+                        looped: true,
+                        volume: HEARTH_VOLUME,
+                    },
+                );
+            } else {
+                audio::stop_sound(&hearth_loop);
+            }
+            playing_hearth = want_hearth;
         }
 
         // The night theme rides over whichever nature bed is playing: one

@@ -129,6 +129,16 @@ pub const STOREHOUSE_CELLAR: usize = 11;
 pub const WOODS_RUIN: usize = 12;
 pub const WOODS_LODGE: usize = 13;
 
+/// The lived-in rooms with a fire going — the shell loops a soft hearth
+/// crackle in these instead of leaving the indoors dead silent. Caves, the
+/// bare storehouse and the moss-eaten ruins stay quiet; they have no fire lit.
+pub fn has_hearth(zone: usize) -> bool {
+    matches!(
+        zone,
+        BAKERY | SORREL_COTTAGE | CARPENTER_HOUSE | TILLY_COTTAGE | GREAT_LIBRARY
+    )
+}
+
 /// Places with no light of their own: only the storm-lantern gets you in.
 pub fn needs_light(zone: usize) -> bool {
     matches!(zone, ECHO_CAVE | STOREHOUSE_CELLAR)
@@ -1499,6 +1509,19 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn hearth_rooms_are_all_interiors() {
+        let zones = zones();
+        for (i, zone) in zones.iter().enumerate() {
+            if has_hearth(i) {
+                assert!(zone.interior, "{} has a hearth but open sky", zone.name);
+            }
+        }
+        assert!(has_hearth(BAKERY), "Poppy's ovens never go cold");
+        assert!(!has_hearth(ECHO_CAVE), "no fire lit in the Echo Cave");
+        assert!(!has_hearth(EMBERWICK), "the overworld has zone music instead");
     }
 
     #[test]
