@@ -6,10 +6,6 @@ Playtest findings, jotted here between sessions — anything from a one-pixel
 nit to "this feels wrong". These take priority over everything below: fix
 first, then return to the roadmap. Remove a note once it's done.
 
-I do not like the character model of Cartographer Reed. Find a new one. If all or most project
-character models are already used fetch new ones from the internet. Cartographer Reed also talks
-too much. The dialog is too long for him.
-
 An animation should play when the logs clear and you are able to enter the Whispering Woods.
 
 I do not like Pip's character model, replace it.

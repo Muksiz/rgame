@@ -62,7 +62,7 @@ NEW_CAST = [
     ("TANSY", "EggGirl"),  # 2 Tansy
     ("FITCH", "Villager5"),  # 4 Fitch
     ("HOBB", "OldMan"),  # 5 Hobb
-    ("REED", "Shaman"),  # 7 Reed
+    ("REED", "Tengu"),  # 4 Reed (Jani didn't like the Shaman look)
     ("PIP", "Cavegirl2"),  # 8 Pip
     ("BRIAR", "Cavegirl"),  # 10 Briar
     ("YEW", "Monk2"),  # 12 Yew
