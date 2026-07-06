@@ -303,21 +303,38 @@ async fn main() {
             // whatever the layout.
             if matches!(c, 'h' | 'j' | 'k' | 'l') && matches!(app.screen, Screen::World) {
                 if let Some(&mk) = pressed.iter().find(|k| !MOVEMENT.contains(*k)) {
-                    app.on_key(Key::Char(c));
-                    if !held.iter().any(|&(k, _)| k == mk) {
+                    // A fresh press from standstill steps right away; a key
+                    // joining an ongoing walk waits for the next scheduled
+                    // repeat instead. An immediate step mid-glide would land
+                    // while the previous one is still being drawn and snap
+                    // the traveller (and camera) half a tile — the diagonal
+                    // "hiccup" of playtest fame.
+                    if held.is_empty() {
+                        app.on_key(Key::Char(c));
                         held.push((mk, Key::Char(c)));
                         walk_t = 0.0;
+                    } else if !held.iter().any(|&(k, _)| k == mk) {
+                        held.push((mk, Key::Char(c)));
                     }
                 }
             } else if c.is_ascii_alphabetic() || c == '-' || c == '\'' {
                 app.on_key(Key::Char(c));
             }
         }
-        // Discrete presses of the non-character keys go straight to on_key.
+        // Discrete presses of the non-character keys go straight to on_key —
+        // except an arrow joining an ongoing walk, which (like the vim keys
+        // above) waits for the next repeat so the step-glide never snaps.
         for &(mk, code) in KEYMAP {
             if mq::is_key_pressed(mk) {
+                let walking = MOVEMENT.contains(&mk) && matches!(app.screen, Screen::World);
+                if walking && !held.is_empty() {
+                    if !held.iter().any(|&(k, _)| k == mk) {
+                        held.push((mk, code));
+                    }
+                    continue;
+                }
                 app.on_key(code);
-                if MOVEMENT.contains(&mk) && !held.iter().any(|&(k, _)| k == mk) {
+                if walking && !held.iter().any(|&(k, _)| k == mk) {
                     held.push((mk, code));
                     walk_t = 0.0;
                 }

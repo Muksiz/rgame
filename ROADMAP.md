@@ -9,10 +9,6 @@ first, then return to the roadmap. Remove a note once it's done.
 Add backyards and fences to some of the houses. Look for plant and flower
 sprites on the internet and fetch/use those to decorate the house yards.
 
-When I walk in a straight line and press down another movement key to begin
-walking diagonally there is a small hiccup which seems to jump the character
-and camera view.
-
 The textures behind the tent on the market square are not uniform and it looks
 glitched out. Look at it. The character should also be able to walk behind the tent
 which currently is not possible.
