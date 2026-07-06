@@ -9,13 +9,6 @@ first, then return to the roadmap. Remove a note once it's done.
 Add backyards and fences to some of the houses. Look for plant and flower
 sprites on the internet and fetch/use those to decorate the house yards.
 
-Elder Rowan should not call the player "dear". A little more formal but friendly
-tone. Elder Rowan mentions that the spell is written down in his kitchen but I can't
-find his kitchen. If his kitchen does not exist create it and have the answer written
-down there somewhere since he mentions it. Don't call the player "dear" in the quest file
-either. There's the text "Rowan dabs her eye". Elder Rowan is a male and should be adressed
-as he, not she.
-
 02_the_market_sign.rs can be solved by simply just doing let apples = 12 + 9;
 Come up with a better task for learning how to shadow in Rust. Completely redo it.
 

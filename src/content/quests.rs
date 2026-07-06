@@ -49,14 +49,14 @@ pub static QUESTS: [Quest; 23] = [
         lesson: "println! and macros",
         template: include_str!("templates/01_the_festival_lantern.rs"),
         intro: &[
-            "Oh! A traveler! And with a rune-satchel, no less. Welcome to Emberwick, dear. You've come at a lucky time — or an unlucky one, depending how you feel about chores.",
-            "Tonight is the Lantern Festival, but the great lantern has hung dark for years. The lighting-spell is written down somewhere in my kitchen, but I always get the little mark at the end wrong. Macros, you see. They're particular.",
-            "Would you take a look? Speak the old words exactly right, and she'll glow like a harvest moon.",
+            "Ah — a traveler, and carrying a rune-satchel no less. Welcome to Emberwick. You find us on festival day, which is fortunate or unfortunate, depending on how you feel about chores.",
+            "Tonight is the Lantern Festival, but the great lantern has hung dark for years. The lighting-spell is written down in my kitchen — the cottage on the southwest corner of the square; do let yourself in — yet I always get the little mark at the end wrong. Macros, you see. They're particular.",
+            "Would you take a look? Speak the old words exactly right, and the lantern will glow like a harvest moon.",
         ],
-        reminder: "The spell is nearly right, I'm sure of it. Something small and pointy is missing at the end of the word... a little mark of excitement, perhaps?",
+        reminder: "The spell is nearly right, I am sure of it. Something small and pointy is missing at the end of the word... a little mark of excitement, perhaps? It is written out in full on my kitchen table, should memory want refreshing.",
         success: &[
-            "The lantern blooms with warm gold light, and the whole square goes 'oooh'. Rowan dabs an eye with her sleeve.",
-            "\"There it is. Just as I remember. You've a gift for the old words, traveler — there's a girl minding the market stall who could use a hand with her sign, if you're staying a while.\"",
+            "The lantern blooms with warm gold light, and the whole square goes 'oooh'. Rowan dabs an eye with his sleeve.",
+            "\"There it is. Just as I remember it. You have a gift for the old words, traveler — the young keeper of the market stall could use a hand with her sign, if you are staying a while.\"",
         ],
         hints: &[
             "In Rust, things like `println!` are macros, and macros are always called with a `!` after their name.",

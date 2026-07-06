@@ -31,6 +31,20 @@ const BAKERY_ROOM: &str = concat!(
     "#######+#######",
 );
 
+// Elder Rowan's cottage, kitchen corner and all — he tells every traveler
+// the lighting-spell is written down in here, so in here it is written down
+// (the note rides on the kitchen table; see `rowan_cottage`).
+const ROWAN_ROOM: &str = concat!(
+    "#############\n",
+    "#.nh.....SS.#\n",
+    "#.u.........#\n",
+    "#...........#\n",
+    "#..tts...oo.#\n",
+    "#...........#\n",
+    "#....RR.....#\n",
+    "######+######",
+);
+
 const COTTAGE_ROOM: &str = concat!(
     "###########\n",
     "#.nh......#\n",
@@ -126,6 +140,7 @@ pub const GREAT_LIBRARY: usize = 10;
 pub const STOREHOUSE_CELLAR: usize = 11;
 pub const WOODS_RUIN: usize = 12;
 pub const WOODS_LODGE: usize = 13;
+pub const ROWAN_COTTAGE: usize = 14;
 
 /// The lived-in rooms with a fire going — the shell loops a soft hearth
 /// crackle in these instead of leaving the indoors dead silent. Caves, the
@@ -133,7 +148,7 @@ pub const WOODS_LODGE: usize = 13;
 pub fn has_hearth(zone: usize) -> bool {
     matches!(
         zone,
-        BAKERY | SORREL_COTTAGE | CARPENTER_HOUSE | TILLY_COTTAGE | GREAT_LIBRARY
+        BAKERY | SORREL_COTTAGE | CARPENTER_HOUSE | TILLY_COTTAGE | GREAT_LIBRARY | ROWAN_COTTAGE
     )
 }
 
@@ -152,6 +167,7 @@ const SORREL_DOOR: (i32, i32) = (93, 16);
 const CARPENTER_DOOR: (i32, i32) = (130, 23);
 const TILLY_DOOR: (i32, i32) = (77, 48);
 const STOREHOUSE_DOOR: (i32, i32) = (136, 49);
+const ROWAN_DOOR: (i32, i32) = (69, 37);
 const CAVE_MOUTH: (i32, i32) = (122, 54);
 const LIBRARY_DOORS: [(i32, i32); 2] = [(210, 32), (211, 32)];
 // The abandoned houses in the Whispering Woods (prefab origin + door offset).
@@ -161,6 +177,7 @@ const RUIN_LODGE_DOOR: (i32, i32) = (173, 49);
 // Interior door tiles (stamp origin + the '+' offset in each room's art).
 const BAKERY_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 7, ROOM_AT.1 + 8);
 const COTTAGE_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 5, ROOM_AT.1 + 7);
+const ROWAN_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 6, ROOM_AT.1 + 7);
 const WORKSHOP_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 6, ROOM_AT.1 + 8);
 const STORE_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 6, ROOM_AT.1 + 8);
 const STORE_CELLAR_DOOR: (i32, i32) = (ROOM_AT.0 + 6, ROOM_AT.1);
@@ -211,6 +228,7 @@ pub fn zones() -> Vec<Zone> {
         storehouse_cellar(),
         woods_ruin(),
         woods_lodge(),
+        rowan_cottage(),
     ]
 }
 
@@ -297,10 +315,12 @@ fn emberwick() -> Zone {
     b.prefab(84, 20, atlas::NA_HOUSE_FLAT, atlas::NA_HOUSE_SIZE, None);
     b.prefab(100, 17, atlas::NA_HOUSE_TALL, atlas::NA_TALL_SIZE, None);
     // Around the square: a shopfront on the west edge, the tavern by the
-    // fountain, and a shut cottage anchoring the south-west corner.
+    // fountain, and Elder Rowan's cottage anchoring the south-west corner —
+    // his door stands open, since he tells every traveler the lighting-spell
+    // is written down in his kitchen.
     b.prefab(76, 33, atlas::NA_SHOP, atlas::NA_SHOP_SIZE, None);
     b.prefab(98, 33, atlas::NA_TAVERN, atlas::NA_SHOP_SIZE, None);
-    b.prefab(67, 33, atlas::HOUSE_A_SHUT, atlas::HOUSE_SIZE, None);
+    b.prefab(67, 33, atlas::HOUSE_A, atlas::HOUSE_SIZE, door); // Elder Rowan's
     // The east lane, both sides of the road out toward the woods.
     b.prefab(118, 33, atlas::NA_HOUSE_THATCH, atlas::NA_HOUSE_SIZE, None);
     b.prefab(146, 33, atlas::HOUSE_A_SHUT, atlas::HOUSE_SIZE, None);
@@ -401,6 +421,7 @@ fn emberwick() -> Zone {
         CARPENTER_DOOR,
         TILLY_DOOR,
         STOREHOUSE_DOOR,
+        ROWAN_DOOR,
     ] {
         b.clearing(door.0, door.1 + 1, 0);
     }
@@ -427,6 +448,7 @@ fn emberwick() -> Zone {
             enter(CARPENTER_DOOR, CARPENTER_HOUSE, WORKSHOP_ROOM_DOOR),
             enter(TILLY_DOOR, TILLY_COTTAGE, COTTAGE_ROOM_DOOR),
             enter(STOREHOUSE_DOOR, STOREHOUSE, STORE_ROOM_DOOR),
+            enter(ROWAN_DOOR, ROWAN_COTTAGE, ROWAN_ROOM_DOOR),
         ],
         npcs: vec![
             Npc {
@@ -1196,6 +1218,23 @@ fn sorrel_cottage() -> Zone {
         }],
         vec![Critter::new(CritterKind::Cat, at(4, 4))],
         vec![],
+    )
+}
+
+fn rowan_cottage() -> Zone {
+    room(
+        ROWAN_COTTAGE,
+        "Elder Rowan's Cottage",
+        155,
+        ROWAN_ROOM,
+        0.85,
+        vec![exit(ROWAN_ROOM_DOOR, EMBERWICK, ROWAN_DOOR)],
+        vec![],
+        vec![],
+        vec![Sign {
+            pos: at(3, 4),
+            text: "On the kitchen table, in a careful old hand: 'THE LIGHTING-SPELL — println!(\"Let there be light!\") — and mind the little mark after println. The lantern is particular about it.'",
+        }],
     )
 }
 

@@ -4,7 +4,8 @@
 //
 //   Elder Rowan: "The great lantern only lights when the old words
 //   are spoken *exactly* right. I always forget the little mark at
-//   the end. Would you try, dear?"
+//   the end — it is written out in full on my kitchen table, should
+//   you care to check. Would you try?"
 //
 //   ── YOUR TASK ──────────────────────────────────────────────────
 //   The spell below is missing something small but important.
