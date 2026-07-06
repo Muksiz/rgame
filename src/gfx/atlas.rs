@@ -378,6 +378,10 @@ pub const FENCE_NW: u16 = 737;
 pub const FENCE_NE: u16 = 738;
 pub const FENCE_SW: u16 = 739;
 pub const FENCE_SE: u16 = 740;
+/// The village draw-well: roof, posts, rope and bucket over a round stone
+/// rim — hand-pixeled (WELL_ART in the bake script), placed as a prefab.
+pub const WELL: u16 = 741;
+pub const WELL_SIZE: (i32, i32) = (2, 2);
 pub const HOUSE_SIZE: (i32, i32) = (5, 5);
 pub const SHED_SIZE: (i32, i32) = (3, 3);
 pub const STALL_SIZE: (i32, i32) = (5, 5);

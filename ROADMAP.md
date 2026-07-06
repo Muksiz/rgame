@@ -9,9 +9,6 @@ first, then return to the roadmap. Remove a note once it's done.
 Add backyards and fences to some of the houses. Look for plant and flower
 sprites on the internet and fetch/use those to decorate the house yards.
 
-The deepest well in the valley looks like a block of water instead of a well.
-Try to find some premade well.
-
 Make the day and night cycle last forever. The player will be able to toggle
 between day and night manually by the campfires.
 

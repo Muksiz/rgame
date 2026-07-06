@@ -1,8 +1,6 @@
 use crate::world::entity::{Critter, CritterKind, Npc, Sign};
 use crate::world::map::{Border, MAP_H, MAP_W, MapBuilder, Tile, Warp, Weather, Zone};
 
-const WELL: &str = concat!(" %%% \n", "%%~%%\n", " %%% ",);
-
 const LIBRARY: &str = concat!(
     "     rrrrrrrrrrrrrrrr     \n",
     "   rrrrrrrrrrrrrrrrrrrr   \n",
@@ -358,8 +356,9 @@ fn emberwick() -> Zone {
     b.rect(81, 38, 3, 2, Tile::Flower);
     b.rect(88, 38, 3, 2, Tile::Flower);
 
-    // The old well, up a short lane.
-    b.stamp(108, 22, WELL);
+    // The old well, up a short lane: a proper roofed draw-well now, not a
+    // ring of rocks around a puddle.
+    b.prefab(109, 22, atlas::WELL, atlas::WELL_SIZE, None);
     b.road(&[(110, 26), (110, 30)]);
 
     // Village clutter: barrels and crates left out beside the doors.
