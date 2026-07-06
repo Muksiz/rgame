@@ -445,11 +445,17 @@ impl MapBuilder {
     }
 
     /// Make sure a spot (and a ring around it) is standable: anything that
-    /// blocks walking becomes grass; paths, plazas and flowers are left alone.
+    /// blocks walking becomes grass; paths, plazas and flowers are left
+    /// alone — and so are buildings, which hold their ground here just as
+    /// they do against roads (a clearing beside a facade must not carve
+    /// grass holes in its art).
     pub fn clearing(&mut self, x: i32, y: i32, r: i32) {
         for dy in -r..=r {
             for dx in -r..=r {
                 let (nx, ny) = (x + dx, y + dy);
+                if matches!(self.get(nx, ny), Tile::Facade(_) | Tile::FacadeDoor(_)) {
+                    continue;
+                }
                 if !self.get(nx, ny).walkable() {
                     self.set(nx, ny, Tile::Grass);
                 }

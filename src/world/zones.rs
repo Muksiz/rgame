@@ -340,9 +340,12 @@ fn emberwick() -> Zone {
 
     // Festival square, now a proper market: cobbles, the unlit lantern, a
     // cosy campfire, the big blue-awninged market stall, and a round
-    // fountain burbling at the east end.
-    b.rect(80, 30, 15, 8, Tile::Plaza);
-    b.prefab(80, 30, atlas::STALL, atlas::STALL_SIZE, None);
+    // fountain burbling at the east end. The square hangs just south of the
+    // main road (which runs y29–31 here) rather than paving over it, so the
+    // slabs stop at the road's edge and the lane behind the stall stays
+    // open road, one texture end to end.
+    b.rect(80, 32, 15, 6, Tile::Plaza);
+    b.prefab(80, 32, atlas::STALL, atlas::STALL_SIZE, None);
     b.prefab(89, 32, atlas::FOUNTAIN, atlas::FOUNTAIN_SIZE, None);
     b.set(86, 34, Tile::Lantern);
     b.set(90, 36, Tile::Campfire);
@@ -383,10 +386,10 @@ fn emberwick() -> Zone {
     b.set(10, 36, Tile::Sign);
     b.set(224, 34, Tile::Sign);
 
-    b.clearing(86, 31, 1);
+    b.clearing(86, 32, 1); // Elder Rowan, on the square by his lantern
     b.clearing(66, 25, 1);
     b.clearing(112, 27, 1);
-    b.clearing(84, 36, 1); // Tansy, by the market stalls
+    b.clearing(85, 36, 1); // Tansy, by the market stall
     b.clearing(222, 36, 1); // Watchman Fitch, by the east archway
     b.clearing(104, 22, 1); // Toll-keeper Hobb, just shy of the well
     b.clearing(116, 22, 1); // Cartographer Reed, just past the well
@@ -429,7 +432,7 @@ fn emberwick() -> Zone {
         npcs: vec![
             Npc {
                 name: "Elder Rowan",
-                pos: (86, 31),
+                pos: (86, 32),
                 quest: Some(1),
                 idle: &[
                     "The lantern has hung dark for years. Tonight, maybe, it glows again.",
@@ -438,7 +441,7 @@ fn emberwick() -> Zone {
             },
             Npc {
                 name: "Tansy",
-                pos: (84, 36),
+                pos: (85, 36),
                 quest: Some(2),
                 idle: &[
                     "Nine more apples came in this morning and my sign won't say so. Rude, honestly.",

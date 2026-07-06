@@ -9,12 +9,6 @@ first, then return to the roadmap. Remove a note once it's done.
 Add backyards and fences to some of the houses. Look for plant and flower
 sprites on the internet and fetch/use those to decorate the house yards.
 
-The textures behind the tent on the market square are not uniform and it looks
-glitched out. Look at it. The character should also be able to walk behind the tent
-which currently is not possible.
-
-The stone slabs of the market overlap parts of the road which I do not like.
-
 The deepest well in the valley looks like a block of water instead of a well.
 Try to find some premade well.
 
