@@ -1513,9 +1513,13 @@ fn companion(fb: &mut Frame, atlas: &Atlas, app: &App, cam_x: i32, cam_y: i32, l
     // Same timing as `player_glide`, so the two never drift out of step.
     let (mut gx, mut gy) = (0, 0);
     if dx.abs() <= 1 && dy.abs() <= 1 {
-        let step_ticks = crate::app::STEP_SECS / crate::app::TICK_SECS;
+        let mut step_ticks = crate::app::STEP_SECS / crate::app::TICK_SECS;
+        if dx != 0 && dy != 0 {
+            step_ticks *= crate::app::DIAGONAL_STRETCH;
+        }
         let now = app.tick as f32 + app.subtick;
-        let left = 1.0 - ((now - app.walked_at as f32) / step_ticks).clamp(0.0, 1.0);
+        let started = app.walked_at as f32 + app.walk_subtick;
+        let left = 1.0 - ((now - started) / step_ticks).clamp(0.0, 1.0);
         gx = (dx as f32 * left * t as f32).round() as i32;
         gy = (dy as f32 * left * t as f32).round() as i32;
     }
