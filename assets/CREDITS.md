@@ -35,9 +35,16 @@ cropped from `TilesetNature.png`, already vendored above.
 
 `ninja_adventure/pack/` vendors the rest of that same download unmodified
 (`Actor/Character`, `Actor/CharacterAnimated`, `Actor/Animal`, `Actor/Boss`,
-`Actor/Monster`, `Items`, `FX`, and its `LICENSE.txt`) — raw source material
-for future features (wild-rune encounter art, journal/keepsake icons, casting
-FX) so pulling a new sprite into the atlas is a crop, not a re-download.
+`Actor/Monster`, `Items`, `FX`, `Ui`, the full `Backgrounds` tree and its
+`LICENSE.txt`, `README.md` and `Palette.png`) — raw source material for
+future features (wild-rune encounter art, journal/keepsake icons, casting
+FX, the `Ui/Dialog` boxes and `Ui/Emote` balloons) so pulling a new sprite
+into the atlas is a crop, not a re-download. The pack's whole soundtrack and
+SFX library is vendored too — see "Ninja Adventure audio" under Audio below.
+`ninja_adventure/tilesets/` likewise now holds *every* tileset the pack
+ships — the interior set (`Interior/`, walls, floors and furnishings), the
+desert, dungeon, field, towers, relief and logic sheets and the rest — so
+future rooms and biomes are also a crop away.
 `tools/bake_atlas.py` reads the flat `ninja_adventure/<Character>/Idle.png`
 layout above; eleven characters (Tansy, Fitch, Hobb, Reed, Pip, Briar, Yew,
 Sable, Fenn, Sil, Faye — the beginner-quest expansion's cast, added as a tail
@@ -55,8 +62,11 @@ sheet's arched-door piece onto the doorless ones) at bake time.
 
 The rest of that same Zelda-like download is now vendored too, unmodified:
 `zelda_like/cave.png` and `zelda_like/Inner.png` (its cave and interior
-sheets) and `zelda_like/objects.png` (chests, pots, hearts and small props) —
-raw source material, nothing baked from them yet.
+sheets), `zelda_like/objects.png` (chests, pots, hearts and small props),
+`zelda_like/character.png` and `zelda_like/NPC_test.png` (its player and NPC
+sprite sheets — the last unvendored pieces), `zelda_like/log.png` (its
+dialogue-box art) and `zelda_like/font.png` (its bitmap font) — the whole
+pack is now in the repo; raw source material, nothing baked from these yet.
 
 Two more sheets from the **Ninja Adventure asset pack** (CC0, credited above)
 sit in `ninja_adventure/tilesets/` and are baked into the atlas:
@@ -76,6 +86,23 @@ Prompts Pixel 16×* (https://kenney.nl/assets/input-prompts-pixel, **CC0**):
 16×16 keyboard-key glyphs for drawn key hints (`e`, arrows, `g`) in the HUD
 and dialogue; `Tilesheet.txt` is the pack's own layout notes (`tilemap.png`
 has 1px gutters, `tilemap_packed.png` has none).
+
+`kenney/pixel_ui/` holds **Kenney's** *Pixel UI Pack*
+(https://kenney.nl/assets/pixel-ui-pack, **CC0**): the two spritesheets plus
+the pack's 9-slice panel pieces — 750 bits of panel/border chrome for
+whenever the journal, grimoire or options menu outgrow the hand-drawn boxes.
+Nothing baked from it yet.
+
+`kenney/tiny_dungeon/` holds the tilemap sheets of **Kenney's** *Tiny
+Dungeon* (https://kenney.nl/assets/tiny-dungeon, **CC0**, 16×16):
+dungeon walls, doors, crates, potions, weapons and a small bestiary in a
+soft palette — quarry for a dungeon-style interior. Nothing baked from it
+yet; `Tilesheet.txt` is the pack's own layout notes.
+
+`fonts/managore/` holds **m5x7** and **m3x6** by **Daniel Linssen**
+(https://managore.itch.io/m5x7, https://managore.itch.io/m3x6, free to use
+with attribution appreciated — this credit is that attribution): compact
+pixel display faces for banners and titles. Not wired in yet.
 
 `fonts/monogram/` holds **monogram** by **Vinícius Menézio (datagoblin)**
 (https://datagoblin.itch.io/monogram, **CC0**): `monogram-bitmap.png` +
@@ -120,9 +147,42 @@ their own headings further down.
   (https://opengameart.org/content/512-sound-effects-8-bit-style): a menu
   blip, a fanfare and a soft error tone.
 
-All three Junkala packs are vendored only in part — see the "Free asset shelf"
-section of `CLAUDE.md` for the rest (SFX categories, more ambience beds) that
-remain unclaimed for a future pass.
+- `audio/shelf/` — the rest of both Junkala chiptune packs, vendored but not
+  yet wired to anything: `chiptune-adventures-stage-2.ogg` ("Stage 2", the one
+  *Chiptune Adventures* track not yet in the game, unmodified) and
+  `chiptunes-action-level-1/2/3.ogg` + `chiptunes-action-ending.ogg` (the
+  four unused *5 Chiptunes (Action)* tracks, re-encoded from the pack's WAVs
+  to Ogg Vorbis q5, otherwise unmodified). First stop for an encounter sting
+  or a campfire-rest theme.
+
+### Kenney audio packs
+
+`kenney/audio/` vendors three of **Kenney's** audio packs in full (all
+**CC0**, each folder carries the pack's own `License.txt`), none wired in
+yet:
+
+- `kenney/audio/rpg-audio/` — *RPG Audio*
+  (https://kenney.nl/assets/rpg-audio): footsteps, creaking doors, chest
+  handles, book flips, coins, drinking — door warps, the cellar chest,
+  keepsake handovers.
+- `kenney/audio/ui-audio/` — *UI Audio*
+  (https://kenney.nl/assets/ui-audio): clicks, rollovers and switches for
+  menu and confirm blips.
+- `kenney/audio/music-jingles/` — *Music Jingles*
+  (https://kenney.nl/assets/music-jingles): 85 short fanfares in 8-bit,
+  pizzicato, sax and steel flavors — quest passes, runes caught, runestones
+  found; the softer ones suit fizzles.
+
+### Ninja Adventure audio
+
+`ninja_adventure/pack/Audio/` vendors the **Ninja Adventure asset pack**'s
+entire soundtrack and SFX library (**CC0**, credited above): `Musics/` holds
+all 42 tracks (one of them, "22 - Dream", already plays as the night theme —
+see below), and `Sounds/` the 140+ effects in their category folders (Menu,
+Bonus, Magic & Skill, Ambient, …). Everything is unmodified except
+`Sounds/Ambient/`, whose long WAV loops (rain, river, storm, waves, wind)
+were re-encoded to Ogg Vorbis q4 to keep the repo light — candidates for the
+daytime weather beds. None of it is wired in yet.
 
 ### Night ambiences
 

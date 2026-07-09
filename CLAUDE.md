@@ -81,8 +81,10 @@ Rule of thumb: this repo is public, so anything committed here must be
 **Audio** — a zone-music loop, a title theme, and cast/pass/fizzle SFX are in
 (`assets/audio/`, `assets/CREDITS.md`), all from Juhani Junkala's CC0 chiptune
 packs (`4-chiptunes-adventure`, `5-chiptunes-action`) and a CC0 retro SFX
-collection. Both packs still have unused tracks (3 left in *Action*, 3 in
-*Adventure*) — first stop for an encounter sting or campfire rest theme:
+collection. Both packs' remaining tracks are **now vendored too**
+(`assets/audio/shelf/` — "Stage 2" from *Adventure*, the three *Level* tracks
+and *Ending* from *Action*, WAVs re-encoded to OGG) — first stop for an
+encounter sting or campfire rest theme, no download needed:
 
 - **Ninja Adventure pack — the rest of it** (https://pixel-boy.itch.io/ninja-adventure-asset-pack, CC0).
   Vendored so far: the cast, the biome tilesets, `TilesetHouse.png` (the
@@ -94,14 +96,22 @@ collection. Both packs still have unused tracks (3 left in *Action*, 3 in
   skiffs from `TilesetWater.png`, `pack/Backgrounds/Vehicles/Boat.png` (the
   Silverford ferry) and the `WaterRipples` strip. Still unbaked:
   `TilesetWater.png`'s full water autotile sets (proper drawn shorelines over
-  every biome ground). The same download still holds **36 more music tracks
-  and 100+ SFX**, style-matched by construction and already credited. First
-  stop for the encounter sting, campfire rests, and UI blips.
-- **Kenney audio packs** (all CC0): *RPG Audio* (https://kenney.nl/assets/rpg-audio —
-  footsteps, doors, chest creaks, coins: door warps, the cellar chest, keepsake
-  handovers), *UI Audio* (https://kenney.nl/assets/ui-audio — menu/confirm
-  clicks), *Music Jingles* (https://kenney.nl/assets/music-jingles — 85 short
-  fanfares: quest pass, rune caught, runestone found; a soft one for fizzles).
+  every biome ground). **The whole rest of the download is now vendored**:
+  all 42 music tracks and 140+ SFX (`pack/Audio/` — `Sounds/Ambient/`
+  re-encoded WAV→OGG, everything else untouched), every remaining tileset
+  (`tilesets/` — the `Interior/` set, desert, dungeon, field, towers, …),
+  the `Ui/` dialog boxes, emote balloons and icons, and the full animated
+  `Backgrounds` tree (waterfalls, mills, flags). Style-matched by
+  construction and credited. First stop for the encounter sting, campfire
+  rests, UI blips, and new rooms/biomes — everything is a crop, not a
+  re-download.
+- ~~**Kenney audio packs**~~ — **now vendored, not yet wired in**
+  (`assets/kenney/audio/`, all CC0, each with its own `License.txt`):
+  *RPG Audio* (https://kenney.nl/assets/rpg-audio — footsteps, doors, chest
+  creaks, coins: door warps, the cellar chest, keepsake handovers), *UI
+  Audio* (https://kenney.nl/assets/ui-audio — menu/confirm clicks), *Music
+  Jingles* (https://kenney.nl/assets/music-jingles — 85 short fanfares:
+  quest pass, rune caught, runestone found; a soft one for fizzles).
 - ~~**CC0 ambience beds** for the night phase~~ — **now vendored and in use**
   (`assets/audio/music/night/`, credited in `assets/CREDITS.md`): after dark
   each overworld zone swaps its daytime chiptune for a calm nature loop —
@@ -111,12 +121,17 @@ collection. Both packs still have unused tracks (3 left in *Action*, 3 in
   Adventure pack) laid over whichever bed is playing so night has real music.
   Sourced from OpenGameArt (crickets, swamp, rain, wind), the Ninja Adventure
   pack (the theme) and Wikimedia
-  Commons (the owl — the repo's one CC-BY asset). Plenty more CC0 nature
-  ambience remains for daytime weather beds: *JC Sounds — Nature Ambient Pack
-  Vol 1* (https://opengameart.org/content/jc-sounds-nature-ambient-pack-vol-1),
-  *Nature sounds [CC0]* (https://opengameart.org/content/nature-sounds-cc0), and
-  the curated *CC0 Background Ambience* collection
-  (https://opengameart.org/content/cc0-background-ambience).
+  Commons (the owl — the repo's one CC-BY asset). For daytime weather beds,
+  the first quarry is now in-repo: the Ninja Adventure pack's re-encoded
+  ambience loops (`assets/ninja_adventure/pack/Audio/Sounds/Ambient/` —
+  rain ×3, river, storm, waves ×2, wind ×2, CC0). Beyond those: *Nature
+  sounds [CC0]* (https://opengameart.org/content/nature-sounds-cc0) and the
+  curated *CC0 Background Ambience* collection
+  (https://opengameart.org/content/cc0-background-ambience). Heads-up: *JC
+  Sounds — Nature Ambient Pack Vol 1*
+  (https://opengameart.org/content/jc-sounds-nature-ambient-pack-vol-1),
+  previously listed here as CC0, is actually **CC-BY 4.0** and a huge
+  split-archive FLAC download — usable with credit, but not the first choice.
 
 **Sprites & tiles** — everything below feeds the existing
 `tools/bake_atlas.py` → `atlas.png` pipeline (append at the end, ids never shift):
@@ -143,15 +158,24 @@ collection. Both packs still have unused tracks (3 left in *Action*, 3 in
   small props; nothing baked from them yet) — first quarry for a
   dungeon-style interior or a building style beyond the village
   (https://opengameart.org/content/zelda-like-tilesets-and-sprites, CC0,
-  16×16). Only its NPC sheets remain unvendored.
+  16×16). Its NPC sheets (`character.png`, `NPC_test.png`), dialogue-box art
+  (`log.png`) and bitmap font (`font.png`) are **now vendored too — the
+  whole pack is in-repo**, nothing baked from those four yet.
 - ~~**Kenney *Input Prompts Pixel 16×***~~ — **now vendored, not yet drawn**
   (`assets/kenney/input_prompts/`, credited in `assets/CREDITS.md`;
   https://kenney.nl/assets/input-prompts-pixel — 16×16 keyboard-key glyphs,
   CC0) — drawn key hints (`e`, arrows, `g`) in the HUD/dialogue instead of
   text-only prompts.
-- **Kenney *Pixel UI Pack*** (https://kenney.nl/assets/pixel-ui-pack, CC0,
-  750 pieces) — panel/border chrome if the journal, grimoire, or options menu
-  ever outgrow the hand-drawn boxes.
+- ~~**Kenney *Pixel UI Pack***~~ — **now vendored, not yet drawn**
+  (`assets/kenney/pixel_ui/` — spritesheets plus 9-slice pieces;
+  https://kenney.nl/assets/pixel-ui-pack, CC0, 750 pieces) — panel/border
+  chrome if the journal, grimoire, or options menu ever outgrow the
+  hand-drawn boxes.
+- **Kenney *Tiny Dungeon*** — **new find, vendored, nothing baked yet**
+  (`assets/kenney/tiny_dungeon/` — the packed tilemap;
+  https://kenney.nl/assets/tiny-dungeon, CC0, 16×16) — dungeon walls, doors,
+  crates, potions and a small bestiary in a soft palette; quarry for a
+  dungeon-style interior alongside the Zelda-like cave sheets.
 
 **Fonts** (current text is `font8x8` in `gfx/font.rs`):
 
@@ -160,9 +184,10 @@ collection. Both packs still have unused tracks (3 left in *Action*, 3 in
   TTF; https://datagoblin.itch.io/monogram, **CC0**) — monospace bitmap font
   embeddable the same way as `font8x8`; a friendlier dialogue face, with an
   extended charset.
-- **m5x7 / m3x6 by Daniel Linssen** (https://managore.itch.io/m5x7, free,
-  attribution appreciated — credit if used) — compact display faces for
-  banners/titles.
+- ~~**m5x7 / m3x6 by Daniel Linssen**~~ — **now vendored, not yet wired in**
+  (`assets/fonts/managore/` — both TTFs; https://managore.itch.io/m5x7,
+  free, attribution appreciated — credited in `assets/CREDITS.md`) — compact
+  display faces for banners/titles.
 
 **Checked and ruled out** (so we don't look twice): Kenmi's *Cute Fantasy RPG*
 (free tier is non-commercial and forbids redistribution — incompatible with a
