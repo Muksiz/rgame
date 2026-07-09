@@ -851,13 +851,15 @@ impl App {
             // A second step landing on the same tick (the shell walking a
             // held diagonal) keeps the original departure square, so the
             // glide runs corner-to-corner instead of kinking mid-step.
+            // The companion takes that same departure square — always exactly
+            // one step behind, never on a tile the player couldn't stand, and
+            // never the mid-diagonal square, which would put it two tiles from
+            // `companion_prev` and past what its render glide can cover.
             if self.walked_at != self.tick {
                 self.prev_player = self.player;
                 self.companion_prev = self.companion;
+                self.companion = self.player;
             }
-            // The companion takes the square being vacated: always exactly
-            // one step behind, and never on a tile the player couldn't stand.
-            self.companion = self.player;
             self.player = target;
             self.walked_at = self.tick;
             self.walk_subtick = self.subtick;
@@ -2113,6 +2115,61 @@ mod tests {
             }
         }
         assert!(walked >= 2, "the walk never got going");
+    }
+
+    /// A walk turning diagonal fires two axis-moves on the same tick (the
+    /// shell's held diagonal). The companion must take the corner's departure
+    /// square — not the mid-diagonal one, which sits two tiles from
+    /// `companion_prev` and past what its render glide covers: the frozen
+    /// snap of playtest fame.
+    #[test]
+    fn the_companion_glides_when_a_walk_turns_diagonal() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        // A spot with room to walk east, then east+south in one tick: the
+        // whole path open ground, no doors, gates, folk or rustling grass.
+        let open = |app: &App, x: i32, y: i32| {
+            let tile = app.zone().tile(x, y);
+            tile.walkable()
+                && !matches!(tile, Tile::Gate | Tile::TallGrass)
+                && app.zone().warp_at(x, y).is_none()
+                && app.zone().npc_at(x, y).is_none()
+                && !app.zone().critters.iter().any(|c| c.pos == (x, y))
+        };
+        let start = (0..MAP_H)
+            .flat_map(|y| (0..MAP_W).map(move |x| (x, y)))
+            .find(|&(x, y)| {
+                open(&app, x, y)
+                    && open(&app, x + 1, y)
+                    && open(&app, x + 2, y)
+                    && open(&app, x + 2, y + 1)
+            })
+            .expect("no open corner anywhere in Emberwick?");
+        app.player = start;
+        app.companion_snap();
+        app.tick += 5;
+        app.try_move(1, 0); // walking east...
+        app.tick += 5;
+        app.try_move(1, 0); // ...when south joins: both axes, one tick
+        app.try_move(0, 1);
+        assert_eq!(
+            app.player,
+            (start.0 + 2, start.1 + 1),
+            "the diagonal never landed"
+        );
+        assert_eq!(
+            app.companion,
+            (start.0 + 1, start.1),
+            "the companion should hold the corner's departure square"
+        );
+        let (dx, dy) = (
+            app.companion_prev.0 - app.companion.0,
+            app.companion_prev.1 - app.companion.1,
+        );
+        assert!(
+            dx.abs() <= 1 && dy.abs() <= 1,
+            "companion stepped {dx},{dy} — further than its glide can cover"
+        );
     }
 
     /// Doors don't lose the little crab: it scurries through with you.
