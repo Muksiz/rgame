@@ -4,7 +4,7 @@ use std::sync::mpsc::Receiver;
 use crate::checker::{self, Outcome};
 use crate::content::items::{self, Item};
 use crate::content::quests::{self, QUESTS, Quest};
-use crate::content::{books, critters, ferris, lore, sides, stones, wilds};
+use crate::content::{books, critters, ferris, lore, schedule, sides, stones, wilds};
 use crate::gfx::atlas::PLAYABLE;
 use crate::save::{self, SaveData};
 use crate::world::entity::CritterKind;
@@ -326,6 +326,10 @@ pub struct App {
     /// ephemeral — never saved, and an old save simply finds its cleared
     /// gates already standing open.
     pub gate_reveal: Option<(usize, u64)>,
+    /// Every NPC's authored daytime post, captured from the fresh world:
+    /// (name, zone, tile). `apply_schedule` re-derives live positions from
+    /// this plus the hour and the active quest — derived, never stored.
+    schedule_home: Vec<(&'static str, usize, (i32, i32))>,
     /// Typewriter reveal speed, chosen in the options: 0 slow, 1 normal, 2 fast.
     pub text_speed: usize,
     pub cast_rx: Option<Receiver<Outcome>>,
@@ -337,6 +341,11 @@ impl App {
     pub fn new() -> Self {
         let zones = zones::zones();
         let player = zones[0].spawn;
+        let schedule_home = zones
+            .iter()
+            .enumerate()
+            .flat_map(|(zi, z)| z.npcs.iter().map(move |n| (n.name, zi, n.pos)))
+            .collect();
         Self {
             screen: Screen::Title { selected: 0 },
             tick: 0,
@@ -364,6 +373,7 @@ impl App {
             toast: None,
             banner: None,
             gate_reveal: None,
+            schedule_home,
             text_speed: 1,
             cast_rx: None,
             has_save: save::exists(),
@@ -453,6 +463,57 @@ impl App {
             .all(|q| self.completed.contains(&q.id))
     }
 
+    /// Put every named NPC where the hour says they should be: their
+    /// authored post by day, their `content::schedule` spot after dark —
+    /// except the active quest's giver, who ignores the hour and keeps
+    /// watch at their post ("she's been watching the road for you").
+    /// Positions are re-derived whole from phase + active quest, so this
+    /// runs at the moments either can change (a campfire rest, a quest
+    /// passing, a save loading) and nothing about it is ever written to
+    /// disk — an old save wakes up already sorted.
+    pub fn apply_schedule(&mut self) {
+        let night = self.phase() == DayPhase::Night;
+        let active = self.active_quest().map(|q| q.npc);
+        for i in 0..self.schedule_home.len() {
+            let (name, home_zone, home_pos) = self.schedule_home[i];
+            let target = match schedule::night_spot(name) {
+                Some(spot) if night && active != Some(name) => spot,
+                _ => (home_zone, home_pos),
+            };
+            self.place_npc(name, target);
+        }
+    }
+
+    /// Move a named NPC to `(zone, tile)`, across zones if need be — but
+    /// never onto the player's own square (they simply stay put till the
+    /// next turn of the clock rather than share boots).
+    fn place_npc(&mut self, name: &str, (tz, tp): (usize, (i32, i32))) {
+        if tz == self.zone_idx && tp == self.player {
+            return;
+        }
+        let Some(cz) = self
+            .zones
+            .iter()
+            .position(|z| z.npcs.iter().any(|n| n.name == name))
+        else {
+            return;
+        };
+        if cz == tz {
+            if let Some(npc) = self.zones[cz].npcs.iter_mut().find(|n| n.name == name) {
+                npc.pos = tp;
+            }
+        } else {
+            let i = self.zones[cz]
+                .npcs
+                .iter()
+                .position(|n| n.name == name)
+                .expect("just found above");
+            let mut npc = self.zones[cz].npcs.remove(i);
+            npc.pos = tp;
+            self.zones[tz].npcs.push(npc);
+        }
+    }
+
     pub fn toast(&mut self, msg: impl Into<String>) {
         self.toast = Some((msg.into(), self.tick + TOAST_TICKS));
     }
@@ -514,6 +575,9 @@ impl App {
             if matches!(outcome, Outcome::Pass { .. }) {
                 self.completed.insert(quest);
                 self.autosave();
+                // The torch passes: if it's night, the next errand's giver
+                // comes out to their post to watch the road for you.
+                self.apply_schedule();
             }
             self.screen = Screen::CastResult {
                 quest,
@@ -714,6 +778,9 @@ impl App {
         };
         // The companion's spot is never saved: it reappears at your side.
         self.companion_snap();
+        // Neither are the folk's whereabouts: re-derive them from the
+        // loaded hour and quest — a night save wakes with everyone home.
+        self.apply_schedule();
     }
 
     fn autosave(&mut self) {
@@ -1199,6 +1266,9 @@ impl App {
                     DayPhase::Night => NIGHT_ANCHOR,
                     _ => DAY_ANCHOR,
                 };
+                // The clock turned while you dozed — the folk of the world
+                // went where their evening (or their morning) takes them.
+                self.apply_schedule();
                 self.screen = Screen::World;
                 let msg = match wake {
                     DayPhase::Night => {
@@ -1580,6 +1650,107 @@ mod tests {
         app.completed.extend([1, 2, 3, 4, 5, 6, 7]);
         assert!(app.zone_cleared(0));
         assert!(!app.zone_cleared(1));
+    }
+
+    #[test]
+    fn after_dark_the_folk_go_home_and_the_giver_keeps_watch() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        // Emberwick's errands are done, so Poppy is free to head home come
+        // dark; the woods' first errand (Pip's) is now active, so he keeps
+        // his post whatever the hour.
+        app.completed.extend(1..=7);
+        app.day_ticks = NIGHT_ANCHOR;
+        app.apply_schedule();
+        assert!(
+            app.zones[zones::BAKERY]
+                .npcs
+                .iter()
+                .any(|n| n.name == "Baker Poppy"),
+            "Poppy should spend the night in her bakery"
+        );
+        assert!(
+            !app.zones[0].npcs.iter().any(|n| n.name == "Baker Poppy"),
+            "Poppy can't be in two places at once"
+        );
+        let pip = app.zones[1]
+            .npcs
+            .iter()
+            .find(|n| n.name == "Pip")
+            .expect("the active giver keeps watch at his post");
+        assert_eq!(pip.pos, (73, 19), "Pip should be watching the road");
+
+        // Morning puts everyone back at their authored posts.
+        app.day_ticks = DAY_ANCHOR;
+        app.apply_schedule();
+        let poppy = app.zones[0]
+            .npcs
+            .iter()
+            .find(|n| n.name == "Baker Poppy")
+            .expect("morning brings Poppy back out");
+        assert_eq!(poppy.pos, (66, 25));
+        assert!(
+            !app.zones[zones::BAKERY]
+                .npcs
+                .iter()
+                .any(|n| n.name == "Baker Poppy")
+        );
+    }
+
+    #[test]
+    fn every_night_anchor_is_standable_reachable_and_unshared() {
+        use std::collections::{HashSet, VecDeque};
+        let mut app = App::new();
+        app.screen = Screen::World;
+        // The whole road done: nobody is pinned, every night spot is used.
+        app.completed.extend(1..=23);
+        app.day_ticks = NIGHT_ANCHOR;
+        app.apply_schedule();
+        for zone in &app.zones {
+            // Flood-fill of everywhere the player can stand tonight, NPCs
+            // blocking their own tiles just like in the game.
+            let mut seen = HashSet::from([zone.spawn]);
+            let mut queue = VecDeque::from([zone.spawn]);
+            while let Some((x, y)) = queue.pop_front() {
+                for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                    let n = (x + dx, y + dy);
+                    if in_bounds(n)
+                        && !seen.contains(&n)
+                        && zone.tile(n.0, n.1).walkable()
+                        && zone.npc_at(n.0, n.1).is_none()
+                    {
+                        seen.insert(n);
+                        queue.push_back(n);
+                    }
+                }
+            }
+            let mut taken = HashSet::new();
+            for npc in &zone.npcs {
+                assert!(
+                    zone.tile(npc.pos.0, npc.pos.1).walkable(),
+                    "{} spends the night standing in furniture at {:?} in {}",
+                    npc.name,
+                    npc.pos,
+                    zone.name
+                );
+                assert!(
+                    taken.insert(npc.pos),
+                    "two folk share the tile {:?} in {} tonight",
+                    npc.pos,
+                    zone.name
+                );
+                let talkable = (-1..=1).any(|dy| {
+                    (-1..=1).any(|dx| {
+                        (dx, dy) != (0, 0) && seen.contains(&(npc.pos.0 + dx, npc.pos.1 + dy))
+                    })
+                });
+                assert!(
+                    talkable,
+                    "{} is out of talking reach at {:?} in {} tonight",
+                    npc.name, npc.pos, zone.name
+                );
+            }
+        }
     }
 
     #[test]

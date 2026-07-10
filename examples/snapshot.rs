@@ -161,6 +161,10 @@ fn main() {
         }
     }
 
+    // The folk keep their schedule in shots too: `--day` past nightfall
+    // finds everyone at their night spots (57000 is the deep of night).
+    app.apply_schedule();
+
     let atlas = Atlas::load();
     // `--size WxH` renders at a non-native framebuffer size (e.g. 960x270 for a
     // 32:9 superultrawide) to preview how the window fills without black bars.

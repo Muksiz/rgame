@@ -115,7 +115,26 @@ twin solution passes, `#[test]` blocks identical between the pair
 17 (`items.rs`). Verify with the full suite plus a grep sweep for the
 banished tokens.
 
-## 2. NPC daily schedules
+## 2. NPC daily schedules — DONE
+
+**Shipped** (in the amended two-state form): a pure
+`content/schedule.rs::night_spot(npc)` names where each of the named folk
+spends the night — Rowan and Poppy home in their own rooms, Fernshade's
+kids called in to Grandmother Ivy's, Sallow and Maren taking their evening
+at the Glowworm, the river folk making camp on the piers and the beach,
+Hearthspire's scholars withdrawing into the Library. By day everyone stands
+at their authored post. `App::apply_schedule` re-derives all positions from
+the hour plus the active quest at the moments either can change (campfire
+rest, quest pass, save load) — nothing is ever stored, so old saves wake up
+already sorted. The active quest's giver ignores the hour: they keep watch
+at their post, drawn awake with their marker while everyone else sleeps.
+The amble was retired along with the flowing clock — the phase only ever
+turns behind the rest screen's fade, so folk are simply *there* when you
+wake, which is what sleeping past a change of shift feels like. Snapshot's
+`--day` now applies the schedule, so night shots find everyone home.
+Invariant tests pin: every night arrangement is standable, unshared and
+BFS-talkable in every zone; the giver stays pinned; morning restores every
+authored post. Original notes follow.
 
 *(Amended in playtest: the clock no longer turns on its own — the sky waits
 at day or night and campfire rests toggle it. Schedules should key off those

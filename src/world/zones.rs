@@ -1316,6 +1316,13 @@ fn at(dx: i32, dy: i32) -> (i32, i32) {
     (ROOM_AT.0 + dx, ROOM_AT.1 + dy)
 }
 
+/// The same room-relative addressing for the content layer: every interior
+/// stamps at the one shared origin, so `(dx, dy)` in a room's art maps to
+/// this absolute tile (the NPC night schedule names its indoor spots so).
+pub fn room_spot(dx: i32, dy: i32) -> (i32, i32) {
+    at(dx, dy)
+}
+
 fn bakery() -> Zone {
     room(
         BAKERY,

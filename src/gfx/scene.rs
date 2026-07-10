@@ -251,9 +251,14 @@ fn world_scene(fb: &mut Frame, atlas: &Atlas, app: &App) {
         let Some((px, py)) = to_screen(npc.pos.0, npc.pos.1) else {
             continue;
         };
+        // The active quest's giver never turns in: while their errand waits
+        // on you, they keep watch at their post whatever the hour (the
+        // schedule leaves them there too — see App::apply_schedule).
+        let keeps_watch = npc.quest.is_some() && npc.quest == active;
+        let asleep = night && !keeps_watch;
         // Anyone standing on a pier with open water at their feet is
         // fishing: they face the river, line cast, and don't glance about.
-        let fishing = !night
+        let fishing = !asleep
             && zone.tile(npc.pos.0, npc.pos.1) == Tile::Pier
             && zone.tile(npc.pos.0, npc.pos.1 + 1) == Tile::Water;
         // Folk turn to face the player when spoken-to distance, and breathe
@@ -261,7 +266,7 @@ fn world_scene(fb: &mut Frame, atlas: &Atlas, app: &App) {
         let (dx, dy) = (app.player.0 - npc.pos.0, app.player.1 - npc.pos.1);
         let dir = if dx.abs() + dy.abs() == 1 {
             facing_cell((dx, dy)) // turn to face a visitor within talking reach
-        } else if night || fishing {
+        } else if asleep || fishing {
             0 // asleep — or watching the bobber — facing down
         } else {
             // A slow idle gaze: they glance about on their own unhurried beat.
@@ -270,15 +275,15 @@ fn world_scene(fb: &mut Frame, atlas: &Atlas, app: &App) {
         let phase = npc.name.len() as u64;
         let sway = (app.tick / 12 + phase).is_multiple_of(5) as i32;
         blob_shadow(fb, px + 3, py + 13, 10, 2);
-        // At night the folk are abed: draw them a shade dimmer, and never with
-        // a quest marker — nobody's handing out errands in their sleep.
-        let light = if night { ent_light * 0.82 } else { ent_light };
+        // Abed folk draw a shade dimmer, and never with a quest marker —
+        // nobody's handing out errands in their sleep.
+        let light = if asleep { ent_light * 0.82 } else { ent_light };
         fb.sprite(atlas, npc_sprite(npc) + dir, px, py + sway, light);
         if fishing {
             // The cast line, rod tip to bobber, out on the water below.
             fb.sprite(atlas, atlas::ROD_CAST, px, py + TILE as i32, light);
         }
-        if night {
+        if asleep {
             // A little z drifting up from a sleeping head.
             let bob = ((app.tick / 14 + phase) % 3) as i32;
             font::text(fb, px + 9, py - 5 - bob, "z", (188, 200, 224), 1);
