@@ -228,6 +228,9 @@ pub enum Screen {
     },
     /// The collection of wild runes inscribed so far.
     Grimoire,
+    /// The parchment map of the journey (`m`): the four zones downsampled
+    /// honestly from their real tiles, uncharted until first entered.
+    WorldMap,
     /// Resting at a campfire: the screen fades to ember-dark, a scrap of Rust
     /// lore drifts past, and waking flips the world's clock.
     Resting {
@@ -451,6 +454,38 @@ impl App {
         self.flags.insert(flag.to_string());
     }
 
+    /// Note the current overworld zone as charted on the parchment map.
+    /// Rides the flags (and so the existing autosave milestones) — first
+    /// entry to a zone is always a gate crossing, which already saves.
+    fn mark_visited(&mut self) {
+        if !self.zone().interior && self.zone_idx <= 3 {
+            self.set_flag(&sides::visited_flag(self.zone_idx));
+        }
+    }
+
+    /// Where the player reads on the parchment map: their own tile under
+    /// the open sky, or — from a room behind a door — the door they came
+    /// in by, resolved back out to the overworld.
+    pub fn map_spot(&self) -> (usize, (i32, i32)) {
+        let (mut zone, mut pos) = (self.zone_idx, self.player);
+        for _ in 0..self.zones.len() {
+            if zone <= 3 {
+                break;
+            }
+            let Some((pz, at)) = self.zones.iter().enumerate().find_map(|(zi, z)| {
+                z.warps
+                    .iter()
+                    .find(|w| w.to_zone == zone)
+                    .map(|w| (zi, w.at))
+            }) else {
+                break;
+            };
+            zone = pz;
+            pos = at;
+        }
+        (zone, pos)
+    }
+
     /// The next quest on the road: the first one not yet completed.
     pub fn active_quest(&self) -> Option<&'static Quest> {
         QUESTS.iter().find(|q| !self.completed.contains(&q.id))
@@ -635,6 +670,7 @@ impl App {
             Screen::Journal => self.journal_key(key),
             Screen::Encounter { .. } => self.encounter_key(key),
             Screen::Grimoire => self.grimoire_key(key),
+            Screen::WorldMap => self.world_map_key(key),
             Screen::Resting { .. } => self.resting_key(key),
             Screen::Casting { .. } => {} // the runes are busy
             Screen::CastResult { .. } => self.cast_result_key(key),
@@ -739,6 +775,7 @@ impl App {
         self.play_ticks = 0;
         self.day_ticks = JOURNEY_START; // every journey opens on a bright morning
         self.companion_snap();
+        self.mark_visited(); // Emberwick charts itself from the first step
         self.screen = Screen::World;
         self.toast(format!(
             "A quiet morning in Emberwick, {}. Someone near the festival square could use a hand. (Arrows or H J K L to walk, e to talk.)",
@@ -781,6 +818,12 @@ impl App {
         // Neither are the folk's whereabouts: re-derive them from the
         // loaded hour and quest — a night save wakes with everyone home.
         self.apply_schedule();
+        // A save from before the map existed backfills its charted zones:
+        // the road is linear, so everywhere up to here has been walked.
+        let (here, _) = self.map_spot();
+        for z in 0..=here {
+            self.set_flag(&sides::visited_flag(z));
+        }
     }
 
     fn autosave(&mut self) {
@@ -821,6 +864,7 @@ impl App {
             Key::Char('c') => self.start_cast(),
             Key::Char('q') => self.screen = Screen::Journal,
             Key::Char('g') => self.screen = Screen::Grimoire,
+            Key::Char('m') => self.screen = Screen::WorldMap,
             Key::Char('f') => self.ferris_hint(),
             Key::Esc => self.screen = Screen::Paused { selected: 0 },
             _ => {}
@@ -896,6 +940,7 @@ impl App {
                 let gate = self.zone().gate.unwrap_or(self.zone().spawn);
                 self.player = (gate.0 - 2, gate.1);
                 self.companion_snap();
+                self.mark_visited();
                 let name = self.zone().name;
                 self.toast(format!("Back along the road, into {name}."));
                 self.show_banner();
@@ -995,6 +1040,7 @@ impl App {
                 self.zone_idx += 1;
                 self.player = self.zone().spawn;
                 self.companion_snap();
+                self.mark_visited();
                 self.toast(unlock);
                 self.show_banner();
                 self.autosave();
@@ -1424,6 +1470,20 @@ impl App {
         }
     }
 
+    fn world_map_key(&mut self, code: Key) {
+        match code {
+            Key::Esc
+            | Key::Char('m')
+            | Key::Char('q')
+            | Key::Char('e')
+            | Key::Enter
+            | Key::Char(' ') => {
+                self.screen = Screen::World;
+            }
+            _ => {}
+        }
+    }
+
     fn journal_key(&mut self, code: Key) {
         match code {
             Key::Char('f') => self.ferris_hint(),
@@ -1650,6 +1710,40 @@ mod tests {
         app.completed.extend([1, 2, 3, 4, 5, 6, 7]);
         assert!(app.zone_cleared(0));
         assert!(!app.zone_cleared(1));
+    }
+
+    #[test]
+    fn the_map_opens_charts_and_round_trips() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        app.set_flag(&sides::visited_flag(0));
+        // m opens the parchment, m (or esc) folds it away.
+        app.on_key(Key::Char('m'));
+        assert!(matches!(app.screen, Screen::WorldMap));
+        app.on_key(Key::Char('m'));
+        assert!(matches!(app.screen, Screen::World));
+        app.on_key(Key::Char('m'));
+        app.on_key(Key::Esc);
+        assert!(matches!(app.screen, Screen::World));
+
+        // Crossing a gate charts the zone beyond it.
+        assert!(!app.has_flag(&sides::visited_flag(1)));
+        app.completed.extend(1..=7);
+        let gate = app.zones[0].gate.unwrap();
+        app.player = (gate.0 - 1, gate.1);
+        app.try_move(1, 0);
+        assert_eq!(app.zone_idx, 1);
+        assert!(app.has_flag(&sides::visited_flag(1)));
+
+        // From a room behind a door, the map dot resolves to the door
+        // outside — walked all the way back to the open sky if need be.
+        app.zone_idx = zones::STOREHOUSE_CELLAR;
+        let (z, pos) = app.map_spot();
+        assert_eq!(z, 0, "the cellar charts under Emberwick");
+        assert!(
+            app.zones[0].warp_at(pos.0, pos.1).is_some(),
+            "the dot should sit on the storehouse door"
+        );
     }
 
     #[test]

@@ -11,7 +11,7 @@ use crate::gfx::frame::Frame;
 use crate::gfx::shade;
 use crate::world::camera;
 use crate::world::entity::{CritterKind, Npc};
-use crate::world::map::{Tile, Weather, Zone, hash2};
+use crate::world::map::{MAP_H, MAP_W, Tile, Weather, Zone, hash2};
 use crate::world::zones::{
     BAKERY, CARPENTER_HOUSE, ECHO_CAVE, GREAT_LIBRARY, SORREL_COTTAGE, STOREHOUSE,
     STOREHOUSE_CELLAR, TILLY_COTTAGE, WOODS_LODGE, WOODS_RUIN,
@@ -37,6 +37,7 @@ pub fn render(fb: &mut Frame, atlas: &Atlas, app: &App) {
         Screen::CharSelect { idx, name } => char_select(fb, atlas, app, *idx, name),
         Screen::Epilogue { page } => epilogue(fb, app, *page),
         Screen::Resting { lore, t, wake } => resting(fb, atlas, app, *lore, *t, *wake),
+        Screen::WorldMap => world_map(fb, app),
         _ => {
             world(fb, atlas, app);
             match &app.screen {
@@ -1758,6 +1759,138 @@ fn npc_sprite(npc: &Npc) -> u16 {
     }
 }
 
+// ── the parchment world map ────────────────────────────────────────────────
+
+/// What a tile reads as in parchment ink, or `None` for open ground (the
+/// parchment itself). The map is an honest downsample: these are the real
+/// tiles of the real maps, quantized to a hand-drawn palette.
+fn map_ink(tile: Tile, h: u32) -> Option<(u8, u8, u8)> {
+    Some(match tile {
+        Tile::Water | Tile::WaterRock => (138, 152, 146),
+        Tile::Bridge | Tile::Pier => (134, 96, 58),
+        Tile::Path | Tile::Plaza => (154, 110, 62),
+        Tile::Sand => (208, 184, 134),
+        Tile::Tree => {
+            if h.is_multiple_of(5) {
+                (94, 102, 58)
+            } else {
+                (110, 118, 68)
+            }
+        }
+        // Scrub reads as a sparse stipple, not a solid mass.
+        Tile::Bush | Tile::TallGrass if h.is_multiple_of(3) => (176, 172, 120),
+        Tile::Wall
+        | Tile::WallStone
+        | Tile::WallPlaster
+        | Tile::Roof
+        | Tile::RoofSlate
+        | Tile::RoofCream
+        | Tile::Door
+        | Tile::DoorClosed
+        | Tile::Facade(_)
+        | Tile::FacadeDoor(_) => (88, 62, 40),
+        Tile::Fence => (150, 116, 70),
+        Tile::Cliff => (162, 142, 106),
+        Tile::Rock if h.is_multiple_of(2) => (174, 154, 118),
+        Tile::Gate => (112, 76, 44),
+        Tile::CaveMouth => (70, 56, 40),
+        _ => return None,
+    })
+}
+
+/// The journey on parchment (`m`): the four overworld zones downsampled a
+/// tile to the pixel, laid two by two along the road, west to east and top
+/// to bottom. Zones you haven't entered stay uncharted; you are a blinking
+/// dot; found runestones glint. A keepsake, not a checklist.
+fn world_map(fb: &mut Frame, app: &App) {
+    let (w, h) = (fb.width(), fb.height());
+    // Parchment, gently mottled, its edges toasted darker.
+    for y in 0..h {
+        for x in 0..w {
+            let m = (hash2(x / 3, y / 3, 0x9AC) % 8) as i32;
+            let edge = x.min(y).min(w - 1 - x).min(h - 1 - y);
+            let burn = (8 - edge.min(8)) * 4 + (hash2(x, y, 0x0B0) % 5) as i32;
+            let tone = |c: i32| (c - m - burn).clamp(0, 255) as u8;
+            fb.set(x, y, (tone(219), tone(199), tone(156)));
+        }
+    }
+
+    // Panel geometry: each zone map trimmed of its border band and drawn a
+    // tile to the pixel, two panels a row.
+    const CROP: i32 = 4;
+    let (pw, ph) = (MAP_W - 2 * CROP, MAP_H - 2 * CROP);
+    let gap_x = ((w - 2 * pw) / 3).max(2);
+    let label_h = 12;
+    let content_h = 18 + 2 * (ph + label_h) + 6;
+    let top = ((h - content_h) / 2).max(2);
+    font::text_center(fb, w / 2, top, "~ THE ROAD SO FAR ~", (96, 70, 44), 1);
+
+    let ink = (96, 70, 44);
+    let faint = (150, 124, 88);
+    let (dot_zone, dot_pos) = app.map_spot();
+    for zi in 0..4usize {
+        let zone = &app.zones[zi];
+        let x0 = gap_x + (zi as i32 % 2) * (pw + gap_x);
+        let y0 = top + 18 + (zi as i32 / 2) * (ph + label_h + 6);
+        // A thin ink border around each chart.
+        for x in x0 - 1..=x0 + pw {
+            fb.set(x, y0 - 1, faint);
+            fb.set(x, y0 + ph, faint);
+        }
+        for y in y0 - 1..=y0 + ph {
+            fb.set(x0 - 1, y, faint);
+            fb.set(x0 + pw, y, faint);
+        }
+        if !app.has_flag(&sides::visited_flag(zi)) {
+            font::text_center(fb, x0 + pw / 2, y0 + ph / 2 - 4, "uncharted", faint, 1);
+            continue;
+        }
+        for py in 0..ph {
+            for px in 0..pw {
+                let (tx, ty) = (px + CROP, py + CROP);
+                if let Some(c) = map_ink(zone.tile(tx, ty), hash2(tx, ty, 0x3A9 ^ zi as u32)) {
+                    fb.set(x0 + px, y0 + py, c);
+                }
+            }
+        }
+        font::text_center(fb, x0 + pw / 2, y0 + ph + 2, zone.name, ink, 1);
+        // Found runestones glint where they stand.
+        for (sz, (sx, sy)) in crate::world::zones::runestone_spots() {
+            if sz == zi
+                && let Some(id) = crate::world::zones::runestone_id(sz, (sx, sy))
+                && app.has_flag(&sides::runestone_flag(id))
+            {
+                let (gx, gy) = (x0 + sx - CROP, y0 + sy - CROP);
+                fb.set(gx, gy, (104, 190, 200));
+                fb.set(gx - 1, gy, (160, 216, 222));
+                fb.set(gx + 1, gy, (160, 216, 222));
+                fb.set(gx, gy - 1, (160, 216, 222));
+                fb.set(gx, gy + 1, (160, 216, 222));
+            }
+        }
+        // You are here — a blinking travel-worn red dot.
+        if dot_zone == zi {
+            let (dx, dy) = (x0 + dot_pos.0 - CROP, y0 + dot_pos.1 - CROP);
+            let bright = (app.tick / 8).is_multiple_of(2);
+            let c = if bright { (212, 70, 48) } else { (150, 52, 38) };
+            fb.fill(dx - 1, dy - 1, 3, 3, c);
+            if bright {
+                for (ox, oy) in [(-2, 0), (2, 0), (0, -2), (0, 2)] {
+                    fb.set(dx + ox, dy + oy, (226, 130, 96));
+                }
+            }
+        }
+    }
+    font::text_center(
+        fb,
+        w / 2,
+        top + content_h + 2,
+        "m . esc — back to the road",
+        faint,
+        1,
+    );
+}
+
 // ── HUD bars ───────────────────────────────────────────────────────────────
 
 fn top_bar(fb: &mut Frame, app: &App, dl: f32) {
@@ -1801,7 +1934,8 @@ fn bottom_bar(fb: &mut Frame, app: &App) {
                     npc.name
                 ),
                 None => {
-                    "arrows move . e talk . c cast . q journal . g grimoire . f hint . esc".into()
+                    "arrows move . e talk . c cast . q journal . g grimoire . m map . f hint . esc"
+                        .into()
                 }
             };
             (font::wrap(&hint, cols), DIM)

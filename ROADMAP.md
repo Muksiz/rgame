@@ -206,7 +206,22 @@ Invariants (to test): the companion is never left standing in a wall or lost
 across a warp; render matrix covers world-with-companion; save round-trips
 with and without the flag.
 
-## 4. The world map
+## 4. The world map — DONE
+
+**Shipped**: `m` unfolds the parchment (`Screen::WorldMap`, listed in the
+key bar): the four zones drawn a *tile to the pixel* from their real maps —
+trimmed of their border bands, quantized to hand-drawn ink, laid two by two
+west to east — so every road, river, rooftop and gate on it is honest.
+Unentered zones sit as blank "uncharted" panels behind `visited.<zone>`
+flags (set on entry; old saves backfill along the linear road on load). You
+are a blinking red dot — resolved out to the right overworld door when
+you're indoors, however deep — and found runestones glint where they stand;
+unfound ones stay the map's secret. Snapshot grew a `map <zone>` scene, the
+render matrix covers all sixteen charted combinations plus the from-indoors
+dot, and app tests pin the `m` round-trip, the gate-crossing flag and the
+interior dot resolution. Campfire/door marks were left off — the map reads
+as a keepsake already, and more icons started to make it a checklist.
+Original notes follow.
 
 Press `m` (or find it in the rest menu): a parchment-styled map screen of the
 whole journey. The zones are procedural but *deterministic*, so the map can be

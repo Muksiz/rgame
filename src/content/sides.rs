@@ -24,6 +24,13 @@ pub fn runestone_flag(id: u8) -> String {
     format!("runestone.{id}")
 }
 
+/// Charted-on-the-map flags are `visited.0` .. `visited.3` — set the first
+/// time each overworld zone is entered (gate crossings already autosave,
+/// so the map's memory rides an existing milestone).
+pub fn visited_flag(zone: usize) -> String {
+    format!("visited.{zone}")
+}
+
 /// What a side-quest dialogue does when it closes: nothing, or set a flag.
 pub struct SideTalk {
     pub pages: Vec<String>,

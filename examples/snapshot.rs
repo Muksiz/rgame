@@ -4,7 +4,7 @@
 //!
 //! ```sh
 //! cargo run --example snapshot -- world 0 --tick 600 --out shot.png
-//! cargo run --example snapshot -- <title|charselect|world|dialogue|journal|casting|pass|fizzle|paused|resting|banner|epilogue|toast|encounter|caught|grimoire|book|reveal>
+//! cargo run --example snapshot -- <title|charselect|world|dialogue|journal|casting|pass|fizzle|paused|resting|banner|epilogue|toast|encounter|caught|grimoire|book|reveal|map>
 //! ```
 //!
 //! `world` takes an optional zone (0-3 overworld, 4+ interiors) and
@@ -134,6 +134,15 @@ fn main() {
         "grimoire" => {
             app.grimoire.extend([1, 2, 5, 11]);
             app.screen = Screen::Grimoire;
+        }
+        // The parchment world map. `map <zone>` charts every zone up to
+        // (and including) that one — `map 3` shows the whole road, plain
+        // `map` just Emberwick.
+        "map" => {
+            for z in 0..=app.zone_idx.min(3) {
+                app.set_flag(&rgame::content::sides::visited_flag(z));
+            }
+            app.screen = Screen::WorldMap;
         }
         // The gate-reveal cutscene: the zone's quests done, the camera out
         // at the gate, the barrier rolling aside. The reveal starts at tick

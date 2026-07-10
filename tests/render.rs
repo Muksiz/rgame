@@ -159,6 +159,24 @@ fn every_screen_renders() {
     render(&atlas, &app);
     app.banner = None;
 
+    // The parchment map, in every combination of charted zones — and once
+    // from a room behind a door, where the dot resolves to the overworld.
+    app.screen = Screen::WorldMap;
+    for mask in 0..16u32 {
+        app.flags.retain(|f| !f.starts_with("visited."));
+        for z in 0..4 {
+            if mask & (1 << z) != 0 {
+                app.flags.insert(rgame::content::sides::visited_flag(z));
+            }
+        }
+        render(&atlas, &app);
+    }
+    app.zone_idx = 10; // the Great Library: an interior, two doors deep of nothing
+    render(&atlas, &app);
+    app.zone_idx = 0;
+    app.flags.clear();
+    app.screen = Screen::World;
+
     // The gate-reveal cutscene: Emberwick cleared, the camera out at the
     // gate, the fallen oak mid-roll — then the road standing open after.
     app.zone_idx = 0;
