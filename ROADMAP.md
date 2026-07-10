@@ -8,8 +8,6 @@ first, then return to the roadmap. Remove a note once it's done.
 
 An animation should play when the logs clear and you are able to enter the Whispering Woods.
 
-I do not like Pip's character model, replace it.
-
 I do not like Basket-weaver Briar's model or name. Completely redesign that character.
 
 I would like for there to be some sort of city in the Whispering Woods as well. It feels pretty weird how

@@ -63,7 +63,7 @@ NEW_CAST = [
     ("FITCH", "Villager5"),  # 4 Fitch
     ("HOBB", "OldMan"),  # 5 Hobb
     ("REED", "Tengu"),  # 4 Reed (Jani didn't like the Shaman look)
-    ("PIP", "Cavegirl2"),  # 8 Pip
+    ("PIP", "Villager6"),  # 8 Pip (the Cavegirl2 look got a playtest thumbs-down)
     ("BRIAR", "Cavegirl"),  # 10 Briar
     ("YEW", "Monk2"),  # 12 Yew
     ("SABLE", "Caveman"),  # 14 Sable
