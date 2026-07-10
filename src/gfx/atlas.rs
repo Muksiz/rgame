@@ -389,6 +389,16 @@ pub const CAVE_MOUTH: u16 = 745;
 /// it stay opaque in the wall face.
 pub const DOOR_GRAND_L: u16 = 746;
 pub const DOOR_GRAND_R: u16 = 747;
+// Fernshade, the hamlet in the Whispering Woods: dark-forest builds (the
+// cottage and flavor homes dimmed toward moss and dusk like WOODS_FLOOR,
+// the lamplit common house with its doorway open) and its residents.
+pub const WOODS_COTTAGE: u16 = 748; // 5x5, enterable at HOUSE_DOOR_AT
+pub const WOODS_COMMON: u16 = 773; // 3x3, enterable at WOODS_COMMON_DOOR_AT
+pub const WOODS_HOME_A: u16 = 782; // 4x3, door pasted shut
+pub const WOODS_HOME_B: u16 = 794; // 4x3, door pasted shut
+pub const CAST_IVY: u16 = 806;
+pub const CAST_MOSS: u16 = 810;
+pub const CAST_BRACKEN: u16 = 814;
 pub const HOUSE_SIZE: (i32, i32) = (5, 5);
 pub const SHED_SIZE: (i32, i32) = (3, 3);
 pub const STALL_SIZE: (i32, i32) = (5, 5);
@@ -408,6 +418,9 @@ pub const SKIFF_SIZE: (i32, i32) = (2, 1);
 pub const BOAT_SIZE: (i32, i32) = (5, 2);
 /// Where the walkable doorway cell sits inside HOUSE_A / HOUSE_B_DOOR.
 pub const HOUSE_DOOR_AT: (i32, i32) = (2, 4);
+/// Where the walkable doorway cell sits inside WOODS_COMMON (the tavern
+/// build keeps its own open doorway under the lintel lamp).
+pub const WOODS_COMMON_DOOR_AT: (i32, i32) = (1, 2);
 
 static ATLAS_PNG: &[u8] = include_bytes!("../../assets/atlas.png");
 

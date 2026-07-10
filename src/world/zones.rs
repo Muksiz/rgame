@@ -112,6 +112,19 @@ const LODGE_ROOM: &str = concat!(
     "#####+#####",
 );
 
+// The Glowworm, Fernshade's lamplit common room: a hearth in the corner,
+// two long tables, and the barrels Bracken calls a cellar.
+const GLOWWORM_ROOM: &str = concat!(
+    "####W###W####\n",
+    "#.hh.....oo.#\n",
+    "#...........#\n",
+    "#.tts...tts.#\n",
+    "#...........#\n",
+    "#.tts....o..#\n",
+    "#...........#\n",
+    "######+######",
+);
+
 const CAVE_ROOM: &str = concat!(
     "  %%%%%%%%%%%  \n",
     " %%:::::::::%% \n",
@@ -141,6 +154,8 @@ pub const STOREHOUSE_CELLAR: usize = 11;
 pub const WOODS_RUIN: usize = 12;
 pub const WOODS_LODGE: usize = 13;
 pub const ROWAN_COTTAGE: usize = 14;
+pub const FERNSHADE_COTTAGE: usize = 15;
+pub const GLOWWORM: usize = 16;
 
 /// The lived-in rooms with a fire going — the shell loops a soft hearth
 /// crackle in these instead of leaving the indoors dead silent. Caves, the
@@ -148,7 +163,14 @@ pub const ROWAN_COTTAGE: usize = 14;
 pub fn has_hearth(zone: usize) -> bool {
     matches!(
         zone,
-        BAKERY | SORREL_COTTAGE | CARPENTER_HOUSE | TILLY_COTTAGE | GREAT_LIBRARY | ROWAN_COTTAGE
+        BAKERY
+            | SORREL_COTTAGE
+            | CARPENTER_HOUSE
+            | TILLY_COTTAGE
+            | GREAT_LIBRARY
+            | ROWAN_COTTAGE
+            | FERNSHADE_COTTAGE
+            | GLOWWORM
     )
 }
 
@@ -173,6 +195,9 @@ const LIBRARY_DOORS: [(i32, i32); 2] = [(210, 32), (211, 32)];
 // The abandoned houses in the Whispering Woods (prefab origin + door offset).
 const RUIN_STONE_DOOR: (i32, i32) = (67, 13);
 const RUIN_LODGE_DOOR: (i32, i32) = (173, 49);
+// Fernshade's two open doors: Pip's family cottage and the Glowworm.
+const FERN_COTTAGE_DOOR: (i32, i32) = (74, 17);
+const GLOWWORM_DOOR: (i32, i32) = (81, 21);
 
 // Interior door tiles (stamp origin + the '+' offset in each room's art).
 const BAKERY_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 7, ROOM_AT.1 + 8);
@@ -193,6 +218,7 @@ const LIBRARY_ROOM_DOORS: [(i32, i32); 2] = [
 const CAVE_ROOM_EXIT: (i32, i32) = (ROOM_AT.0 + 7, ROOM_AT.1 + 9);
 const RUIN_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 4, ROOM_AT.1 + 5);
 const LODGE_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 5, ROOM_AT.1 + 6);
+const GLOWWORM_ROOM_DOOR: (i32, i32) = (ROOM_AT.0 + 6, ROOM_AT.1 + 7);
 
 /// Stepping on the outside door lands just inside the room's own door...
 fn enter(outside: (i32, i32), interior: usize, inside_door: (i32, i32)) -> Warp {
@@ -229,6 +255,8 @@ pub fn zones() -> Vec<Zone> {
         woods_ruin(),
         woods_lodge(),
         rowan_cottage(),
+        fernshade_cottage(),
+        glowworm(),
     ]
 }
 
@@ -643,6 +671,42 @@ fn whispering_woods() -> Zone {
     b.set(51, 16, Tile::Rock);
     b.scatter(Tile::Flower, 140, (45, 14, 9, 9));
 
+    // ── Fernshade: the hamlet under the canopy. The woods' folk have to
+    // live SOMEWHERE — a huddle of moss-dark timber homes hacked out of
+    // the deep trees along the footpath, lamplit against the dusk. Pip's
+    // family cottage and the Glowworm common house both open; the rest
+    // keep their doors shut and their curtains drawn. ──
+    use crate::gfx::atlas;
+    b.prefab(
+        72,
+        13,
+        atlas::WOODS_COTTAGE,
+        atlas::HOUSE_SIZE,
+        Some(atlas::HOUSE_DOOR_AT),
+    );
+    b.prefab(
+        80,
+        19,
+        atlas::WOODS_COMMON,
+        atlas::NA_SHOP_SIZE,
+        Some(atlas::WOODS_COMMON_DOOR_AT),
+    );
+    b.prefab(60, 22, atlas::WOODS_HOME_A, atlas::NA_HOUSE_SIZE, None);
+    b.prefab(86, 15, atlas::WOODS_HOME_B, atlas::NA_HOUSE_SIZE, None);
+    b.prefab(92, 25, atlas::WOODS_HOME_A, atlas::NA_HOUSE_SIZE, None);
+    // Lane spurs down to the two open doors, and lamps along the way —
+    // Fernshade keeps its own light going under the dark trees.
+    b.trail(&[(74, 18), (74, 23)]);
+    b.trail(&[(81, 22), (81, 23)]);
+    b.clearing(74, 18, 1);
+    b.clearing(81, 22, 1);
+    for (x, y) in [(76, 20), (84, 22), (68, 24)] {
+        b.clearing(x, y, 1);
+        b.set(x, y, Tile::Lantern);
+    }
+    b.clearing(58, 20, 1);
+    b.set(58, 20, Tile::Sign);
+
     // Maren's mushroom hollow.
     b.clearing(101, 47, 4);
     b.scatter(Tile::Bush, 200, (97, 43, 9, 9));
@@ -673,7 +737,8 @@ fn whispering_woods() -> Zone {
     b.clearing(49, 20, 1);
     b.clearing(101, 46, 1);
     b.clearing(172, 28, 1);
-    b.clearing(53, 20, 1); // Pip, playing near Wren's clearing
+    b.clearing(73, 19, 1); // Pip, out front of the family cottage
+    b.clearing(83, 21, 1); // Lamplighter Moss, on his rounds by the Glowworm
     b.clearing(105, 46, 1); // Weaver Sallow, past the mushroom hollow
     b.clearing(200, 29, 1); // Hollow-keeper Yew, along the meadow road
     b.clearing(225, 31, 1); // Woodward Sable, near the mossy gate
@@ -696,7 +761,6 @@ fn whispering_woods() -> Zone {
 
     // Old growth: towering pines and triple crowns between the everyday
     // trees, kept well clear of the road, the clearings and Nettle's trail.
-    use crate::gfx::atlas;
     b.prefab(30, 12, atlas::TREE_TALL_PINE, atlas::TREE_TALL_SIZE, None);
     b.prefab(64, 40, atlas::TREE_TALL_CANOPY, atlas::TREE_TALL_SIZE, None);
     b.prefab(76, 8, atlas::TREE_TALL_CANOPY, atlas::TREE_TALL_SIZE, None);
@@ -781,11 +845,13 @@ fn whispering_woods() -> Zone {
             enter(CAVE_MOUTH, ECHO_CAVE, CAVE_ROOM_EXIT),
             enter(RUIN_STONE_DOOR, WOODS_RUIN, RUIN_ROOM_DOOR),
             enter(RUIN_LODGE_DOOR, WOODS_LODGE, LODGE_ROOM_DOOR),
+            enter(FERN_COTTAGE_DOOR, FERNSHADE_COTTAGE, COTTAGE_ROOM_DOOR),
+            enter(GLOWWORM_DOOR, GLOWWORM, GLOWWORM_ROOM_DOOR),
         ],
         npcs: vec![
             Npc {
                 name: "Pip",
-                pos: (53, 20),
+                pos: (73, 19),
                 quest: Some(8),
                 idle: &[
                     "The trick is patience. They won't be caught in a hurry, fireflies.",
@@ -853,16 +919,31 @@ fn whispering_woods() -> Zone {
                 quest: None,
                 idle: &["Still here. So are the trees."],
             },
+            // Fernshade's own folk — no errands, just a hamlet being lived in.
+            Npc {
+                name: "Lamplighter Moss",
+                pos: (83, 21),
+                quest: None,
+                idle: &[
+                    "Dark comes early under the canopy. I light the lamps at what the trees call noon, and I have never once dowsed them.",
+                ],
+            },
         ],
         critters: vec![
             Critter::new(CritterKind::Sheep, (168, 26)),
             Critter::new(CritterKind::Sheep, (176, 30)),
             Critter::new(CritterKind::Sheep, (182, 27)),
+            // The hamlet cat, holding down the lane by the Glowworm.
+            Critter::new(CritterKind::Cat, (79, 23)),
         ],
         signs: vec![
             Sign {
                 pos: (8, 34),
                 text: "The Whispering Woods. The trees gossip, but they mean well.",
+            },
+            Sign {
+                pos: (58, 20),
+                text: "Fernshade. Last lamps before the deep woods — kindly leave them burning.",
             },
             Sign {
                 pos: (120, 41),
@@ -1410,6 +1491,54 @@ fn woods_lodge() -> Zone {
         vec![Sign {
             pos: at(5, 2),
             text: "A note nailed to the table, in a hand that pressed hard: 'Gone deeper in. The trees talk less nonsense than the town does, and the quiet keeps better company. Don't come looking — but if you do, follow the gaps, not the road. — N.'",
+        }],
+    )
+}
+
+fn fernshade_cottage() -> Zone {
+    room(
+        FERNSHADE_COTTAGE,
+        "Pip's Family Cottage",
+        166,
+        COTTAGE_ROOM,
+        0.8,
+        vec![exit(COTTAGE_ROOM_DOOR, WHISPERING_WOODS, FERN_COTTAGE_DOOR)],
+        vec![Npc {
+            name: "Grandmother Ivy",
+            pos: at(6, 4),
+            quest: None,
+            idle: &[
+                "So YOU'RE the rune-smith. Pip talks of nothing else — well. Nothing else but fireflies. Mind your scopes, dear, and nothing you love gets swept away.",
+            ],
+        }],
+        vec![Critter::new(CritterKind::Cat, at(3, 3))],
+        vec![Sign {
+            pos: at(7, 2),
+            text: "A row of firefly jars on the table, each labeled in a child's careful hand: 'No. 1 — bright. No. 2 — brighter. No. 3 — BEST.' Every lid has air holes.",
+        }],
+    )
+}
+
+fn glowworm() -> Zone {
+    room(
+        GLOWWORM,
+        "The Glowworm",
+        177,
+        GLOWWORM_ROOM,
+        0.7,
+        vec![exit(GLOWWORM_ROOM_DOOR, WHISPERING_WOODS, GLOWWORM_DOOR)],
+        vec![Npc {
+            name: "Innkeep Bracken",
+            pos: at(5, 1),
+            quest: None,
+            idle: &[
+                "Sit anywhere the moss hasn't claimed. Kettle's on, lamps are full, and the trees keep their whispering outside my door. House rules.",
+            ],
+        }],
+        vec![Critter::new(CritterKind::Moth, at(9, 4))],
+        vec![Sign {
+            pos: at(9, 1),
+            text: "Chalked on a barrel: 'HOUSE RULES. Boots dried BY the fire, not IN it. The moth stays. Tabs settled by moonrise — whichever moonrise.'",
         }],
     )
 }

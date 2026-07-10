@@ -1660,6 +1660,10 @@ fn npc_sprite(npc: &Npc) -> u16 {
         "Cartographer Reed" => atlas::CAST_REED,
         "Pip" => atlas::CAST_PIP,
         "Weaver Sallow" => atlas::CAST_SALLOW,
+        // Fernshade's residents.
+        "Grandmother Ivy" => atlas::CAST_IVY,
+        "Lamplighter Moss" => atlas::CAST_MOSS,
+        "Innkeep Bracken" => atlas::CAST_BRACKEN,
         "Hollow-keeper Yew" => atlas::CAST_YEW,
         "Woodward Sable" => atlas::CAST_SABLE,
         "Dockhand Fenn" => atlas::CAST_FENN,

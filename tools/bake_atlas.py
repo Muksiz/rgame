@@ -72,6 +72,14 @@ NEW_CAST = [
     ("FAYE", "Sultan2"),  # 23 Faye
 ]
 
+# Fernshade's residents (the hamlet in the Whispering Woods) — baked as
+# their own tail block at the very end of the atlas, so nothing shifts.
+FERN_CAST = [
+    ("IVY", "Vampire"),  # Grandmother Ivy, Pip's gran
+    ("MOSS", "SorcererOrange"),  # Lamplighter Moss
+    ("BRACKEN", "FighterWhite"),  # Innkeep Bracken of the Glowworm
+]
+
 
 def na_tile(sheet_name, c, r):
     """One 16x16 cell from a Ninja Adventure tileset (margin-free grid)."""
@@ -1376,6 +1384,40 @@ def main(sheet_path, chars_path):
             for i, (_, img) in enumerate(
                 from_art_prefab(None, GRAND_DOOR_ART, PALETTE, 2, 1)
             )
+        ],
+        # ── Fernshade, the hamlet under the Whispering Woods' canopy
+        # (playtest note: the woods' folk deserved somewhere to live).
+        # Dark-forest builds: the village cottage and the flavor homes are
+        # dimmed toward moss and dusk the same way the WOODS_FLOOR family
+        # is; the lamplit common house is the tavern build with its own
+        # doorway left open (it already wears a lamp over the lintel). ──
+        *[
+            (n, dim(img, (0.66, 0.74, 0.72)))
+            for n, img in zl_prefab("WOODS_COTTAGE", 96, 0, 5, 5)
+        ],
+        *[
+            (n, dim(img, (0.72, 0.80, 0.76)))
+            for n, img in na_prefab("TilesetHouse", "WOODS_COMMON", 304, 0, 3, 3)
+        ],
+        *[
+            (n, dim(img, (0.50, 0.64, 0.60)))
+            for n, img in na_prefab(
+                "TilesetHouse", "WOODS_HOME_A", 0, 0, 4, 3,
+                paste=(32, 48, 16, 16, 24, 32),
+            )
+        ],
+        *[
+            (n, dim(img, (0.55, 0.66, 0.62)))
+            for n, img in na_prefab(
+                "TilesetHouse", "WOODS_HOME_B", 128, 0, 4, 3,
+                paste=(32, 48, 16, 16, 24, 32),
+            )
+        ],
+        # Fernshade's residents, their own tail block like NEW_CAST above.
+        *[
+            (f"CAST_{name}" if d == 0 else None, frame)
+            for name, folder in FERN_CAST
+            for d, frame in enumerate(na_idles(folder))
         ],
     ]
 
