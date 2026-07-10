@@ -243,7 +243,7 @@ pub static QUESTS: [Quest; 23] = [
         reminder: "Did you fix my spell?? The first cast still eats the incantation, so the second cast has nothing to say! Grandmother says: clone it into the FIRST cast, keep the real one for the second.",
         success: &[
             "TWO castings, TWO showers of sparkles, one incantation safe and sound in Wren's pocket. Wren hops in a circle. \"Double step! Double SPARKLE! It's even better than I planned!\"",
-            "\"So moving is forever but cloning is copies. When I'm big I'll clone a WHOLE SPELLBOOK. Briar's just past the hollow, weaving baskets — she likes people who bring things back!\"",
+            "\"So moving is forever but cloning is copies. When I'm big I'll clone a WHOLE SPELLBOOK. Old Sallow's just past the hollow, weaving his baskets — he likes people who bring things back!\"",
         ],
         hints: &[
             "Passing a `String` into a function *moves* it — the caller can't use it again afterward. That's why the second cast fizzles.",
@@ -254,19 +254,19 @@ pub static QUESTS: [Quest; 23] = [
         id: 10,
         zone: 1,
         title: "The Standard Baskets",
-        npc: "Basket-weaver Briar",
+        npc: "Weaver Sallow",
         file_name: "10_the_standard_baskets.rs",
         lesson: "ownership in & out of functions",
         template: include_str!("templates/10_the_standard_baskets.rs"),
         intro: &[
-            "You'll be the one Wren's been chattering about. Good timing. Every basket that goes out to a stall comes past me first for a checking-stamp — and my stamping-rune has developed a HABIT. Baskets go in. Baskets do not come out.",
-            "It's ownership, same as anything: hand the basket to the stamping-rune and the rune owns it. When the rune finishes and its scope closes, everything it still owns gets dropped. My basket! Dropped! Like mulch!",
-            "The fix is manners: a function that takes a thing had better hand it BACK — returning a value moves ownership out to the caller, same as passing moved it in. Teach my rune to give as good as it gets, would you?",
+            "So you're the one Wren's little bird has been on about. Sit — mind the withies. Fifty years I've woven willow under these trees, and every basket that leaves this table gets a checking-stamp first. My rule, and a good one.",
+            "Or it WAS the rule, till my stamping-rune picked up a habit. Baskets go in. Baskets do not come out. It's ownership, plain as willow: hand the basket to the rune and the rune OWNS it — and when its work ends, whatever it still holds is dropped. Fifty years of weaving. Mulch.",
+            "The mending is manners: a rune that takes a thing had better hand it BACK — returning a value moves ownership out to the caller, same as passing moved it in. Teach my rune that, and it can keep its stamp.",
         ],
         reminder: "Baskets still go in and don't come out. The stamping-rune must RETURN the stamped basket — `-> String`, stamped basket on the last line — and the caller must catch it.",
         success: &[
-            "The rune stamps the basket and — miracle of manners — hands it back. Briar turns it over: stamped, whole, and hers again. She checks it twice, out of habit.",
-            "\"In and back out. That's a rune I can lend things to. Maren's just through the ferns if you're after more forest work — mind the glowing mushrooms, she's VERY particular about those.\"",
+            "The rune stamps the basket and — well-raised thing that it suddenly is — hands it straight back. Sallow turns it over once, twice: stamped, whole, his again. Something that might be a smile happens somewhere in his beard.",
+            "\"In and back out. That's a rune I'd trust my best work to. Maren's just through the ferns if you're after more forest work — mind the glowing mushrooms, she's VERY particular about those.\"",
         ],
         hints: &[
             "When a function takes a `String` parameter, ownership moves *in*; when the function ends, whatever it still owns is dropped.",

@@ -2,9 +2,9 @@
 //   Quest 10: The Standard Baskets                ~ Whispering Woods ~
 // ══════════════════════════════════════════════════════════════════
 //
-//   Basket-weaver Briar: "Every basket comes past me for a
+//   Weaver Sallow: "Every basket comes past my table for a
 //   checking-stamp before it goes out. But my stamping-rune has
-//   developed a HABIT: baskets go in, baskets do not come out."
+//   picked up a HABIT: baskets go in, baskets do not come out."
 //
 //   ── YOUR TASK ──────────────────────────────────────────────────
 //   Ownership flows through functions in both directions:
@@ -39,7 +39,7 @@ fn main() {
     println!("Back from the stamping table: '{}'", morning_round());
 }
 
-// ─── Briar counts her baskets by hand (leave this part alone) ─────
+// ─── Sallow counts his baskets by hand (leave this part alone) ─────
 #[test]
 fn the_basket_comes_back_stamped() {
     assert_eq!(morning_round(), "Basket no. 3 [checked]");

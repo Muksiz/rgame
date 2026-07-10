@@ -8,8 +8,6 @@ first, then return to the roadmap. Remove a note once it's done.
 
 An animation should play when the logs clear and you are able to enter the Whispering Woods.
 
-I do not like Basket-weaver Briar's model or name. Completely redesign that character.
-
 I would like for there to be some sort of city in the Whispering Woods as well. It feels pretty weird how
 many NPC's are just scattered around the road in a forest. If there was a city with people living there
 it would make more sense. Find textures that fit the description of house in the dark forest.

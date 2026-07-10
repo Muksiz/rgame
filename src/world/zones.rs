@@ -674,7 +674,7 @@ fn whispering_woods() -> Zone {
     b.clearing(101, 46, 1);
     b.clearing(172, 28, 1);
     b.clearing(53, 20, 1); // Pip, playing near Wren's clearing
-    b.clearing(105, 46, 1); // Basket-weaver Briar, past the mushroom hollow
+    b.clearing(105, 46, 1); // Weaver Sallow, past the mushroom hollow
     b.clearing(200, 29, 1); // Hollow-keeper Yew, along the meadow road
     b.clearing(225, 31, 1); // Woodward Sable, near the mossy gate
 
@@ -802,12 +802,12 @@ fn whispering_woods() -> Zone {
                 ],
             },
             Npc {
-                name: "Basket-weaver Briar",
+                name: "Weaver Sallow",
                 pos: (105, 46),
                 quest: Some(10),
                 idle: &[
-                    "Every basket past my table for its stamp before it goes out. Lent is not lost — that's the whole trade.",
-                    "In and back out, stamped and counted, every single time now. Take an apple, go on.",
+                    "Cut in autumn, soak till spring, weave all summer. Willow keeps its own calendar. I just follow along.",
+                    "In and back out, stamped and counted, every time now. Fifty years I waited for a rune with manners. Worth it.",
                 ],
             },
             Npc {

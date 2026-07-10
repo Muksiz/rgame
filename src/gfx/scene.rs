@@ -1659,7 +1659,7 @@ fn npc_sprite(npc: &Npc) -> u16 {
         "Toll-keeper Hobb" => atlas::CAST_HOBB,
         "Cartographer Reed" => atlas::CAST_REED,
         "Pip" => atlas::CAST_PIP,
-        "Basket-weaver Briar" => atlas::CAST_BRIAR,
+        "Weaver Sallow" => atlas::CAST_SALLOW,
         "Hollow-keeper Yew" => atlas::CAST_YEW,
         "Woodward Sable" => atlas::CAST_SABLE,
         "Dockhand Fenn" => atlas::CAST_FENN,
