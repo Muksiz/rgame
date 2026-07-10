@@ -159,6 +159,19 @@ fn every_screen_renders() {
     render(&atlas, &app);
     app.banner = None;
 
+    // The gate-reveal cutscene: Emberwick cleared, the camera out at the
+    // gate, the fallen oak mid-roll — then the road standing open after.
+    app.zone_idx = 0;
+    app.player = app.zones[0].spawn;
+    for id in 1..=7 {
+        app.completed.insert(id);
+    }
+    app.gate_reveal = Some((0, app.tick.saturating_sub(20)));
+    render(&atlas, &app);
+    app.gate_reveal = None;
+    render(&atlas, &app); // cleared gates simply stand open
+    app.completed.clear();
+
     // Resting by a campfire, mid fade-in.
     app.screen = Screen::Resting {
         lore: 3,

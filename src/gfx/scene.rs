@@ -89,8 +89,28 @@ fn world_scene(fb: &mut Frame, atlas: &Atlas, app: &App) {
     // tile at a time.
     let (glide_x, glide_y) = player_glide(app);
     let (ppx, ppy) = (app.player.0 * t + glide_x, app.player.1 * t + glide_y);
-    let (cam_x, cam_y) =
-        camera::viewport_origin_px((ppx + t / 2, ppy + t / 2), fb.width(), fb.height());
+    let (mut cpx, mut cpy) = (ppx + t / 2, ppy + t / 2);
+    // While the gate-reveal cutscene runs, it borrows the camera: a glide
+    // out to the gate, a still watch while the barrier clears, and a glide
+    // home (see the REVEAL_* phases in app.rs).
+    if let Some((rz, started)) = app.gate_reveal
+        && rz == app.zone_idx
+        && let Some(gate) = app.zone().gate
+    {
+        use crate::app::{REVEAL_CLEAR, REVEAL_HOLD, REVEAL_PAN};
+        let f = app.tick.saturating_sub(started) as f32 + app.subtick;
+        let (pan, watch) = (REVEAL_PAN as f32, (REVEAL_CLEAR + REVEAL_HOLD) as f32);
+        let k = if f < pan {
+            smoothstep(f / pan)
+        } else if f < pan + watch {
+            1.0
+        } else {
+            1.0 - smoothstep((f - pan - watch) / pan)
+        };
+        cpx += (((gate.0 * t + t / 2) - cpx) as f32 * k) as i32;
+        cpy += (((gate.1 * t + t / 2) - cpy) as f32 * k) as i32;
+    }
+    let (cam_x, cam_y) = camera::viewport_origin_px((cpx, cpy), fb.width(), fb.height());
     let (ox, oy) = (cam_x.div_euclid(t), cam_y.div_euclid(t));
     let (sub_x, sub_y) = (cam_x.rem_euclid(t), cam_y.rem_euclid(t));
     let (view_w, view_h) = (
@@ -167,6 +187,7 @@ fn world_scene(fb: &mut Frame, atlas: &Atlas, app: &App) {
                 Tile::Rug => rug_detail(fb, zone, wx, wy, px, py, dl),
                 Tile::Runestone => stone_glimmer(fb, app, wx, wy, px, py),
                 Tile::Campfire => smoke_wisp(fb, px, py, app.tick, zone.seed ^ 0x5F0, dl),
+                Tile::Gate => gate_barrier(fb, atlas, app, wx, wy, px, py, dl),
                 _ => {}
             }
             if let Some(id) = overlay {
@@ -715,7 +736,10 @@ fn tile_sprites(
             };
             (base, Some(id))
         }
-        Tile::Gate => (atlas::PATH, Some(atlas::GATE)),
+        // The gate's barrier is drawn by `gate_barrier` in the world pass —
+        // it needs App state (cleared zones stand open, and the reveal
+        // cutscene rolls the barrier aside on screen).
+        Tile::Gate => (atlas::PATH, None),
         Tile::Sign => (ground, Some(atlas::SIGN)),
         Tile::Void => (atlas::VOID, None),
         // Rugs are drawn edge-aware by `rug_detail`, so any patch of them
@@ -1416,6 +1440,62 @@ fn building_shadow(
     };
     if walled(zone.tile(wx, wy - 1)) {
         fb.fill_a(px, py, TILE as i32, 3, shade((20, 24, 16), dl), 90);
+    }
+}
+
+fn smoothstep(t: f32) -> f32 {
+    let t = t.clamp(0.0, 1.0);
+    t * t * (3.0 - 2.0 * t)
+}
+
+/// The barrier on a Gate tile, and the moment it goes. A locked gate wears
+/// its barrier art; once the zone's quests are done the road stands visibly
+/// open — and at the instant it first opens, the gate-reveal cutscene rolls
+/// each barrier tile aside (away from the road) in a little kick of dust.
+#[allow(clippy::too_many_arguments)]
+fn gate_barrier(
+    fb: &mut Frame,
+    atlas: &Atlas,
+    app: &App,
+    wx: i32,
+    wy: i32,
+    px: i32,
+    py: i32,
+    dl: f32,
+) {
+    if !app.zone_cleared(app.zone_idx) {
+        fb.sprite(atlas, atlas::GATE, px, py, dl);
+        return;
+    }
+    // Cleared long ago (or the reveal already played): open road, no art.
+    let Some((rz, started)) = app.gate_reveal else {
+        return;
+    };
+    let Some(gate) = app.zone().gate else { return };
+    if rz != app.zone_idx {
+        return;
+    }
+    use crate::app::{REVEAL_CLEAR, REVEAL_PAN};
+    let f = app.tick.saturating_sub(started) as f32 + app.subtick;
+    let c = ((f - REVEAL_PAN as f32) / REVEAL_CLEAR as f32).clamp(0.0, 1.0);
+    if c >= 1.0 {
+        return;
+    }
+    // Roll away from the road's row, the middle tile joining the upward half.
+    let dir = match (wy - gate.1).signum() {
+        0 => -1,
+        d => d,
+    };
+    let off = (smoothstep(c) * 22.0) as i32 * dir;
+    fb.sprite(atlas, atlas::GATE, px, py + off, dl);
+    // Dust kicked up where the barrier is being worked loose.
+    if (0.02..0.92).contains(&c) {
+        for k in 0..3 {
+            let h = hash2(wx * 7 + k, wy, 0xD057 ^ (app.tick / 3) as u32);
+            let dx = (h % 14) as i32 + 1;
+            let dy = ((h >> 6) % 5) as i32 + (c * 5.0) as i32;
+            fb.set(px + dx, py + 12 - dy, shade((196, 186, 160), dl));
+        }
     }
 }
 

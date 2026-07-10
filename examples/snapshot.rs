@@ -4,7 +4,7 @@
 //!
 //! ```sh
 //! cargo run --example snapshot -- world 0 --tick 600 --out shot.png
-//! cargo run --example snapshot -- <title|charselect|world|dialogue|journal|casting|pass|fizzle|paused|resting|banner|epilogue|toast|encounter|caught|grimoire|book>
+//! cargo run --example snapshot -- <title|charselect|world|dialogue|journal|casting|pass|fizzle|paused|resting|banner|epilogue|toast|encounter|caught|grimoire|book|reveal>
 //! ```
 //!
 //! `world` takes an optional zone (0-3 overworld, 4+ interiors) and
@@ -134,6 +134,16 @@ fn main() {
         "grimoire" => {
             app.grimoire.extend([1, 2, 5, 11]);
             app.screen = Screen::Grimoire;
+        }
+        // The gate-reveal cutscene: the zone's quests done, the camera out
+        // at the gate, the barrier rolling aside. The reveal starts at tick
+        // 600, so `--tick 600..=660` scrubs through its phases (the default
+        // 600 is the first frame; ~625 is mid-clear).
+        "reveal" => {
+            for q in QUESTS.iter().filter(|q| q.zone == app.zone_idx) {
+                app.completed.insert(q.id);
+            }
+            app.gate_reveal = Some((app.zone_idx, tick.min(600)));
         }
         "book" => {
             let book = &rgame::content::books::BOOKS[1];

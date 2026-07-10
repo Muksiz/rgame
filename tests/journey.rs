@@ -140,6 +140,13 @@ fn the_whole_journey_can_be_walked() {
             }
             assert!(matches!(app.screen, Screen::World));
         } else if QUESTS[i + 1].zone != quest.zone {
+            // The road just opened, and the little gate-reveal cutscene has
+            // the camera — watch it play out before walking east (a lone
+            // impatient key would only skip it).
+            for _ in 0..rgame::app::REVEAL_TICKS {
+                app.on_tick();
+            }
+            assert!(app.gate_reveal.is_none(), "the gate reveal never ended");
             let gate = app.zone().gate.unwrap();
             let before = app.zone_idx;
             app.player = (gate.0 - 1, gate.1);

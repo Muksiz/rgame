@@ -6,8 +6,6 @@ Playtest findings, jotted here between sessions — anything from a one-pixel
 nit to "this feels wrong". These take priority over everything below: fix
 first, then return to the roadmap. Remove a note once it's done.
 
-An animation should play when the logs clear and you are able to enter the Whispering Woods.
-
 ---
 
 The first roadmap (interiors → items & gates → grass encounters → side

@@ -255,6 +255,14 @@ pub enum Screen {
     },
 }
 
+/// Gate-reveal cutscene timing, in 50ms ticks: the camera pans out to the
+/// gate, the barrier takes its time rolling aside, the open road holds for
+/// a beat, and the camera pans home. The renderer reads these phases.
+pub const REVEAL_PAN: u64 = 14;
+pub const REVEAL_CLEAR: u64 = 26;
+pub const REVEAL_HOLD: u64 = 10;
+pub const REVEAL_TICKS: u64 = REVEAL_PAN + REVEAL_CLEAR + REVEAL_HOLD + REVEAL_PAN;
+
 pub struct App {
     pub screen: Screen,
     pub tick: u64,
@@ -312,6 +320,12 @@ pub struct App {
     pub toast: Option<(String, u64)>,
     /// A zone-name banner that slides in when you arrive somewhere new.
     pub banner: Option<(String, u64)>,
+    /// The little cutscene when a zone's gate first opens: (zone index,
+    /// start tick). The camera glides out to the gate, the barrier rolls
+    /// aside, and the view glides home; any key skips it. Cosmetic and
+    /// ephemeral — never saved, and an old save simply finds its cleared
+    /// gates already standing open.
+    pub gate_reveal: Option<(usize, u64)>,
     /// Typewriter reveal speed, chosen in the options: 0 slow, 1 normal, 2 fast.
     pub text_speed: usize,
     pub cast_rx: Option<Receiver<Outcome>>,
@@ -349,6 +363,7 @@ impl App {
             flags: BTreeSet::new(),
             toast: None,
             banner: None,
+            gate_reveal: None,
             text_speed: 1,
             cast_rx: None,
             has_save: save::exists(),
@@ -475,6 +490,11 @@ impl App {
             && self.tick > *until
         {
             self.banner = None;
+        }
+        if let Some((_, started)) = self.gate_reveal
+            && self.tick.saturating_sub(started) >= REVEAL_TICKS
+        {
+            self.gate_reveal = None;
         }
         let step = self.reveal_step();
         if let Screen::Dialogue(d) = &mut self.screen {
@@ -719,6 +739,12 @@ impl App {
     }
 
     fn world_key(&mut self, code: Key) {
+        // While the gate-reveal cutscene has the camera, the first key
+        // simply hands it back — nobody is made to watch.
+        if self.gate_reveal.is_some() {
+            self.gate_reveal = None;
+            return;
+        }
         match code {
             Key::Up | Key::Char('k') => self.try_move(0, -1),
             Key::Down | Key::Char('j') => self.try_move(0, 1),
@@ -1319,6 +1345,9 @@ impl App {
                 } else if self.zone_cleared(self.zone_idx) && self.zone().gate.is_some() {
                     let msg = self.zone().unlock_msg;
                     self.toast(msg);
+                    // And the road visibly opens: the camera glides out to
+                    // the gate and the barrier rolls aside on screen.
+                    self.gate_reveal = Some((self.zone_idx, self.tick));
                 }
             }
             _ => self.screen = Screen::World,
@@ -1551,6 +1580,43 @@ mod tests {
         app.completed.extend([1, 2, 3, 4, 5, 6, 7]);
         assert!(app.zone_cleared(0));
         assert!(!app.zone_cleared(1));
+    }
+
+    #[test]
+    fn the_road_east_opens_with_a_little_show() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        let spawn = app.player;
+        // The last Emberwick errand passes; closing the success dialogue is
+        // the moment the fallen oak rolls aside on screen.
+        app.completed.extend(1..=7);
+        app.screen = Screen::Dialogue(Dialogue::new(
+            "Watchman Fitch",
+            vec!["Clean and honest, that.".into()],
+            DialogueKind::Success(7),
+        ));
+        app.on_key(Key::Enter); // finish the typewriter
+        app.on_key(Key::Enter); // close the dialogue
+        assert!(matches!(app.screen, Screen::World));
+        let (zone, started) = app.gate_reveal.expect("the unlock plays a gate reveal");
+        assert_eq!(zone, 0);
+
+        // Left alone, the little show plays itself out...
+        for _ in 0..REVEAL_TICKS {
+            assert!(app.gate_reveal.is_some());
+            app.on_tick();
+        }
+        assert!(
+            app.gate_reveal.is_none(),
+            "the reveal outstayed its welcome"
+        );
+
+        // ...and if the player is impatient, the first key skips it (and is
+        // not also a step — nobody walks off mid-cutscene by accident).
+        app.gate_reveal = Some((0, started));
+        app.on_key(Key::Left);
+        assert!(app.gate_reveal.is_none(), "any key hands the camera back");
+        assert_eq!(app.player, spawn, "the skipping key is swallowed");
     }
 
     #[test]
