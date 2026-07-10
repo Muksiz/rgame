@@ -38,10 +38,19 @@ pub struct SaveData {
     /// to the middle setting.
     #[serde(default = "default_text_speed")]
     pub text_speed: usize,
+    /// The sound option (0 off, 1 quiet, 2 full). Old scrolls default to
+    /// full — the world sounded like this all along; they just predate the
+    /// dial.
+    #[serde(default = "default_sound_level")]
+    pub sound_level: usize,
 }
 
 fn default_text_speed() -> usize {
     1
+}
+
+fn default_sound_level() -> usize {
+    2
 }
 
 pub fn exists() -> bool {
@@ -81,6 +90,7 @@ mod tests {
             play_ticks: 9001,
             day_ticks: 12345,
             text_speed: 2,
+            sound_level: 1,
         };
         let json = serde_json::to_string(&data).unwrap();
         let back: SaveData = serde_json::from_str(&json).unwrap();
@@ -98,5 +108,6 @@ mod tests {
         assert_eq!(back.player_char, 0);
         assert!(back.player_name.is_empty());
         assert_eq!(back.text_speed, 1, "old scrolls default to normal speed");
+        assert_eq!(back.sound_level, 2, "old scrolls default to full sound");
     }
 }

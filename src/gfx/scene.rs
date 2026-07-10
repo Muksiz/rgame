@@ -2579,10 +2579,17 @@ fn fizzle_panel(fb: &mut Frame, app: &App, title: &str, lead: &str, output: &str
 // ── rest, credits, title ───────────────────────────────────────────────────
 
 fn paused(fb: &mut Frame, app: &App, selected: usize) {
-    let (ix, iy, _iw, _) = centered_panel(fb, 320, 112, "A moment's rest");
+    let (ix, iy, _iw, _) = centered_panel(fb, 320, 132, "A moment's rest");
     let speed = ["Slow", "Normal", "Fast"][app.text_speed.min(2)];
     let speed_label = format!("Text speed: < {speed} >");
-    let labels = ["Back to the road", &speed_label, "Save & sleep (quit)"];
+    let sound = ["Off", "Quiet", "Full"][app.sound_level.min(2)];
+    let sound_label = format!("Sound: < {sound} >");
+    let labels = [
+        "Back to the road",
+        &speed_label,
+        &sound_label,
+        "Save & sleep (quit)",
+    ];
     for (i, label) in labels.iter().enumerate() {
         let on = i == selected;
         let c = if on { GOLD } else { DIM };

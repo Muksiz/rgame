@@ -147,31 +147,31 @@ their own headings further down.
   (https://opengameart.org/content/512-sound-effects-8-bit-style): a menu
   blip, a fanfare and a soft error tone.
 
-- `audio/shelf/` — the rest of both Junkala chiptune packs, vendored but not
-  yet wired to anything: `chiptune-adventures-stage-2.ogg` ("Stage 2", the one
-  *Chiptune Adventures* track not yet in the game, unmodified) and
-  `chiptunes-action-level-1/2/3.ogg` + `chiptunes-action-ending.ogg` (the
-  four unused *5 Chiptunes (Action)* tracks, re-encoded from the pack's WAVs
-  to Ogg Vorbis q5, otherwise unmodified). First stop for an encounter sting
-  or a campfire-rest theme.
+- `audio/shelf/` — the rest of both Junkala chiptune packs. Two now play:
+  `chiptune-adventures-stage-2.ogg` ("Stage 2", unmodified) is the campfire
+  rest theme, and `chiptunes-action-level-1.ogg` is the wild-rune encounter
+  sting. Still on the shelf: `chiptunes-action-level-2/3.ogg` and
+  `chiptunes-action-ending.ogg` (re-encoded from the pack's WAVs to Ogg
+  Vorbis q5, otherwise unmodified).
 
 ### Kenney audio packs
 
 `kenney/audio/` vendors three of **Kenney's** audio packs in full (all
-**CC0**, each folder carries the pack's own `License.txt`), none wired in
-yet:
+**CC0**, each folder carries the pack's own `License.txt`), and the foley
+layer now plays from them:
 
 - `kenney/audio/rpg-audio/` — *RPG Audio*
-  (https://kenney.nl/assets/rpg-audio): footsteps, creaking doors, chest
-  handles, book flips, coins, drinking — door warps, the cellar chest,
-  keepsake handovers.
+  (https://kenney.nl/assets/rpg-audio): `footstep00–09.ogg` are the
+  terrain footsteps (grass, earth, sand, wood, stone — two takes each),
+  `doorOpen_2.ogg` creaks on every door warp, `creak2.ogg` is the cellar
+  chest's groan, `handleCoins.ogg` chimes when a keepsake changes hands,
+  and `bookFlip2.ogg` turns the dialogue pages.
 - `kenney/audio/ui-audio/` — *UI Audio*
-  (https://kenney.nl/assets/ui-audio): clicks, rollovers and switches for
-  menu and confirm blips.
+  (https://kenney.nl/assets/ui-audio): `click1.ogg` is the menu blip.
 - `kenney/audio/music-jingles/` — *Music Jingles*
-  (https://kenney.nl/assets/music-jingles): 85 short fanfares in 8-bit,
-  pizzicato, sax and steel flavors — quest passes, runes caught, runestones
-  found; the softer ones suit fizzles.
+  (https://kenney.nl/assets/music-jingles): `jingles_STEEL07.ogg` sparkles
+  when a wild rune joins the grimoire, `jingles_NES00.ogg` gleams for a
+  found runestone. The other 83 fanfares stay on the shelf.
 
 ### Ninja Adventure audio
 

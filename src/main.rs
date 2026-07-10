@@ -8,7 +8,7 @@
 use macroquad::audio::{self, PlaySoundParams, Sound};
 use macroquad::prelude as mq;
 
-use rgame::app::{App, Key, Screen};
+use rgame::app::{App, Key, Screen, SoundEvent, Terrain};
 use rgame::checker::Outcome;
 use rgame::gfx::{self, Atlas, FB_H, FB_W, Frame};
 
@@ -134,6 +134,61 @@ static SFX_CAST: &[u8] = include_bytes!("../assets/audio/sfx/cast.ogg");
 static SFX_PASS: &[u8] = include_bytes!("../assets/audio/sfx/pass.ogg");
 static SFX_FIZZLE: &[u8] = include_bytes!("../assets/audio/sfx/fizzle.ogg");
 
+// ── foley & jingles (see assets/CREDITS.md) ────────────────────────────────
+// Footsteps by terrain — two takes each, alternated so a walk never
+// metronomes. Kenney *RPG Audio*, CC0.
+static STEPS_SOFT: [&[u8]; 2] = [
+    include_bytes!("../assets/kenney/audio/rpg-audio/footstep00.ogg"),
+    include_bytes!("../assets/kenney/audio/rpg-audio/footstep01.ogg"),
+];
+static STEPS_EARTH: [&[u8]; 2] = [
+    include_bytes!("../assets/kenney/audio/rpg-audio/footstep02.ogg"),
+    include_bytes!("../assets/kenney/audio/rpg-audio/footstep03.ogg"),
+];
+static STEPS_SAND: [&[u8]; 2] = [
+    include_bytes!("../assets/kenney/audio/rpg-audio/footstep04.ogg"),
+    include_bytes!("../assets/kenney/audio/rpg-audio/footstep05.ogg"),
+];
+static STEPS_WOOD: [&[u8]; 2] = [
+    include_bytes!("../assets/kenney/audio/rpg-audio/footstep06.ogg"),
+    include_bytes!("../assets/kenney/audio/rpg-audio/footstep07.ogg"),
+];
+static STEPS_STONE: [&[u8]; 2] = [
+    include_bytes!("../assets/kenney/audio/rpg-audio/footstep08.ogg"),
+    include_bytes!("../assets/kenney/audio/rpg-audio/footstep09.ogg"),
+];
+// The world's small noises (Kenney *RPG Audio*, CC0): door creaks on warp,
+// the cellar chest's groan, a coin-ish chime for a keepsake, page turns.
+static SFX_DOOR: &[u8] = include_bytes!("../assets/kenney/audio/rpg-audio/doorOpen_2.ogg");
+static SFX_CHEST: &[u8] = include_bytes!("../assets/kenney/audio/rpg-audio/creak2.ogg");
+static SFX_COINS: &[u8] = include_bytes!("../assets/kenney/audio/rpg-audio/handleCoins.ogg");
+static SFX_PAGE: &[u8] = include_bytes!("../assets/kenney/audio/rpg-audio/bookFlip2.ogg");
+// Menu blips (Kenney *UI Audio*, CC0).
+static SFX_BLIP: &[u8] = include_bytes!("../assets/kenney/audio/ui-audio/click1.ogg");
+// Jingles at the milestones (Kenney *Music Jingles*, CC0): a steel-drum
+// sparkle when a rune joins the grimoire, an 8-bit gleam for a runestone.
+static SFX_RUNE: &[u8] =
+    include_bytes!("../assets/kenney/audio/music-jingles/Steel jingles/jingles_STEEL07.ogg");
+static SFX_STONE: &[u8] =
+    include_bytes!("../assets/kenney/audio/music-jingles/8-Bit jingles/jingles_NES00.ogg");
+// The encounter's sting and the campfire's rest theme — the shelf's unused
+// Junkala tracks (CC0), looped softly for as long as their screens hold.
+static ENCOUNTER_MUSIC: &[u8] =
+    include_bytes!("../assets/audio/shelf/chiptunes-action-level-1.ogg");
+static REST_MUSIC: &[u8] = include_bytes!("../assets/audio/shelf/chiptune-adventures-stage-2.ogg");
+
+const STEP_VOLUME: f32 = 0.22;
+const FOLEY_VOLUME: f32 = 0.55;
+const BLIP_VOLUME: f32 = 0.30;
+const JINGLE_VOLUME: f32 = 0.60;
+const ENCOUNTER_VOLUME: f32 = 0.30;
+const REST_VOLUME: f32 = 0.35;
+
+/// The rest menu's sound option, as a master gain: off, quiet, full.
+fn sound_gain(level: usize) -> f32 {
+    [0.0, 0.45, 1.0][level.min(2)]
+}
+
 /// A one-shot cue, raised on the frame the screen first shows casting/pass/
 /// fizzle and silent otherwise — `on_key`/`on_tick` never touch audio, so the
 /// shell derives cues by diffing `app.screen` across frames.
@@ -244,6 +299,32 @@ async fn main() {
     let sfx_fizzle = audio::load_sound_from_bytes(SFX_FIZZLE)
         .await
         .expect("fizzle sfx is baked into the binary");
+    // The foley shelf: footsteps per terrain, the world's small noises, the
+    // menu blip and the milestone jingles — all baked into the binary.
+    async fn sfx(bytes: &'static [u8]) -> Sound {
+        audio::load_sound_from_bytes(bytes)
+            .await
+            .expect("foley is baked into the binary")
+    }
+    let mut steps: Vec<(Terrain, [Sound; 2])> = Vec::new();
+    for (terrain, takes) in [
+        (Terrain::Soft, STEPS_SOFT),
+        (Terrain::Earth, STEPS_EARTH),
+        (Terrain::Sand, STEPS_SAND),
+        (Terrain::Wood, STEPS_WOOD),
+        (Terrain::Stone, STEPS_STONE),
+    ] {
+        steps.push((terrain, [sfx(takes[0]).await, sfx(takes[1]).await]));
+    }
+    let sfx_door = sfx(SFX_DOOR).await;
+    let sfx_chest = sfx(SFX_CHEST).await;
+    let sfx_coins = sfx(SFX_COINS).await;
+    let sfx_page = sfx(SFX_PAGE).await;
+    let sfx_blip = sfx(SFX_BLIP).await;
+    let sfx_rune = sfx(SFX_RUNE).await;
+    let sfx_stone = sfx(SFX_STONE).await;
+    let encounter_music = sfx(ENCOUNTER_MUSIC).await;
+    let rest_music = sfx(REST_MUSIC).await;
 
     // The currently-looping overworld track, as (zone index, is_night) — the
     // night flag is part of the identity so dusk and dawn swap the loop even
@@ -252,7 +333,16 @@ async fn main() {
     let mut playing_theme = false;
     let mut playing_title = false;
     let mut playing_hearth = false;
+    let mut playing_encounter = false;
+    let mut playing_rest = false;
     let mut cue = Cue::None;
+    // Foley bookkeeping: footsteps land every *other* step, and the two
+    // takes of each surface alternate so a walk never metronomes.
+    let mut step_flip = false;
+    let mut step_alt = false;
+    // The sound option, as a master gain over every loop and one-shot.
+    // Re-leveled live when the rest menu's dial moves.
+    let mut gain = sound_gain(app.sound_level);
     // When the next owl hoot is due (`mq::get_time()` seconds); `None` while
     // it isn't night, so the first night schedules a fresh call.
     let mut owl_at: Option<f64> = None;
@@ -385,6 +475,73 @@ async fn main() {
         // Where we are inside the current tick, for the renderer's step-glide.
         app.subtick = (tick_acc / TICK_SECS).clamp(0.0, 1.0);
 
+        // The sound dial (rest menu): when it turns, re-level every live
+        // loop so the change lands mid-note instead of at the next song.
+        let next_gain = sound_gain(app.sound_level);
+        if next_gain != gain {
+            gain = next_gain;
+            if playing_title {
+                audio::set_sound_volume(&title_music, MUSIC_VOLUME * gain);
+            }
+            if let Some((z, night)) = playing_zone {
+                let (sound, volume) = if night {
+                    (&night_music[z], NIGHT_VOLUME)
+                } else {
+                    (&zone_music[z], DAY_MUSIC_VOLUME)
+                };
+                audio::set_sound_volume(sound, volume * gain);
+            }
+            if playing_theme {
+                audio::set_sound_volume(&night_theme, NIGHT_THEME_VOLUME * gain);
+            }
+            if playing_hearth {
+                audio::set_sound_volume(&hearth_loop, HEARTH_VOLUME * gain);
+            }
+            if playing_encounter {
+                audio::set_sound_volume(&encounter_music, ENCOUNTER_VOLUME * gain);
+            }
+            if playing_rest {
+                audio::set_sound_volume(&rest_music, REST_VOLUME * gain);
+            }
+        }
+
+        // The lib narrates, the shell speaks: every queued sound event
+        // becomes audio here and nowhere else. Drained even with the dial
+        // off, so nothing piles up.
+        for event in app.drain_sounds() {
+            let played = match event {
+                SoundEvent::Stepped(terrain) => {
+                    step_flip = !step_flip;
+                    if !step_flip {
+                        continue; // quiet feet: every other step sounds
+                    }
+                    step_alt = !step_alt;
+                    steps
+                        .iter()
+                        .find(|(t, _)| *t == terrain)
+                        .map(|(_, takes)| (&takes[step_alt as usize], STEP_VOLUME))
+                }
+                SoundEvent::DoorUsed => Some((&sfx_door, FOLEY_VOLUME)),
+                SoundEvent::ChestOpened => Some((&sfx_chest, FOLEY_VOLUME)),
+                SoundEvent::KeepsakeGiven => Some((&sfx_coins, FOLEY_VOLUME)),
+                SoundEvent::PageTurned => Some((&sfx_page, 0.4)),
+                SoundEvent::MenuMoved => Some((&sfx_blip, BLIP_VOLUME)),
+                SoundEvent::RuneCaught => Some((&sfx_rune, JINGLE_VOLUME)),
+                SoundEvent::StoneFound => Some((&sfx_stone, JINGLE_VOLUME)),
+            };
+            if let Some((sound, volume)) = played
+                && gain > 0.0
+            {
+                audio::play_sound(
+                    sound,
+                    PlaySoundParams {
+                        looped: false,
+                        volume: volume * gain,
+                    },
+                );
+            }
+        }
+
         // Title theme: loops through the title and char-select screens, then
         // gives way to zone music once the journey actually starts.
         let in_menus = matches!(app.screen, Screen::Title { .. } | Screen::CharSelect { .. });
@@ -394,7 +551,7 @@ async fn main() {
                     &title_music,
                     PlaySoundParams {
                         looped: true,
-                        volume: MUSIC_VOLUME,
+                        volume: MUSIC_VOLUME * gain,
                     },
                 );
             } else {
@@ -429,7 +586,7 @@ async fn main() {
                     sound,
                     PlaySoundParams {
                         looped: true,
-                        volume,
+                        volume: volume * gain,
                     },
                 );
             }
@@ -446,7 +603,7 @@ async fn main() {
                     &hearth_loop,
                     PlaySoundParams {
                         looped: true,
-                        volume: HEARTH_VOLUME,
+                        volume: HEARTH_VOLUME * gain,
                     },
                 );
             } else {
@@ -465,13 +622,49 @@ async fn main() {
                     &night_theme,
                     PlaySoundParams {
                         looped: true,
-                        volume: NIGHT_THEME_VOLUME,
+                        volume: NIGHT_THEME_VOLUME * gain,
                     },
                 );
             } else {
                 audio::stop_sound(&night_theme);
             }
             playing_theme = want_theme;
+        }
+
+        // A wild rune stirring gets its sting: an urgent little chiptune
+        // looped under the whole encounter, gone the moment it resolves.
+        let want_encounter = matches!(app.screen, Screen::Encounter { .. });
+        if want_encounter != playing_encounter {
+            if want_encounter {
+                audio::play_sound(
+                    &encounter_music,
+                    PlaySoundParams {
+                        looped: true,
+                        volume: ENCOUNTER_VOLUME * gain,
+                    },
+                );
+            } else {
+                audio::stop_sound(&encounter_music);
+            }
+            playing_encounter = want_encounter;
+        }
+
+        // And the campfire gets its rest theme, playing softly for as long
+        // as the embers hold the screen.
+        let want_rest = matches!(app.screen, Screen::Resting { .. });
+        if want_rest != playing_rest {
+            if want_rest {
+                audio::play_sound(
+                    &rest_music,
+                    PlaySoundParams {
+                        looped: true,
+                        volume: REST_VOLUME * gain,
+                    },
+                );
+            } else {
+                audio::stop_sound(&rest_music);
+            }
+            playing_rest = want_rest;
         }
 
         // A distant owl, at night only: a soft one-shot fired at randomized
@@ -487,7 +680,7 @@ async fn main() {
                         &sfx_owl,
                         PlaySoundParams {
                             looped: false,
-                            volume: OWL_VOLUME,
+                            volume: OWL_VOLUME * gain,
                         },
                     );
                     owl_at = Some(now + macroquad::rand::gen_range(20.0, 55.0));
@@ -513,7 +706,7 @@ async fn main() {
                     sound,
                     PlaySoundParams {
                         looped: false,
-                        volume: SFX_VOLUME,
+                        volume: SFX_VOLUME * gain,
                     },
                 );
             }

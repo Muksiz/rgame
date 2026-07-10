@@ -244,7 +244,27 @@ the road west to east with the gates drawn as the seams they are.
 Invariants (to test): the map screen renders for every combination of
 visited-zone flags; `m` round-trips back to the world; snapshot scene added.
 
-## 5. Foley & jingles
+## 5. Foley & jingles — DONE
+
+**Shipped**: the event queue exactly as designed — `SoundEvent` in the lib
+(`Stepped(Terrain)`, `DoorUsed`, `ChestOpened`, `KeepsakeGiven`,
+`RuneCaught`, `StoneFound`, `MenuMoved`, `PageTurned`), pushed as things
+happen and drained by the shell once a frame; the lib and tests stay
+silent, and tests now assert that a road step sounds like earth and a
+meadow step sounds soft without hearing a thing. Footsteps land every
+other step, two takes per surface (grass/earth/sand/wood/stone, with
+paths hardening to stone in the lightless places), doors creak on warp,
+the cellar chest groans, keepsakes chime like coins, dialogue pages flip,
+menus blip, a steel-drum sparkle greets a caught rune and an 8-bit gleam
+a found runestone (Kenney *RPG Audio* / *UI Audio* / *Music Jingles*).
+The two unused Junkala tracks found their homes: "Stage 2" is the
+campfire rest theme, "Level 1" the encounter sting, looped softly under
+their screens. A sound dial (off/quiet/full) joined text speed in the
+rest menu, saved behind `#[serde(default)]` and re-leveling live loops
+mid-note. The existing cast/pass/fizzle cues were kept as they are —
+they're already tuned, and doubling the pass with a second fanfare read
+as noise. All sources credited in `assets/CREDITS.md`. Original notes
+follow.
 
 The world has music; now it gets *sounds*. The shell derives all audio by
 diffing `App` state across frames, which was fine for screens and zones but

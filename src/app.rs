@@ -258,6 +258,61 @@ pub enum Screen {
     },
 }
 
+/// What the ground underfoot is made of — the shell picks footstep foley
+/// by this; the lib only names it.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Terrain {
+    /// Grass, flowers, forest floor — the soft world.
+    Soft,
+    /// Packed-earth paths and roads.
+    Earth,
+    /// Beach and riverbank sand.
+    Sand,
+    /// Floorboards, bridges, piers, thresholds.
+    Wood,
+    /// Cobbles, cave rock, cellar stone.
+    Stone,
+}
+
+/// Semantic sound events: the game pushes them as things happen, the shell
+/// drains them (`App::drain_sounds`) into actual audio once a frame. The
+/// lib and the tests stay silent and window-free — tests can assert that
+/// walking on wood *sounds* different from grass without hearing a thing.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum SoundEvent {
+    /// A step landed on this kind of ground.
+    Stepped(Terrain),
+    /// A doorway (or the cave mouth) was walked through.
+    DoorUsed,
+    /// The cellar chest finally gave in.
+    ChestOpened,
+    /// A keepsake changed hands at a quest's end.
+    KeepsakeGiven,
+    /// A wild rune joined the grimoire.
+    RuneCaught,
+    /// A runestone's rune was rubbed into the journal.
+    StoneFound,
+    /// A menu selection moved (title, rest menu, encounter answers…).
+    MenuMoved,
+    /// A dialogue page turned.
+    PageTurned,
+}
+
+/// The footstep flavor of a tile. Paths harden to stone in the lightless
+/// places (the cave and the cellar floor are hewn rock, not garden earth).
+fn terrain_of(tile: Tile, dark_zone: bool) -> Terrain {
+    match tile {
+        Tile::Path if dark_zone => Terrain::Stone,
+        Tile::Path => Terrain::Earth,
+        Tile::Sand => Terrain::Sand,
+        Tile::Floor | Tile::Bridge | Tile::Pier | Tile::Rug | Tile::Door | Tile::FacadeDoor(_) => {
+            Terrain::Wood
+        }
+        Tile::Plaza | Tile::CaveMouth => Terrain::Stone,
+        _ => Terrain::Soft,
+    }
+}
+
 /// Gate-reveal cutscene timing, in 50ms ticks: the camera pans out to the
 /// gate, the barrier takes its time rolling aside, the open road holds for
 /// a beat, and the camera pans home. The renderer reads these phases.
@@ -333,6 +388,12 @@ pub struct App {
     /// (name, zone, tile). `apply_schedule` re-derives live positions from
     /// this plus the hour and the active quest — derived, never stored.
     schedule_home: Vec<(&'static str, usize, (i32, i32))>,
+    /// Sound events queued since the shell last drained them. The lib never
+    /// plays audio; it only says what happened (see `SoundEvent`).
+    sounds: Vec<SoundEvent>,
+    /// The sound option from the rest menu: 0 off, 1 quiet, 2 full. The
+    /// shell scales every loop and one-shot by it.
+    pub sound_level: usize,
     /// Typewriter reveal speed, chosen in the options: 0 slow, 1 normal, 2 fast.
     pub text_speed: usize,
     pub cast_rx: Option<Receiver<Outcome>>,
@@ -377,6 +438,8 @@ impl App {
             banner: None,
             gate_reveal: None,
             schedule_home,
+            sounds: Vec::new(),
+            sound_level: 2,
             text_speed: 1,
             cast_rx: None,
             has_save: save::exists(),
@@ -568,6 +631,21 @@ impl App {
         self.text_speed = (self.text_speed + 1) % REVEAL_SPEEDS.len();
     }
 
+    fn cycle_sound_level(&mut self) {
+        self.sound_level = (self.sound_level + 1) % 3;
+    }
+
+    /// Queue a sound for the shell; the lib itself stays silent.
+    fn sound(&mut self, e: SoundEvent) {
+        self.sounds.push(e);
+    }
+
+    /// Hand over (and clear) the queued sound events — the shell calls this
+    /// once a frame and turns them into audio.
+    pub fn drain_sounds(&mut self) -> Vec<SoundEvent> {
+        std::mem::take(&mut self.sounds)
+    }
+
     // ── ticking ────────────────────────────────────────────────────────────
 
     pub fn on_tick(&mut self) {
@@ -687,9 +765,11 @@ impl App {
         match code {
             Key::Up | Key::Char('k') => {
                 *selected = (*selected + items - 1) % items;
+                self.sounds.push(SoundEvent::MenuMoved);
             }
             Key::Down | Key::Char('j') => {
                 *selected = (*selected + 1) % items;
+                self.sounds.push(SoundEvent::MenuMoved);
             }
             Key::Enter | Key::Char(' ') | Key::Char('e') => {
                 // With a save: [Continue, New Journey, Quit]; without: [New Journey, Quit].
@@ -722,8 +802,14 @@ impl App {
         match code {
             // Left/right leaf through the roster (arrows only — the letter keys
             // are busy spelling your name).
-            Key::Left | Key::Up => *idx = (*idx + n - 1) % n,
-            Key::Right | Key::Down => *idx = (*idx + 1) % n,
+            Key::Left | Key::Up => {
+                *idx = (*idx + n - 1) % n;
+                self.sounds.push(SoundEvent::MenuMoved);
+            }
+            Key::Right | Key::Down => {
+                *idx = (*idx + 1) % n;
+                self.sounds.push(SoundEvent::MenuMoved);
+            }
             Key::Backspace => {
                 name.pop();
             }
@@ -807,6 +893,7 @@ impl App {
         self.play_ticks = data.play_ticks;
         self.day_ticks = data.day_ticks % DAY_LEN;
         self.text_speed = data.text_speed.min(REVEAL_SPEEDS.len() - 1);
+        self.sound_level = data.sound_level.min(2);
         let (x, y) = data.pos;
         self.player = if in_bounds((x, y)) && self.zone().tile(x, y).walkable() {
             (x, y)
@@ -841,6 +928,7 @@ impl App {
             play_ticks: self.play_ticks,
             day_ticks: self.day_ticks,
             text_speed: self.text_speed,
+            sound_level: self.sound_level,
         };
         match save::save(&data) {
             Ok(()) => self.has_save = true,
@@ -885,14 +973,17 @@ impl App {
             EncounterPhase::Asking => match code {
                 Key::Up | Key::Char('k') => {
                     *selected = (*selected + 2) % 3;
+                    self.sounds.push(SoundEvent::MenuMoved);
                 }
                 Key::Down | Key::Char('j') => {
                     *selected = (*selected + 1) % 3;
+                    self.sounds.push(SoundEvent::MenuMoved);
                 }
                 Key::Enter | Key::Char(' ') | Key::Char('e') => {
                     if *selected == wilds::wild(rune_id).answer {
                         *phase = EncounterPhase::Caught;
                         self.grimoire.insert(rune_id);
+                        self.sounds.push(SoundEvent::RuneCaught);
                     } else {
                         *phase = EncounterPhase::Fizzled;
                     }
@@ -970,6 +1061,7 @@ impl App {
             self.zone_idx = warp.to_zone;
             self.player = warp.to_pos;
             self.companion_snap();
+            self.sound(SoundEvent::DoorUsed);
             self.show_banner();
             if self.zone().interior && !zones::needs_light(self.zone_idx) {
                 let name = self.zone().name;
@@ -1001,6 +1093,10 @@ impl App {
             self.player = target;
             self.walked_at = self.tick;
             self.walk_subtick = self.subtick;
+            self.sound(SoundEvent::Stepped(terrain_of(
+                tile,
+                zones::needs_light(self.zone_idx),
+            )));
             if tile == Tile::TallGrass && !self.zone().interior {
                 self.rustle_grass();
             }
@@ -1230,8 +1326,10 @@ impl App {
             return;
         }
         self.set_flag(sides::CHEST_OPENED);
+        self.sound(SoundEvent::ChestOpened);
         let id = stones::RUNESTONES.len() as u8; // the Keystone, the eighth
         self.flags.insert(sides::runestone_flag(id));
+        self.sound(SoundEvent::StoneFound);
         let stone = stones::stone(id);
         let pages = vec![
             "Old Nettle's rusted key turns with a click the cellar has waited years to hear. Inside, wrapped in oilcloth: a runestone.".to_string(),
@@ -1252,6 +1350,7 @@ impl App {
             return;
         }
         self.flags.insert(flag);
+        self.sound(SoundEvent::StoneFound);
         let stone = stones::stone(id);
         let pages = vec![stone.legend.to_string(), self.rubbing_line()];
         self.screen = Screen::Dialogue(Dialogue::new(stone.name, pages, DialogueKind::Stone));
@@ -1419,6 +1518,7 @@ impl App {
                 } else if d.page + 1 < d.pages.len() {
                     d.page += 1;
                     d.revealed = 0;
+                    self.sounds.push(SoundEvent::PageTurned);
                 } else {
                     self.end_dialogue();
                 }
@@ -1456,6 +1556,10 @@ impl App {
             }
             DialogueKind::Success(qid) => {
                 self.screen = Screen::World;
+                if items::reward(qid).is_some() {
+                    // A keepsake changes hands with the thanks.
+                    self.sound(SoundEvent::KeepsakeGiven);
+                }
                 if qid == QUESTS.len() as u8 {
                     self.screen = Screen::Epilogue { page: 0 };
                 } else if self.zone_cleared(self.zone_idx) && self.zone().gate.is_some() {
@@ -1535,16 +1639,23 @@ impl App {
     }
 
     fn paused_key(&mut self, code: Key) {
-        // The rest menu: [Back to the road, Text speed, Save & sleep].
+        // The rest menu: [Back to the road, Text speed, Sound, Save & sleep].
         let Screen::Paused { selected } = &self.screen else {
             return;
         };
         let mut sel = *selected;
         match code {
-            Key::Up | Key::Char('k') => sel = (sel + 2) % 3,
-            Key::Down | Key::Char('j') => sel = (sel + 1) % 3,
-            // Left/right nudges the text-speed toggle without leaving the menu.
+            Key::Up | Key::Char('k') => {
+                sel = (sel + 3) % 4;
+                self.sound(SoundEvent::MenuMoved);
+            }
+            Key::Down | Key::Char('j') => {
+                sel = (sel + 1) % 4;
+                self.sound(SoundEvent::MenuMoved);
+            }
+            // Left/right nudges the toggles without leaving the menu.
             Key::Left | Key::Right if sel == 1 => self.cycle_text_speed(),
+            Key::Left | Key::Right if sel == 2 => self.cycle_sound_level(),
             Key::Esc => {
                 self.screen = Screen::World;
                 return;
@@ -1555,6 +1666,7 @@ impl App {
                     return;
                 }
                 1 => self.cycle_text_speed(),
+                2 => self.cycle_sound_level(),
                 _ => {
                     self.autosave();
                     self.should_quit = true;
@@ -1710,6 +1822,89 @@ mod tests {
         app.completed.extend([1, 2, 3, 4, 5, 6, 7]);
         assert!(app.zone_cleared(0));
         assert!(!app.zone_cleared(1));
+    }
+
+    #[test]
+    fn walking_sounds_like_the_ground_underfoot() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        app.drain_sounds(); // whatever setup queued, clear it
+        // Emberwick's spawn sits on the west road: stepping east lands on
+        // packed earth, and the event says so — without a speaker in sight.
+        app.player = app.zones[0].spawn;
+        app.try_move(1, 0);
+        assert_eq!(
+            app.drain_sounds(),
+            vec![SoundEvent::Stepped(Terrain::Earth)],
+            "a road step should sound like earth"
+        );
+        // A gate-crossing puts us just before Emberwick's east arch; find a
+        // grass tile to hear the soft world instead.
+        let zone = &app.zones[0];
+        let (gx, gy) = (0..MAP_H)
+            .flat_map(|y| (0..MAP_W).map(move |x| (x, y)))
+            .find(|&(x, y)| zone.tile(x, y).walkable() && zone.tile(x + 1, y) == Tile::Grass)
+            .expect("grass next to standing room");
+        app.player = (gx, gy);
+        app.try_move(1, 0);
+        assert_eq!(
+            app.drain_sounds(),
+            vec![SoundEvent::Stepped(Terrain::Soft)],
+            "a meadow step should sound soft"
+        );
+        // Stepping through the bakery door is a step and a door both.
+        app.player = (66, 22); // just south of the bakery door
+        app.try_move(0, -1);
+        assert_eq!(app.zone_idx, zones::BAKERY);
+        let sounds = app.drain_sounds();
+        assert!(
+            sounds.contains(&SoundEvent::DoorUsed),
+            "warping through a doorway should creak: {sounds:?}"
+        );
+        // And once drained, the queue is empty — nothing plays twice.
+        assert!(app.drain_sounds().is_empty());
+    }
+
+    #[test]
+    fn milestones_ring_their_jingles() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        app.drain_sounds();
+        // A caught wild rune sparkles...
+        app.screen = Screen::Encounter {
+            rune: 1,
+            selected: crate::content::wilds::wild(1).answer,
+            phase: EncounterPhase::Asking,
+        };
+        app.on_key(Key::Enter);
+        assert!(app.drain_sounds().contains(&SoundEvent::RuneCaught));
+        // ...a runestone gleams...
+        app.screen = Screen::World;
+        let (zi, spot) = zones::runestone_spots()[0];
+        app.zone_idx = zi;
+        app.touch_runestone(spot.0, spot.1);
+        assert!(app.drain_sounds().contains(&SoundEvent::StoneFound));
+        // ...and a keepsake changing hands chimes like coins.
+        app.completed.extend(1..=6);
+        app.screen = Screen::Dialogue(Dialogue::new(
+            "Well-keeper Bram",
+            vec!["The storm-lantern is yours.".into()],
+            DialogueKind::Success(6),
+        ));
+        app.on_key(Key::Enter);
+        app.on_key(Key::Enter);
+        assert!(app.drain_sounds().contains(&SoundEvent::KeepsakeGiven));
+    }
+
+    #[test]
+    fn the_sound_dial_cycles_and_survives_the_save() {
+        let mut app = App::new();
+        assert_eq!(app.sound_level, 2, "the world starts at full sound");
+        app.screen = Screen::Paused { selected: 2 };
+        app.on_key(Key::Left);
+        assert_eq!(app.sound_level, 0, "full -> off");
+        app.on_key(Key::Left);
+        assert_eq!(app.sound_level, 1, "off -> quiet");
     }
 
     #[test]
