@@ -868,11 +868,36 @@ SS..........SS..
 ................
 """
 
+# The Great Library's grand entrance: one arched double door of old dark
+# timber in a stone surround, spanning two tiles. Drawn as a transparent
+# overlay and composited over the brick WALL cell at bake time, so the
+# FacadeDoor tiles that wear it stay fully opaque in the wall.
+GRAND_DOOR_ART = """
+..........ssssssssssss..........
+.......ssSSSSSSSSSSSSSSss.......
+.....sSbbbbbbbbkkbbbbbbbbSs.....
+...sSbbbbbbbbbbkkbbbbbbbbbbSs...
+...sSbbbBbbbBbbkkbbBbbbBbbbSs...
+...sSbbbBbbbBbbkkbbBbbbBbbbSs...
+...sSbbbBbbbBbbkkbbBbbbBbbbSs...
+...sSbbbBbbbBbbkkbbBbbbBbbbSs...
+...sSbbbBbbbBybkkbyBbbbBbbbSs...
+...sSbbbBbbbBybkkbyBbbbBbbbSs...
+...sSbbbBbbbBbbkkbbBbbbBbbbSs...
+...sSbbbBbbbBbbkkbbBbbbBbbbSs...
+...sSbbbBbbbBbbkkbbBbbbBbbbSs...
+...sSbbbBbbbBbbkkbbBbbbBbbbSs...
+...sSBBBBBBBBBBkkBBBBBBBBBBSs...
+..sSSSSSSSSSSSSSSSSSSSSSSSSSSs..
+"""
+
 PALETTE = {
     "w": (240, 238, 230, 255),
     "o": (222, 120, 80, 255),
     "y": (240, 200, 60, 255),
     "k": (40, 36, 40, 255),
+    # dark old timber, for the Great Library's grand doors
+    "B": (88, 64, 44, 255),
     "g": (110, 185, 90, 255),
     "G": (200, 230, 170, 255),
     "m": (214, 208, 232, 255),
@@ -1342,6 +1367,16 @@ def main(sheet_path, chars_path):
         *from_art_prefab("WELL", WELL_ART, PALETTE, 2, 2),
         # a dark cave mouth for the Echo Cave entrance
         ("CAVE_MOUTH", from_art(CAVE_MOUTH_ART, PALETTE)),
+        # ── the Great Library's grand entrance (playtest note: the plain
+        # door sprites read as lockers floating in the brick). One arched
+        # double door across two FacadeDoor cells, drawn over the WALL
+        # brick so the cells stay opaque wherever they're set. ──
+        *[
+            (["DOOR_GRAND_L", "DOOR_GRAND_R"][i], over(cell(sheet, 9, 2), img))
+            for i, (_, img) in enumerate(
+                from_art_prefab(None, GRAND_DOOR_ART, PALETTE, 2, 1)
+            )
+        ],
     ]
 
     rows = (len(cells) + COLS - 1) // COLS

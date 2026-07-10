@@ -1074,8 +1074,19 @@ fn hearthspire() -> Zone {
         (206, 34),
     ]);
 
-    // The Great Library of Hearthspire.
+    // The Great Library of Hearthspire — its entrance is one grand arched
+    // double door of old timber, not two cottage doors side by side.
     b.stamp(198, 25, LIBRARY);
+    b.set(
+        LIBRARY_DOORS[0].0,
+        LIBRARY_DOORS[0].1,
+        Tile::FacadeDoor(crate::gfx::atlas::DOOR_GRAND_L),
+    );
+    b.set(
+        LIBRARY_DOORS[1].0,
+        LIBRARY_DOORS[1].1,
+        Tile::FacadeDoor(crate::gfx::atlas::DOOR_GRAND_R),
+    );
     for x in 208..=211 {
         b.set(x, 34, Tile::Plaza); // cobbled forecourt up to the door
     }
@@ -1441,9 +1452,18 @@ fn great_library() -> Zone {
         b.set(ox + dx, oy, Tile::Window);
     }
 
-    // Entrance doors in the bottom wall (the central hall), back to Hearthspire.
-    b.set(LIBRARY_ROOM_DOORS[0].0, LIBRARY_ROOM_DOORS[0].1, Tile::Door);
-    b.set(LIBRARY_ROOM_DOORS[1].0, LIBRARY_ROOM_DOORS[1].1, Tile::Door);
+    // Entrance doors in the bottom wall (the central hall), back to
+    // Hearthspire — the same grand double door as the front wears outside.
+    b.set(
+        LIBRARY_ROOM_DOORS[0].0,
+        LIBRARY_ROOM_DOORS[0].1,
+        Tile::FacadeDoor(crate::gfx::atlas::DOOR_GRAND_L),
+    );
+    b.set(
+        LIBRARY_ROOM_DOORS[1].0,
+        LIBRARY_ROOM_DOORS[1].1,
+        Tile::FacadeDoor(crate::gfx::atlas::DOOR_GRAND_R),
+    );
 
     // ── West chamber: the reading stacks. Shelf rows with aisles between. ──
     for row in [3, 7, 11] {

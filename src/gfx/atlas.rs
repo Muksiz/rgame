@@ -384,6 +384,11 @@ pub const WELL: u16 = 741;
 pub const WELL_SIZE: (i32, i32) = (2, 2);
 /// A dark cave mouth for the Echo Cave entrance (`Tile::CaveMouth`).
 pub const CAVE_MOUTH: u16 = 745;
+/// The Great Library's grand entrance: one arched dark-timber double door
+/// across two cells, baked over the brick WALL so `FacadeDoor` tiles wearing
+/// it stay opaque in the wall face.
+pub const DOOR_GRAND_L: u16 = 746;
+pub const DOOR_GRAND_R: u16 = 747;
 pub const HOUSE_SIZE: (i32, i32) = (5, 5);
 pub const SHED_SIZE: (i32, i32) = (3, 3);
 pub const STALL_SIZE: (i32, i32) = (5, 5);

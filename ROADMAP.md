@@ -16,8 +16,6 @@ I would like for there to be some sort of city in the Whispering Woods as well. 
 many NPC's are just scattered around the road in a forest. If there was a city with people living there
 it would make more sense. Find textures that fit the description of house in the dark forest.
 
-The doors of the great library do not look correct.
-
 ---
 
 The first roadmap (interiors → items & gates → grass encounters → side
