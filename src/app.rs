@@ -1278,10 +1278,11 @@ impl App {
 
     /// Ferris pipes up: one remark, picked deterministically from where you
     /// stand and the hour, so the same corner at the same time of day always
-    /// draws the same thought.
+    /// draws the same thought — with the local region's remarks (or the
+    /// indoor set, under a roof) folded into the rotation.
     fn chat_with_ferris(&mut self) {
         let h = hash2(self.player.0, self.player.1, 0xFE44 ^ self.day_ticks);
-        let line = ferris::chat(h, self.is_night());
+        let line = ferris::chat(h, self.is_night(), self.zone_idx);
         self.screen = Screen::Dialogue(Dialogue::new(
             "Ferris",
             vec![line.to_string()],

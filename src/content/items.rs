@@ -36,6 +36,11 @@ pub static CATCHES: &[&str] = &[
     "a tangle of river-weed shaped exactly like a semicolon.",
     "a stickleback with strong opinions. You release it mid-argument.",
     "nothing at all — but the rain on the water was worth the stop.",
+    "a perch wearing a bottle cap like a hat. You decide not to mention it, and let both go with dignity.",
+    "a minnow so small it's mostly a suggestion. Back it goes, to continue becoming.",
+    "the same old boot. It seems pleased to see you. You're oddly pleased too. Back it goes.",
+    "a smooth green stone, warm despite the water. You skip it home across the river.",
+    "an eel, briefly. The eel had other plans, and frankly better ones.",
 ];
 
 /// The keepsake a quest's NPC hands over with their thanks, if any.
