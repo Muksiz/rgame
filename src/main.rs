@@ -82,6 +82,9 @@ const NIGHT_VOLUME: f32 = 0.4;
 /// The calm melody over the night beds sits softest of all — it should feel
 /// like it drifts in from somewhere over the hills.
 const NIGHT_THEME_VOLUME: f32 = 0.35;
+/// The daytime weather beds are texture, not song: rain and wind held well
+/// under the zone chiptune, at the edge of noticing.
+const DAY_BED_VOLUME: f32 = 0.25;
 const SFX_VOLUME: f32 = 0.7;
 /// The hearth is a room-tone, not a song: present the moment you notice it,
 /// easy to stop noticing.
@@ -116,6 +119,24 @@ static NIGHT_MUSIC: &[&[u8]] = &[
 /// after dark, laid on top of that zone's nature bed, so night has real music
 /// rather than crickets alone.
 static NIGHT_THEME: &[u8] = include_bytes!("../assets/audio/music/night/theme.ogg");
+
+/// By day, the zones whose *drawn* weather makes a sound lay it softly under
+/// their chiptune (Ninja Adventure ambience loops, CC0): wind through the
+/// Whispering Woods' canopy, the rain that always falls on Silverford, wind
+/// off the misty Hearthspire road. Emberwick keeps its clear morning — petals
+/// don't sound. Indexed by `App::zone_idx`, `None` where the air is still.
+static DAY_BEDS: [Option<&[u8]>; 4] = [
+    None,
+    Some(include_bytes!(
+        "../assets/ninja_adventure/pack/Audio/Sounds/Ambient/Wind2.ogg"
+    )),
+    Some(include_bytes!(
+        "../assets/ninja_adventure/pack/Audio/Sounds/Ambient/Rain.ogg"
+    )),
+    Some(include_bytes!(
+        "../assets/ninja_adventure/pack/Audio/Sounds/Ambient/Wind.ogg"
+    )),
+];
 
 /// A lone owl, hooted at random intervals under the night ambience (never by
 /// day, never indoors). See `assets/CREDITS.md` for licensing.
@@ -281,6 +302,17 @@ async fn main() {
     let night_theme = audio::load_sound_from_bytes(NIGHT_THEME)
         .await
         .expect("night theme is baked into the binary");
+    let mut day_beds: Vec<Option<Sound>> = Vec::with_capacity(DAY_BEDS.len());
+    for bytes in DAY_BEDS {
+        day_beds.push(match bytes {
+            Some(bytes) => Some(
+                audio::load_sound_from_bytes(bytes)
+                    .await
+                    .expect("day weather beds are baked into the binary"),
+            ),
+            None => None,
+        });
+    }
     let sfx_owl = audio::load_sound_from_bytes(SFX_OWL)
         .await
         .expect("owl sfx is baked into the binary");
@@ -331,6 +363,8 @@ async fn main() {
     // without leaving the zone.
     let mut playing_zone: Option<(usize, bool)> = None;
     let mut playing_theme = false;
+    // Which zone's daytime weather bed is looping, if any.
+    let mut playing_day_bed: Option<usize> = None;
     let mut playing_title = false;
     let mut playing_hearth = false;
     let mut playing_encounter = false;
@@ -494,6 +528,11 @@ async fn main() {
             if playing_theme {
                 audio::set_sound_volume(&night_theme, NIGHT_THEME_VOLUME * gain);
             }
+            if let Some(z) = playing_day_bed
+                && let Some(bed) = &day_beds[z]
+            {
+                audio::set_sound_volume(bed, DAY_BED_VOLUME * gain);
+            }
             if playing_hearth {
                 audio::set_sound_volume(&hearth_loop, HEARTH_VOLUME * gain);
             }
@@ -629,6 +668,35 @@ async fn main() {
                 audio::stop_sound(&night_theme);
             }
             playing_theme = want_theme;
+        }
+
+        // By day, a zone whose drawn weather makes a sound lays it under the
+        // chiptune: wind through the Woods' canopy, Silverford's rain, wind
+        // off the Hearthspire road. Swapped on warp like the zone music, and
+        // it yields to the night beds after dark (which carry their own
+        // weather already).
+        let day_bed_track = match zone_track {
+            Some((z, false)) if day_beds[z].is_some() => Some(z),
+            _ => None,
+        };
+        if day_bed_track != playing_day_bed {
+            if let Some(z) = playing_day_bed
+                && let Some(bed) = &day_beds[z]
+            {
+                audio::stop_sound(bed);
+            }
+            if let Some(z) = day_bed_track
+                && let Some(bed) = &day_beds[z]
+            {
+                audio::play_sound(
+                    bed,
+                    PlaySoundParams {
+                        looped: true,
+                        volume: DAY_BED_VOLUME * gain,
+                    },
+                );
+            }
+            playing_day_bed = day_bed_track;
         }
 
         // A wild rune stirring gets its sting: an urgent little chiptune

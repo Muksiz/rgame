@@ -183,8 +183,11 @@ all 42 tracks (one of them, "22 - Dream", already plays as the night theme —
 see below), and `Sounds/` the 140+ effects in their category folders (Menu,
 Bonus, Magic & Skill, Ambient, …). Everything is unmodified except
 `Sounds/Ambient/`, whose long WAV loops (rain, river, storm, waves, wind)
-were re-encoded to Ogg Vorbis q4 to keep the repo light — candidates for the
-daytime weather beds. None of it is wired in yet.
+were re-encoded to Ogg Vorbis q4 to keep the repo light. Three of those now
+play as the daytime weather beds (`DAY_BEDS` in `src/main.rs`): `Wind2.ogg`
+through the Whispering Woods' canopy, `Rain.ogg` under Silverford's constant
+rain, `Wind.ogg` off the misty Hearthspire road — each looped softly under
+its zone's chiptune until dark, when the night beds take over.
 
 ### Night ambiences
 

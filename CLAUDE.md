@@ -121,10 +121,12 @@ encounter sting or campfire rest theme, no download needed:
   Adventure pack) laid over whichever bed is playing so night has real music.
   Sourced from OpenGameArt (crickets, swamp, rain, wind), the Ninja Adventure
   pack (the theme) and Wikimedia
-  Commons (the owl — the repo's one CC-BY asset). For daytime weather beds,
-  the first quarry is now in-repo: the Ninja Adventure pack's re-encoded
-  ambience loops (`assets/ninja_adventure/pack/Audio/Sounds/Ambient/` —
-  rain ×3, river, storm, waves ×2, wind ×2, CC0). Beyond those: *Nature
+  Commons (the owl — the repo's one CC-BY asset). Daytime weather beds are
+  **now in too** (`DAY_BEDS` in `src/main.rs`): the Ninja Adventure pack's
+  re-encoded ambience loops (`assets/ninja_adventure/pack/Audio/Sounds/Ambient/`
+  — rain ×3, river, storm, waves ×2, wind ×2, CC0) lay canopy wind under the
+  Woods, rain under Silverford and road wind under Hearthspire by day, with
+  river/waves/storm still unused. Beyond those: *Nature
   sounds [CC0]* (https://opengameart.org/content/nature-sounds-cc0) and the
   curated *CC0 Background Ambience* collection
   (https://opengameart.org/content/cc0-background-ambience). Heads-up: *JC
