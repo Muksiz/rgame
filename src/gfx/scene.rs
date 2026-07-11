@@ -49,12 +49,12 @@ pub fn render(fb: &mut Frame, atlas: &Atlas, app: &App) {
                     phase,
                 } => encounter(fb, atlas, app, *rune, *selected, *phase),
                 Screen::Grimoire => grimoire(fb, atlas, app),
-                Screen::Casting { .. } => casting(fb, app),
+                Screen::Casting { .. } => casting(fb, atlas, app),
                 Screen::CastResult {
                     quest,
                     outcome,
                     scroll,
-                } => cast_result(fb, app, *quest, outcome, *scroll),
+                } => cast_result(fb, atlas, app, *quest, outcome, *scroll),
                 Screen::Paused { selected } => paused(fb, app, *selected),
                 _ => {}
             }
@@ -2498,14 +2498,35 @@ fn grimoire(fb: &mut Frame, atlas: &Atlas, app: &App) {
 
 // ── casting & results ──────────────────────────────────────────────────────
 
-fn casting(fb: &mut Frame, app: &App) {
-    let (ix, iy, iw, _) = centered_panel(fb, 280, 72, "Casting");
+/// One 32x32 FX frame (baked as a 2x2 block of atlas cells) at integer scale.
+fn fx_frame(fb: &mut Frame, atlas: &Atlas, base: u16, frame: u64, x: i32, y: i32, scale: i32) {
+    let t = TILE as i32 * scale;
+    let id = base + (frame % atlas::FX_FRAMES) as u16 * 4;
+    fb.sprite_scaled(atlas, id, x, y, scale, 1.0);
+    fb.sprite_scaled(atlas, id + 1, x + t, y, scale, 1.0);
+    fb.sprite_scaled(atlas, id + 2, x, y + t, scale, 1.0);
+    fb.sprite_scaled(atlas, id + 3, x + t, y + t, scale, 1.0);
+}
+
+fn casting(fb: &mut Frame, atlas: &Atlas, app: &App) {
+    let (ix, iy, iw, _) = centered_panel(fb, 280, 128, "Casting");
+    // The spell itself: a spark circle blooming over and over while rustc
+    // reads the scroll.
+    fx_frame(
+        fb,
+        atlas,
+        atlas::FX_CAST,
+        app.tick / 3,
+        ix + iw / 2 - 32,
+        iy + 2,
+        2,
+    );
     let spin = ['|', '/', '-', '\\'][(app.tick / 2) as usize % 4];
     let phrase = quests::WEAVING[(app.tick / 24) as usize % quests::WEAVING.len()];
     font::text_center(
         fb,
         ix + iw / 2,
-        iy + 8,
+        iy + 74,
         &format!("{spin}  {phrase}  {spin}"),
         WARM,
         1,
@@ -2513,18 +2534,26 @@ fn casting(fb: &mut Frame, app: &App) {
     font::text_center(
         fb,
         ix + iw / 2,
-        iy + 26,
+        iy + 92,
         "(rustc is reading your scroll)",
         DIM,
         1,
     );
 }
 
-fn cast_result(fb: &mut Frame, app: &App, quest_id: u8, outcome: &Outcome, scroll: u16) {
+fn cast_result(
+    fb: &mut Frame,
+    atlas: &Atlas,
+    app: &App,
+    quest_id: u8,
+    outcome: &Outcome,
+    scroll: u16,
+) {
     match outcome {
         Outcome::Pass { .. } => pass_panel(fb, app, quest_id),
         Outcome::CompileFail { stderr } => fizzle_panel(
             fb,
+            atlas,
             app,
             "The rune fizzles - no harm done",
             "The compiler couldn't accept the scroll yet. Its note, in full:",
@@ -2533,6 +2562,7 @@ fn cast_result(fb: &mut Frame, app: &App, quest_id: u8, outcome: &Outcome, scrol
         ),
         Outcome::TestFail { output } => fizzle_panel(
             fb,
+            atlas,
             app,
             "So close! The rune sparks, but won't hold",
             "It compiles! But the quest's own judgement found something off:",
@@ -2541,6 +2571,7 @@ fn cast_result(fb: &mut Frame, app: &App, quest_id: u8, outcome: &Outcome, scrol
         ),
         Outcome::Timeout => fizzle_panel(
             fb,
+            atlas,
             app,
             "The rune spun in circles (we stopped it gently)",
             "It ran for ten whole seconds without finishing - usually a loop that never meets its end.",
@@ -2549,6 +2580,7 @@ fn cast_result(fb: &mut Frame, app: &App, quest_id: u8, outcome: &Outcome, scrol
         ),
         Outcome::Error { msg } => fizzle_panel(
             fb,
+            atlas,
             app,
             "The satchel snags",
             "Something outside your code went wrong:",
@@ -2586,17 +2618,29 @@ fn pass_panel(fb: &mut Frame, app: &App, quest_id: u8) {
     font::text(fb, ix + iw - 60, iy + ih - 8, "enter >", DIM, 1);
 }
 
-fn fizzle_panel(fb: &mut Frame, app: &App, title: &str, lead: &str, output: &str, scroll: u16) {
+fn fizzle_panel(
+    fb: &mut Frame,
+    atlas: &Atlas,
+    app: &App,
+    title: &str,
+    lead: &str,
+    output: &str,
+    scroll: u16,
+) {
     let (ix, iy, iw, ih) = centered_panel(fb, 460, 244, title);
     let cols = (iw / GLYPH - 1) as usize;
     let ferris_line =
         FIZZLE_LINES[hash2(app.tick as i32 / 600, 3, 9) as usize % FIZZLE_LINES.len()];
 
+    // The gentlest possible special effect: the spell's smoke, puffing away
+    // in the corner while you read. The head lines wrap short of it.
+    fx_frame(fb, atlas, atlas::FX_PUFF, app.tick / 6, ix + iw - 34, iy, 1);
+
     let mut head: Vec<(String, (u8, u8, u8))> = Vec::new();
-    for l in font::wrap(ferris_line, cols) {
+    for l in font::wrap(ferris_line, cols - 5) {
         head.push((l, FERRIS_ORANGE));
     }
-    for l in font::wrap(lead, cols) {
+    for l in font::wrap(lead, cols - 5) {
         head.push((l, DIM));
     }
     let body_y = draw_lines(fb, ix + 2, iy + 2, &head) + 4;

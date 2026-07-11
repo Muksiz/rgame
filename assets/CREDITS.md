@@ -39,9 +39,11 @@ cropped from `TilesetNature.png`, already vendored above.
 `LICENSE.txt`, `README.md` and `Palette.png`) — raw source material for
 future features (journal/keepsake icons, casting FX, the `Ui/Dialog` boxes
 and `Ui/Emote` balloons) so pulling a new sprite into the atlas is a crop,
-not a re-download. First harvest: the sixteen wild runes' visible forms on
+not a re-download. First harvests: the sixteen wild runes' visible forms on
 the encounter screen are `Actor/Monster` creatures (two down-facing frames
-each, see `WILD_FORMS` in `tools/bake_atlas.py`). The pack's whole soundtrack and
+each, see `WILD_FORMS` in `tools/bake_atlas.py`), the casting screen's
+blooming spark circle is `FX/Magic/Circle` and the fizzle's smoke puff
+`FX/Smoke` (six 32×32 frames each, baked as 2×2 cell blocks). The pack's whole soundtrack and
 SFX library is vendored too — see "Ninja Adventure audio" under Audio below.
 `ninja_adventure/tilesets/` likewise now holds *every* tileset the pack
 ships — the interior set (`Interior/`, walls, floors and furnishings), the

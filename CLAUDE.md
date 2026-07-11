@@ -150,8 +150,9 @@ encounter sting or campfire rest theme, no download needed:
   `assets/CREDITS.md`): 30+ animated monsters (**16 now baked** as the wild
   runes' visible forms in `Screen::Encounter` — `WILD_FORMS` in the bake
   script, `atlas::WILD_FORM`), 60+ item icons (journal satchel/keepsake art),
-  spell-effect strips (casting sparkle, fizzle puff). Cropping one into the
-  atlas is now a `tools/bake_atlas.py` edit, not a re-download.
+  spell-effect strips (**two now baked**: the casting screen's spark circle
+  and the fizzle's smoke puff, `atlas::FX_CAST`/`FX_PUFF`). Cropping one into
+  the atlas is now a `tools/bake_atlas.py` edit, not a re-download.
 - ~~**"Zelda-like tilesets and sprites" by ArMM1998**~~ — **now vendored and
   in use** (`assets/zelda_like/Overworld.png`, credited in
   `assets/CREDITS.md`): its perspective-drawn buildings are Emberwick's

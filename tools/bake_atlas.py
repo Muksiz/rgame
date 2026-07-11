@@ -1461,6 +1461,28 @@ def main(sheet_path, chars_path):
                 frame for folder in WILD_FORMS for frame in na_monster(folder)
             )
         ],
+        # ── spell FX (Ninja Adventure FX strips, CC0): the casting screen's
+        # blooming spark circle and the fizzle's gentle smoke puff. 32x32
+        # frames baked as 2x2 cell blocks, six frames each, consecutive —
+        # frame f of effect E lives at E + f*4. ──
+        *[
+            cell
+            for i in range(6)
+            for cell in img_prefab(
+                NA_DIR / "pack" / "FX" / "Magic" / "Circle" / "SpriteSheetSpark.png",
+                "FX_CAST" if i == 0 else None,
+                i * 32, 0, 2, 2,
+            )
+        ],
+        *[
+            cell
+            for i in range(6)
+            for cell in img_prefab(
+                NA_DIR / "pack" / "FX" / "Smoke" / "Smoke" / "SpriteSheet.png",
+                "FX_PUFF" if i == 0 else None,
+                i * 32, 0, 2, 2,
+            )
+        ],
     ]
 
     rows = (len(cells) + COLS - 1) // COLS

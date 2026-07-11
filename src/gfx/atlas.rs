@@ -403,6 +403,12 @@ pub const CAST_BRACKEN: u16 = 814;
 /// id order): two bobbing frames each, so rune `id` wears
 /// `WILD_FORM + (id - 1) * 2` and the cell after it.
 pub const WILD_FORM: u16 = 818;
+/// Spell FX (Ninja Adventure FX strips): 32x32 frames baked as 2x2 cell
+/// blocks, six frames each — frame `f` starts at the constant `+ f * 4`.
+/// The casting screen's blooming spark circle, and the fizzle's smoke puff.
+pub const FX_CAST: u16 = 850;
+pub const FX_PUFF: u16 = 874;
+pub const FX_FRAMES: u64 = 6;
 pub const HOUSE_SIZE: (i32, i32) = (5, 5);
 pub const SHED_SIZE: (i32, i32) = (3, 3);
 pub const STALL_SIZE: (i32, i32) = (5, 5);
