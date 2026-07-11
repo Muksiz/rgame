@@ -80,6 +80,28 @@ FERN_CAST = [
     ("BRACKEN", "FighterWhite"),  # Innkeep Bracken of the Glowworm
 ]
 
+# The wild runes' visible forms (Ninja Adventure monsters, CC0), one per rune
+# in id order 1-16 — the little creature that bobs on the encounter screen.
+# Each is chosen to fit its rune's stir line in src/content/wilds.rs.
+WILD_FORMS = [
+    "Flam",  # 1 the Bang Rune — excitable, pops out of the grass
+    "Mole",  # 2 the Mut Rune — plants itself, refuses to budge
+    "ButterflyBlue",  # 3 the Arrow Rune — slender, flies past and circles
+    "Spirit",  # 4 the Semicolon Sprite — a tiny hanging wisp
+    "Racoon",  # 5 the Move Rune — scurries off with the acorn
+    "Slime",  # 6 the Clone Rune — splits into two, delighted
+    "KappaGreen",  # 7 the Borrow Rune — polite, asks to hold your satchel
+    "Snake",  # 8 the Slice Rune — thin, only ever a part of the whole
+    "Mollusc",  # 9 the Struct Rune — named parts under one neat roof
+    "Mouse",  # 10 the Dot Rune — taps from crate to crate, precisely
+    "Fish",  # 11 the Update Rune — last year's scales, one part new
+    "Owl",  # 12 the Derive Rune — reads everything aloud, unprompted
+    "KappaRed",  # 13 the Method Rune — bows; it belongs to something
+    "Larva",  # 14 the Winding Rune — winds itself tighter and tighter
+    "Eye",  # 15 the Summoning Rune — summoned, apparently, by no one
+    "Axolot",  # 16 the Mirror Rune — admiring its own reflection
+]
+
 
 def na_tile(sheet_name, c, r):
     """One 16x16 cell from a Ninja Adventure tileset (margin-free grid)."""
@@ -173,6 +195,17 @@ def na_idles(folder):
     sheet = Image.open(idle if idle.exists() else NA_DIR / folder / "SpriteSheet.png")
     sheet = sheet.convert("RGBA")
     return [sheet.crop((d * TILE, 0, d * TILE + TILE, TILE)) for d in range(4)]
+
+
+def na_monster(folder):
+    """Two down-facing frames of a Ninja Adventure monster (columns are
+    facings, rows the walk cycle; rows 0 and 2 make a gentle bob). The
+    spritesheet's filename varies per monster, but it's always the one
+    file that isn't the Faceset."""
+    d = NA_DIR / "pack" / "Actor" / "Monster" / folder
+    (sheet_path,) = [p for p in sorted(d.iterdir()) if p.name != "Faceset.png"]
+    sheet = Image.open(sheet_path).convert("RGBA")
+    return [sheet.crop((0, r * TILE, TILE, r * TILE + TILE)) for r in (0, 2)]
 
 
 def na_walks(folder):
@@ -1418,6 +1451,15 @@ def main(sheet_path, chars_path):
             (f"CAST_{name}" if d == 0 else None, frame)
             for name, folder in FERN_CAST
             for d, frame in enumerate(na_idles(folder))
+        ],
+        # ── the wild runes' visible forms (the shelf's "visible wild-rune
+        # forms" note): two bobbing frames per rune in id order, so the
+        # encounter screen can show who's rustling in the grass. ──
+        *[
+            ("WILD_FORM" if i == 0 else None, frame)
+            for i, frame in enumerate(
+                frame for folder in WILD_FORMS for frame in na_monster(folder)
+            )
         ],
     ]
 

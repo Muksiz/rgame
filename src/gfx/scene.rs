@@ -47,7 +47,7 @@ pub fn render(fb: &mut Frame, atlas: &Atlas, app: &App) {
                     rune,
                     selected,
                     phase,
-                } => encounter(fb, *rune, *selected, *phase),
+                } => encounter(fb, atlas, app, *rune, *selected, *phase),
                 Screen::Grimoire => grimoire(fb, app),
                 Screen::Casting { .. } => casting(fb, app),
                 Screen::CastResult {
@@ -2364,10 +2364,30 @@ fn journal(fb: &mut Frame, app: &App) {
 
 // ── wild runes: encounters & the grimoire ──────────────────────────────────
 
-fn encounter(fb: &mut Frame, rune_id: u8, selected: usize, phase: EncounterPhase) {
+fn encounter(
+    fb: &mut Frame,
+    atlas: &Atlas,
+    app: &App,
+    rune_id: u8,
+    selected: usize,
+    phase: EncounterPhase,
+) {
     let rune = wilds::wild(rune_id);
-    let (ix, iy, iw, ih) = centered_panel(fb, 420, 180, "Something stirs in the grass");
+    let (ix, iy, iw, ih) = centered_panel(fb, 420, 232, "Something stirs in the grass");
     let cols = (iw / GLYPH - 1) as usize;
+
+    // The rune's little form, front and center: two frames of gentle bobbing
+    // while it waits, a still, settled pose once caught — and gone entirely
+    // when it has skittered off.
+    let form_h = 52;
+    if !matches!(phase, EncounterPhase::Fizzled) {
+        let frame = match phase {
+            EncounterPhase::Asking => (app.tick / 8) % 2,
+            _ => 0,
+        };
+        let id = atlas::WILD_FORM + (rune_id as u16 - 1) * 2 + frame as u16;
+        fb.sprite_scaled(atlas, id, ix + iw / 2 - 24, iy + 4, 3, 1.0);
+    }
 
     let mut lines: Vec<(String, (u8, u8, u8))> = Vec::new();
     for l in font::wrap(rune.stir, cols) {
@@ -2414,7 +2434,7 @@ fn encounter(fb: &mut Frame, rune_id: u8, selected: usize, phase: EncounterPhase
             lines.push(("No harm done. It'll rustle around here again.".into(), DIM));
         }
     }
-    draw_lines(fb, ix + 4, iy + 2, &lines[..lines.len().min(16)]);
+    draw_lines(fb, ix + 4, iy + form_h, &lines[..lines.len().min(16)]);
 
     let footer = match phase {
         EncounterPhase::Asking => "up/down choose . enter answer . esc slip away",

@@ -37,9 +37,11 @@ cropped from `TilesetNature.png`, already vendored above.
 (`Actor/Character`, `Actor/CharacterAnimated`, `Actor/Animal`, `Actor/Boss`,
 `Actor/Monster`, `Items`, `FX`, `Ui`, the full `Backgrounds` tree and its
 `LICENSE.txt`, `README.md` and `Palette.png`) — raw source material for
-future features (wild-rune encounter art, journal/keepsake icons, casting
-FX, the `Ui/Dialog` boxes and `Ui/Emote` balloons) so pulling a new sprite
-into the atlas is a crop, not a re-download. The pack's whole soundtrack and
+future features (journal/keepsake icons, casting FX, the `Ui/Dialog` boxes
+and `Ui/Emote` balloons) so pulling a new sprite into the atlas is a crop,
+not a re-download. First harvest: the sixteen wild runes' visible forms on
+the encounter screen are `Actor/Monster` creatures (two down-facing frames
+each, see `WILD_FORMS` in `tools/bake_atlas.py`). The pack's whole soundtrack and
 SFX library is vendored too — see "Ninja Adventure audio" under Audio below.
 `ninja_adventure/tilesets/` likewise now holds *every* tileset the pack
 ships — the interior set (`Interior/`, walls, floors and furnishings), the

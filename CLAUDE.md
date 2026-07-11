@@ -145,8 +145,9 @@ encounter sting or campfire rest theme, no download needed:
   furniture, ores, mine props — so they stay first quarry for interior work.
 - **Ninja Adventure — monsters, items, FX** (same pack/download as above, CC0,
   **now vendored raw** in `assets/ninja_adventure/pack/` — see
-  `assets/CREDITS.md`): 30+ animated monsters (visible wild-rune forms in
-  `Screen::Encounter`), 60+ item icons (journal satchel/keepsake art),
+  `assets/CREDITS.md`): 30+ animated monsters (**16 now baked** as the wild
+  runes' visible forms in `Screen::Encounter` — `WILD_FORMS` in the bake
+  script, `atlas::WILD_FORM`), 60+ item icons (journal satchel/keepsake art),
   spell-effect strips (casting sparkle, fizzle puff). Cropping one into the
   atlas is now a `tools/bake_atlas.py` edit, not a re-download.
 - ~~**"Zelda-like tilesets and sprites" by ArMM1998**~~ — **now vendored and

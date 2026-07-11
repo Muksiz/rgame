@@ -399,6 +399,10 @@ pub const WOODS_HOME_B: u16 = 794; // 4x3, door pasted shut
 pub const CAST_IVY: u16 = 806;
 pub const CAST_MOSS: u16 = 810;
 pub const CAST_BRACKEN: u16 = 814;
+/// The wild runes' visible forms (Ninja Adventure monsters, one per rune in
+/// id order): two bobbing frames each, so rune `id` wears
+/// `WILD_FORM + (id - 1) * 2` and the cell after it.
+pub const WILD_FORM: u16 = 818;
 pub const HOUSE_SIZE: (i32, i32) = (5, 5);
 pub const SHED_SIZE: (i32, i32) = (3, 3);
 pub const STALL_SIZE: (i32, i32) = (5, 5);
