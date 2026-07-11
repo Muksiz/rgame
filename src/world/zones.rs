@@ -607,6 +607,8 @@ fn emberwick() -> Zone {
             Critter::new(CritterKind::Chicken, (58, 48)),
             Critter::new(CritterKind::Chicken, (61, 47)),
             Critter::new(CritterKind::Chicken, (56, 49)),
+            // The village dog holds down the square, greeting everyone twice.
+            Critter::new(CritterKind::Dog, (95, 37)),
         ],
         signs: vec![
             Sign {
@@ -935,6 +937,9 @@ fn whispering_woods() -> Zone {
             Critter::new(CritterKind::Sheep, (182, 27)),
             // The hamlet cat, holding down the lane by the Glowworm.
             Critter::new(CritterKind::Cat, (79, 23)),
+            // A wild boar, rooting through Maren's mushroom hollow. Maren
+            // has opinions about this; the boar does not return them.
+            Critter::new(CritterKind::Boar, (99, 45)),
         ],
         signs: vec![
             Sign {
@@ -1115,6 +1120,8 @@ fn silverford() -> Zone {
             Critter::new(CritterKind::Frog, (144, 42)),
             Critter::new(CritterKind::Frog, (126, 54)),
             Critter::new(CritterKind::Frog, (150, 28)),
+            // A duck supervising Morrow's beach and everything on it.
+            Critter::new(CritterKind::Duck, (115, 58)),
         ],
         signs: vec![
             Sign {
@@ -1258,6 +1265,9 @@ fn hearthspire() -> Zone {
         critters: vec![
             Critter::new(CritterKind::Moth, (100, 48)),
             Critter::new(CritterKind::Moth, (150, 24)),
+            // The pack donkey, resting by the wayfarer's campfire between
+            // loads. She has seen the mountain. The mountain knows her.
+            Critter::new(CritterKind::Donkey, (90, 51)),
         ],
         signs: vec![
             Sign {

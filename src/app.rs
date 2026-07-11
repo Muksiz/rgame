@@ -1242,18 +1242,30 @@ impl App {
             self.go_fishing();
             return;
         }
-        // A hen within reach: she has something to say. Usually "cluck".
-        let hen = spots.iter().copied().find(|&(x, y)| {
+        // Any small life within reach has something to say. Usually its noise.
+        let critter = spots.iter().copied().find_map(|(x, y)| {
             self.zone()
                 .critters
                 .iter()
-                .any(|c| c.kind == CritterKind::Chicken && c.pos == (x, y))
+                .find(|c| c.pos == (x, y))
+                .map(|c| (c.kind, x, y))
         });
-        if let Some((x, y)) = hen {
+        if let Some((kind, x, y)) = critter {
             let h = hash2(x, y, 0xC1CC ^ self.day_ticks);
+            let (speaker, line) = match kind {
+                CritterKind::Chicken => ("A chicken", critters::chicken(h)),
+                CritterKind::Sheep => ("A sheep", critters::sheep(h)),
+                CritterKind::Frog => ("A frog", critters::frog(h)),
+                CritterKind::Moth => ("A moth", critters::moth(h)),
+                CritterKind::Cat => ("The cat", critters::cat(h)),
+                CritterKind::Dog => ("The village dog", critters::dog(h)),
+                CritterKind::Boar => ("A wild boar", critters::boar(h)),
+                CritterKind::Duck => ("A duck", critters::duck(h)),
+                CritterKind::Donkey => ("The pack donkey", critters::donkey(h)),
+            };
             self.screen = Screen::Dialogue(Dialogue::new(
-                "A chicken",
-                vec![critters::chicken(h).to_string()],
+                speaker,
+                vec![line.to_string()],
                 DialogueKind::Flavor,
             ));
             return;

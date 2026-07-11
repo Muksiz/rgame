@@ -16,6 +16,10 @@ pub enum CritterKind {
     Frog,
     Moth,
     Cat,
+    Dog,
+    Boar,
+    Duck,
+    Donkey,
 }
 
 pub struct Critter {

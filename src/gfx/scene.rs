@@ -235,6 +235,10 @@ fn world_scene(fb: &mut Frame, atlas: &Atlas, app: &App) {
                 CritterKind::Frog => atlas::FROG,
                 CritterKind::Moth => atlas::MOTH,
                 CritterKind::Cat => atlas::CAT,
+                CritterKind::Dog => atlas::DOG,
+                CritterKind::Boar => atlas::BOAR,
+                CritterKind::Duck => atlas::DUCK,
+                CritterKind::Donkey => atlas::DONKEY,
             };
             // Little lives fidget: a one-pixel hop on each critter's own beat.
             let phase = hash2(critter.pos.0, critter.pos.1, 0xC1717) as u64;

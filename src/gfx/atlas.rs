@@ -409,6 +409,13 @@ pub const WILD_FORM: u16 = 818;
 pub const FX_CAST: u16 = 850;
 pub const FX_PUFF: u16 = 874;
 pub const FX_FRAMES: u64 = 6;
+// The small-lives expansion: four more hand-pixeled critters — a village
+// dog, a wild boar for the deep woods, a duck for the riverbanks and a
+// pack donkey for the mountain road.
+pub const DOG: u16 = 898;
+pub const BOAR: u16 = 899;
+pub const DUCK: u16 = 900;
+pub const DONKEY: u16 = 901;
 pub const HOUSE_SIZE: (i32, i32) = (5, 5);
 pub const SHED_SIZE: (i32, i32) = (3, 3);
 pub const STALL_SIZE: (i32, i32) = (5, 5);
