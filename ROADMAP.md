@@ -305,8 +305,10 @@ re-litigated from scratch next time:
 - **Coins & a trading post.**
 - **Dynamic weather fronts & seasons**; **festival days**; a **fellow
   traveler** you keep crossing on the road.
-- **Visible wild-rune forms** in encounters (Ninja Adventure monster strips,
-  already vendored) and item icons in the journal satchel.
+- ~~**Visible wild-rune forms** in encounters~~ — **done between roadmaps**:
+  every wild rune now appears as a Ninja Adventure monster on the encounter
+  screen and in the grimoire (shadows until met). Item icons in the journal
+  satchel remain on the shelf.
 - **Save slots** and a home shelf displaying runestones and keepsakes.
 
 ---
