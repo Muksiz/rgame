@@ -8,7 +8,7 @@ pub struct Book {
     pub pages: &'static [&'static str],
 }
 
-pub static BOOKS: [Book; 24] = [
+pub static BOOKS: [Book; 26] = [
     Book {
         title: "The Rust Programming Language",
         pages: &[
@@ -179,6 +179,21 @@ pub static BOOKS: [Book; 24] = [
         pages: &[
             "An enum names a value that is exactly one of several shapes: an Direction that is Up or Down or Left or Right, a Shape that is a Circle with a radius or a Rect with two sides. Each variant may carry its own cargo.",
             "Paired with match, an enum is Rust's great honesty engine: the compiler will not rest until every variant is accounted for. Option and Result — the whole language's approach to absence and failure — are, underneath, just two very famous enums.",
+        ],
+    },
+    Book {
+        title: "The Iterator's Songbook",
+        pages: &[
+            "An iterator is anything that can hand you the next thing until there are no more things: one trait, Iterator, one required method, next. Every for loop in the land is quietly asking next, again and again, until it hears None.",
+            "The verses are the adaptors — map to transform, filter to choose, zip to walk two lines abreast — each lazy as a summer river, doing nothing until a collect or a sum finally asks for the ending. Chained together they read like the loop you meant, and compile down to one as fast as any you'd write by hand.",
+        ],
+    },
+    Book {
+        title: "Strings: An Honest Appraisal",
+        pages: &[
+            "There are two of them, and the honest news is you need both. String owns its text and can grow; &str is a borrowed view of text living elsewhere. The same split as Vec and slice, wearing letters instead.",
+            "Every Rust string is UTF-8, which is why you cannot simply take s[3] and be handed a letter — some letters are one byte, some are four, and the compiler refuses to guess wrong on your behalf. Ask for .chars() or .bytes() and say which counting you mean.",
+            "The librarians note, wearily, that more ink has been spilled on 'why can't I index a String' than on any other question in the collection. The answer is on this shelf. It has always been on this shelf.",
         ],
     },
 ];

@@ -1611,8 +1611,10 @@ fn great_library() -> Zone {
         Tile::FacadeDoor(crate::gfx::atlas::DOOR_GRAND_R),
     );
 
-    // ── West chamber: the reading stacks. Shelf rows with aisles between. ──
-    for row in [3, 7, 11] {
+    // ── West chamber: the reading stacks. Shelf rows with aisles between,
+    // and a fourth row south of the nook so the whole collection fits —
+    // one shelf per book, no title left unshelved. ──
+    for row in [3, 7, 11, 19] {
         for dx in 3..=8 {
             b.set(ox + dx, oy + row, Tile::Bookshelf);
         }
@@ -1923,17 +1925,18 @@ mod tests {
 
     #[test]
     fn the_library_has_a_book_for_every_shelf() {
-        // No shelf should have to reuse a book — the collection must be at
-        // least as large as the number of shelves that read from it.
+        // Exactly one shelf per book: fewer shelves and part of the
+        // collection could never be read, more and titles would repeat.
         let lib = &zones()[GREAT_LIBRARY];
         let shelves = (0..H)
             .flat_map(|y| (0..W).map(move |x| (x, y)))
             .filter(|&(x, y)| lib.tile(x, y) == Tile::Bookshelf)
             .count();
         assert!(shelves > 0, "the Library has no shelves at all");
-        assert!(
-            shelves <= crate::content::books::BOOKS.len(),
-            "the Library has {shelves} shelves but only {} books — some would duplicate",
+        assert_eq!(
+            shelves,
+            crate::content::books::BOOKS.len(),
+            "the Library has {shelves} shelves for {} books — every title needs exactly one shelf",
             crate::content::books::BOOKS.len()
         );
     }
