@@ -1,4 +1,4 @@
-# Rune & Road — Roadmap II
+# Rune & Road — Roadmap III
 
 ## Jani's notes
 
@@ -8,308 +8,199 @@ first, then return to the roadmap. Remove a note once it's done.
 
 ---
 
-The first roadmap (interiors → items & gates → grass encounters → side
-content → NPC life → audio & polish) is **done**: every door opens, keepsakes
-gate the world, the tall grass hides wild runes, the world keeps secrets off
-the main road, a real day/night clock turns over four zones of weather and
-music, and the whole thing fills any window edge-to-edge. That version of the
-game is the foundation this file stands on.
+Two roadmaps in. The first built the world outward (interiors, keepsakes,
+wild runes, secrets, day/night, audio); the second made it deep — every
+quest teaches exactly one chapter of the Brown Book (ch. 3 → 5.3 across the
+four zones), the folk go home at night to beds that exist, Ferris walks at
+your heels and talks, the journey folds out onto honest parchment at `m`,
+and every footstep, door and milestone has its sound. All five items
+shipped; their full write-ups live in git history.
 
-This roadmap deliberately makes the world **deeper instead of wider**. No
-fifth region, no new core mechanic — instead, the places and people that
-already exist start behaving like they were here before you arrived and will
-still be here after you leave. Each step multiplies the value of the day/night
-clock, the interiors, and the cast that roadmap one built.
+This roadmap lets the world **grow again — but only past the end of the
+road**. The epilogue stays the ending of the main journey; what's new
+starts after it, or beside it. One new region resumes the curriculum where
+chapter 5 left off, and the three quieter arcs pay off collections the
+first two roadmaps built: the grimoire learns to cast, the villages learn
+to trade and cook, the year learns to turn, and the things you've gathered
+get a shelf to stand on.
 
-Ordering: **the book-shaped curriculum → NPC daily schedules → the world map →
-foley & jingles.** The curriculum rewrite comes first because it's the reason
-the game exists — a beginner should be able to play it with the book open;
-schedules next because everything else reads off a world where people go
-places; sound comes last because it polishes whatever exists by then, same as
-last time.
+Ordering: **the far shore → castable runes → coins & kitchens → the turning
+year → keepsakes & save slots.** Curriculum first, same reason as always —
+it's why the game exists. Castable runes next because they're small and
+instantly multiply a collection that already works. Coins before festivals
+because festivals want things to trade and cook. Keepsake polish last, so
+the shelf can display everything the cycle added.
 
 ---
 
-## 1. The book-shaped curriculum — DONE
+## 1. Mistholm — the far shore (ch. 6, *Enums and Pattern Matching*)
 
-**Shipped**: all 20 rewritten quests (1–3 already fit), their templates and
-twin solutions, the 16 wild-rune questions re-themed to their zone's chapter,
-the NPC idle lines audited (Briar, Maren's neighbors kept their stories;
-Fenn, Sil, Sable got new phrasing to match their new lessons), and the
-epilogue's "wings we haven't touched" list corrected now that ownership *is*
-touched. A grep sweep pins the banished tokens out of every template and
-solution. The Turbofish, whose question was chapter-10 material, has returned
-upstream — the Update Rune leaps in its pool now. Original notes follow.
+The Silverford ferry — moored scenery since the day it was baked — finally
+sails. Once all 23 quests are done and the epilogue has rolled, boarding it
+carries you to **Mistholm**: a small grey-water archipelago, pier-linked
+isles under sea mist, gulls, waves (the vendored waves/storm ambience beds
+have waited for exactly this). The road ends; the sea doesn't.
 
-Before this, a complete beginner couldn't play along with a book: the quests
-leapt ahead of any reading order — `Vec<T>` and `Option<T>` in the Woods, `as`
-casting in Emberwick, enums/`match`/`Result`/`?` on Hearthspire (chapter
-6/8/9 material). The fix: each section of the world becomes solvable after
-reading exactly one chapter of the Brown edition of *The Rust Programming
-Language* (rust-book.cs.brown.edu):
+The region teaches **chapter 6** — the first of the banished tokens comes
+home. Six quests (ids 24–29), one lesson each, in book order:
 
-- **Emberwick (zone 0, quests 1–7)** — ch. 3 *Common Programming Concepts*
-- **Whispering Woods (zone 1, quests 8–14)** — ch. 4 *Understanding Ownership*
-- **Silverford (zone 2, quests 15–19)** — ch. 5.1–5.2 *Defining & Using Structs*
-- **Hearthspire (zone 3, quests 20–23)** — ch. 5.3 *Method Syntax*
+- **24** — define an `enum`, variants as the kinds a thing can be (a tide
+  is `Ebb` or `Flood`; a lamp is `Lit` or `Dark`) (6.1)
+- **25** — variants that carry data, constructing them (6.1)
+- **26** — `match`: every arm, exhaustiveness as a kindness (6.2)
+- **27** — patterns that bind values out of variants (6.2)
+- **28** — `Option<T>`: lights in the mist are `Some` or `None`; why the
+  compiler makes you say which (6.1 + 6.2)
+- **29** — `if let` / `let…else` for the one-armed cases (6.3)
 
-(Three chapters, four zones: chapter 5 splits naturally at 5.2/5.3 — struct
-data in the harbor, method syntax on the mountain road.)
+Everything past ch. 6 stays banished from templates and solutions (no
+`Vec`, no `Result`/`?`, no traits, no closures); everything earlier is
+fair game, as always.
 
-**Content-only; the world doesn't move.** Quest ids, zones (7/7/5/4), NPCs,
-titles, filenames and story beats all stay — the villagers' chores are
-independent of which Rust concept fixes them, and the keepsakes stay pinned
-to ids 6 (storm-lantern) and 17 (fishing rod). What changes per quest:
-`lesson`, `intro`/`reminder`/`success`/`hints` in `content/quests.rs`, the
-template, and its twin solution. Quests 1–3 (`println!`, shadowing, `mut`)
-already fit ch. 3 and stay as they are.
+In lockstep, like last time:
 
-The new lesson per quest:
+- **Four new wild runes** in the isle grass, quizzing ch. 6 — the grimoire
+  grows 16 → 20 (new pages, new Ninja Adventure forms).
+- **A small new cast** (a ferrykeeper, isle folk) quarried from the
+  vendored pack; a new zone music pick from the 42 tracks and a night bed
+  from the shelf; mist as the zone weather.
+- **Ferris has opinions** about the sea (`content/ferris.rs` grows a
+  region), and the parchment map learns a fifth panel.
 
-- **Emberwick / ch. 3** — 4 *The Map Pins*: tuples & arrays, `for` over an
-  array (3.2+3.5) · 5 *The Toll Board*: `const`, integer types & literals,
-  arithmetic incl. integer division and remainder (3.1+3.2) · 6 *The Deep,
-  Deep Well*: functions — typed params, `->`, statement vs expression, the
-  semicolon-less tail (3.3) · 7 *Open or Closed*: `bool`, comparisons,
-  `if`/`else if`/`else`, `if` in a `let` (3.2+3.5). Comments (3.4) are all
-  over every template; quest 5 points at them.
-  (Reordered so Watchman Fitch's gate quest — right by the road east — is
-  the last thing in Emberwick, not the fourth of seven.)
-- **Woods / ch. 4** — 8 *Counting Fireflies*: `String` lives on the heap,
-  `String::from`, `push_str`, scope & drop (4.1) · 9 *A Spell for Wren*:
-  moves and use-after-move, fixed with `.clone()` (4.1) · 10 *The Standard
-  Baskets*: passing to a function moves, returning hands ownership back
-  (4.1) · 11 *Mushrooms & Manners*: shared borrows `&T` — asking to look,
-  not to keep (4.2) · 12 *The Echo Cave*: `&mut T`, one at a time, no
-  alias+mutate — an echo is a reference (4.2) · 13 *The Winter Hollow*:
-  fixing ownership errors — never return `&` to a local, return the owned
-  value (4.3) · 14 *The Lost Bell*: slices, `&s[..n]`, `&str` params over
-  `&String` (4.4–4.5).
-- **Silverford / ch. 5.1–5.2** — 15 *The Dock Ledger*: define a struct,
-  instantiate, dot-access · 16 *The Ferry Token*: `mut` instance, field init
-  shorthand in a builder fn · 17 *The Borrowed Rod*: struct update syntax
-  `..other` · 18 *The Net Log*: tuple structs · 19 *A Message in a Bottle*:
-  `#[derive(Debug)]`, `{:?}`/`{:#?}`, functions borrowing `&Struct`.
-- **Hearthspire / ch. 5.3** — 20 *The Lost Book*: `impl`, first `&self`
-  method · 21 *Waking the Golem*: methods with parameters, two instances
-  (`can_hold`-shaped) · 22 *The Sorting of Spellbooks*: `&mut self` methods ·
-  23 *The Missing Page*: associated functions, `Self::new`, `::` calls — the
-  capstone weaves struct + methods.
+**Engineering — the one structural rule**: interiors currently start at
+zone index 4, and "overworld" is assumed as `zone 0–3` in the music
+tables, weather, the map, `visited.<zone>` flags, `content/wilds.rs`'s
+zone assertion and Ferris's regions. Mistholm therefore **appends at the
+end of `zones()`** (no existing index shifts, old saves keep loading), and
+overworld-ness becomes a first-class property — a regions list or a
+`Zone` field — consulted everywhere `0..4` is assumed today. Quest `zone`
+fields stay monotonic (17 > 3, the test keeps passing); keepsakes stay
+pinned at 6 and 17.
 
-Everything past ch. 5 is banished from templates and solutions: no `Vec`, no
-`Option`/`Result`/`match`/`?`, no `as`, no `enum`, no `.iter()`, no closures.
-A quest may lean on any *earlier* chapter (Silverford templates can borrow;
-Emberwick's can't even reference).
+Invariants (to test): template fails untouched / twin solution passes /
+identical `#[test]` blocks for 24–29; the journey test extends past the
+epilogue, boards the ferry and finishes quest 29; BFS reachability,
+standability and warp round-trips across every isle; the map renders every
+charted combination including the fifth panel; ids/zones monotonic; an old
+23-quest `save.json` still loads and the ferry is already waiting.
 
-**In lockstep:** the 16 wild-rune questions in `content/wilds.rs` are
-zone-tied and follow the same rule — a zone's grass never quizzes past its
-chapter (zone 1's current function/loop questions move down to zone 0 topics'
-replacements; zones 2–3 become struct/method questions). NPC idle lines in
-`world/zones.rs` get audited for now-changed concept references; stories
-stay, so most survive.
+## 2. Castable grimoire runes
 
-Invariants (already tested, must keep passing): template fails untouched,
-twin solution passes, `#[test]` blocks identical between the pair
-(`tests/solve_through.rs`); the full journey still plays start to epilogue
-(`tests/journey.rs`); ids/zones monotonic (`quests.rs`); keepsakes at 6 and
-17 (`items.rs`). Verify with the full suite plus a grep sweep for the
-banished tokens.
+Caught runes stop being trophies. In the world, a new key opens a small
+casting ring of everything in the grimoire; choosing a rune casts it —
+gentle, cosmetic-first overworld magic in the existing spark/puff FX
+style. Charm, not keys: **no cast may substitute for a keepsake or open
+anything gated** — the storm-lantern and the rod keep their jobs.
 
-## 2. NPC daily schedules — DONE
+- Each rune's effect keys to its name and nature: flowers bloom in a ring,
+  water ripples, startled birds, a soft chime, a moment of light that
+  doesn't count as the lantern, a rune that makes Ferris weigh in, and one
+  small honest utility — a rune that makes the nearest unfound runestone
+  glimmer for a breath.
+- All effects derive from `hash2` and tick — nothing persists, nothing
+  saved. Casting is free and can't fail; fizzles stay quest-things.
+- One new `Screen` (or overlay) reachable through `App::on_key`, a
+  snapshot scene, a render-matrix row.
 
-**Shipped** (in the amended two-state form): a pure
-`content/schedule.rs::night_spot(npc)` names where each of the named folk
-spends the night — Rowan and Poppy home in their own rooms, Fernshade's
-kids called in to Grandmother Ivy's, Sallow and Maren taking their evening
-at the Glowworm, the river folk making camp on the piers and the beach,
-Hearthspire's scholars withdrawing into the Library. By day everyone stands
-at their authored post. `App::apply_schedule` re-derives all positions from
-the hour plus the active quest at the moments either can change (campfire
-rest, quest pass, save load) — nothing is ever stored, so old saves wake up
-already sorted. The active quest's giver ignores the hour: they keep watch
-at their post, drawn awake with their marker while everyone else sleeps.
-The amble was retired along with the flowing clock — the phase only ever
-turns behind the rest screen's fade, so folk are simply *there* when you
-wake, which is what sleeping past a change of shift feels like. Snapshot's
-`--day` now applies the schedule, so night shots find everyone home.
-Invariant tests pin: every night arrangement is standable, unshared and
-BFS-talkable in every zone; the giver stays pinned; morning restores every
-authored post. Original notes follow.
+Invariants (to test): every caught rune is castable and every cast
+returns cleanly to the world; casting changes no flag, no save, no gate;
+the ring renders at 0, some, and all runes caught.
 
-*(Amended in playtest: the clock no longer turns on its own — the sky waits
-at day or night and campfire rests toggle it. Schedules should key off those
-two player-driven states rather than four flowing phases.)*
+## 3. Coins & kitchens — economy & home life
 
-The clock already turns morning → midday → evening → night, and the cast
-already sleeps after dark. Now they *live* by it: each named NPC gets an
-anchor spot per `DayPhase` — Poppy at her ovens in the bakery kitchen at
-morning, in the doorway at midday, on the square bench at evening; Alder at
-the workshop bench by day and his porch at dusk; Bram walking the well road.
-Interiors are ordinary zones, so a schedule can move someone *indoors* — which
-finally gives the furnished rooms their owners.
+The villages learn to trade, quietly. Nothing on the main road ever costs
+a coin — money is a side-layer, like fishing.
 
-- **Positions are derived, never stored**: a pure
-  `schedule(npc, phase) -> (zone, pos)` in the content layer, same spirit as
-  item ownership. Old saves stay valid for free.
-- **The active quest pins its giver**: while an NPC's errand is the active
-  quest, they wait at their canonical spot all day ("she's been watching the
-  road for you") — the linear quest flow and the journey test stay intact.
-- If the player is standing in the zone when the phase turns, the NPC ambles
-  toward the new anchor for real (BFS path, cosmetic, abandoned at the zone
-  edge); otherwise they're simply there next time you arrive.
-- Dialogue can lean on place: a line variant for "at work" vs "at rest" where
-  it's cheap, so catching Poppy on the bench feels different from the bakery.
+- **Coins**: the first stored counter — `SaveData::coins` behind
+  `#[serde(default)]`, earned gently and spent locally.
+- **The trading post**: the Emberwick market stall (the prefab is already
+  standing) gets a keeper who buys what the world already yields — caught
+  fish, moon-mint-style herbs, mushrooms — and sells seeds and small
+  goods.
+- **Gardening on the clock**: a few soil plots; plant a bought seed, and
+  growth advances one stage per campfire rest — the two-state clock
+  already measures nights, so crops literally grow while you sleep.
+  Derived where possible; the planted-state that can't be derived goes in
+  `SaveData` behind `#[serde(default)]`.
+- **Cooking at Poppy's ovens**: combine harvest into a handful of little
+  dishes at the bakery kitchen. Dishes are gifts — each named villager has
+  a favorite and a new line for receiving it (flags, like moon-mint).
+  No stats, no buffs; the reward is the line.
+- Autosave stays milestone-only: buying, planting and gifting don't write;
+  the existing milestones carry the state to disk soon enough.
 
-Invariants (to test): every anchor is standable and BFS-reachable in its
-zone; talk-reach works at every anchor; the active quest's giver is always at
-their canonical spot; nothing about schedules touches `SaveData`.
+Invariants (to test): an old `save.json` (no coins, no garden) loads with
+empty pockets and bare plots; selling/buying/planting/cooking round-trip
+through `on_key` black-box; no new writes to cwd from unit tests; the main
+journey completes with zero coins touched.
 
-## 3. A companion at your heels — DONE
+## 4. The turning year
 
-**Shipped** (ahead of schedules, by request): the stray is a very small crab
-in Ferris's exact colors (rustacean.net's #F74C00, hand-pixeled `from_art`
-frames), curled in the gap between the Emberwick storehouse and the lean-to
-shed. Feed it thrice — one morsel per hour of the day, `crab.fed.*` flags,
-tamed derived from any three — and it walks one tile behind you forever:
-scuttle frames on the move, a claws-up wave at rest, eyestalks in tall grass,
-a startled hop when a wild rune stirs, a doze with its own z after dark, and
-a curl in the ember-light on the resting screen. Ferris vouches for it
-(family, apparently). Position is ephemeral (`App::companion`), snapped to
-your side across warps/gates/loads; `--crab` previews it in the snapshot
-tool. Remaining polish ideas: a choice of friend at char-select, a slow
-blink at NPCs.
+The sky and the calendar start moving — always derived, never stored
+beyond one counter.
 
-**Amended in playtest**: the taming quest is retired. The little crab is
-Ferris himself, at your heels from the first morning — you two go way back —
-and he talks: with nothing else in reach, `e` is a chat with your oldest
-friend (`content/ferris.rs`, lines picked by `hash2` of spot and hour, with
-a quieter night set).
+- **Rest count is the calendar**: `SaveData::rests` behind
+  `#[serde(default)]` (old saves wake on day zero). Everything below
+  derives from it.
+- **Weather fronts**: each zone's weather stops being eternal — a
+  deterministic function of (zone, rest count) drifts the fronts, so some
+  mornings Silverford's rain has wandered to Emberwick and the Woods'
+  fireflies rest. Static per zone per day, same as now; only the schedule
+  of days changes.
+- **Seasons**: every dozen-ish rests the season turns — a palette tint
+  through `gfx::shade` and a particle swap (petals → leaves → snow →
+  petals). Cosmetic everywhere; crops and quests don't care.
+- **Festival days**: on certain rest counts the Emberwick square dresses
+  up — lanterns, bunting, the cast gathered off-schedule, one-off lines,
+  maybe Poppy's dishes on a long table. Gone the next morning.
+- **A fellow traveler**: one recurring stranger who is always a zone ahead
+  or behind, met at set story beats along the road, trading a few words
+  each time — and standing on the Mistholm pier at the end.
 
-A small friend who walks the road with you — earned, in keeping with the
-world, through a gentle side quest (a stray curled behind the storehouse who
-needs feeding thrice before it trusts you; flags, like moon-mint). Once won,
-it follows a tile behind you, forever.
+Invariants (to test): weather/season/festival state is a pure function of
+the rest counter (same count ⇒ same world); every festival arrangement is
+standable and BFS-talkable; the fellow traveler is never in a wall and
+never blocks a road; old saves load at rest zero with today's exact
+weather.
 
-- **Follow mechanic**: a short breadcrumb queue of the player's recent tiles;
-  the companion occupies no collision tile, draws in the world layer, and
-  warps through doors with you. Standing still, it sits; at a campfire rest
-  it curls up in the ember-light; in tall grass only its ears show.
-- **Ownership is a flag**, position is ephemeral — never saved, recomputed at
-  the player's side on load, like `walked_at`.
-- Hand-pixeled in the existing `from_art` style (the atlas already has
-  critters to match), two or three frames of idle/walk. Possibly a choice of
-  friend, like the traveller's look at char-select.
-- It reacts: a startled hop when a wild rune stirs, a slow blink at NPCs, a
-  little `z` beside yours when the folk of the world sleep.
+## 5. Keepsakes & save slots
 
-Invariants (to test): the companion is never left standing in a wall or lost
-across a warp; render matrix covers world-with-companion; save round-trips
-with and without the flag.
+The collections get their home, and the household gets room for more than
+one journey.
 
-## 4. The world map — DONE
+- **A home of your own**: one Emberwick door that was always yours — a
+  small room with a bed, a table and **the shelf**: found runestones and
+  keepsakes drawn standing on it, filling in as they're earned (derived
+  from `completed` and flags, drawn like the grimoire counts, never
+  stored).
+- **Journal item icons**: the keepsakes in the journal satchel get their
+  Ninja Adventure icon art (the 60+ item icons are vendored; this was the
+  last piece of the visible-forms work).
+- **Save slots**: three slots on the title screen. The existing
+  `save.json` loads as slot one unchanged — compatibility is the promise —
+  and new slots write beside it (`save2.json`, `save3.json`). Char-select
+  runs per slot; delete asks twice, gently.
 
-**Shipped**: `m` unfolds the parchment (`Screen::WorldMap`, listed in the
-key bar): the four zones drawn a *tile to the pixel* from their real maps —
-trimmed of their border bands, quantized to hand-drawn ink, laid two by two
-west to east — so every road, river, rooftop and gate on it is honest.
-Unentered zones sit as blank "uncharted" panels behind `visited.<zone>`
-flags (set on entry; old saves backfill along the linear road on load). You
-are a blinking red dot — resolved out to the right overworld door when
-you're indoors, however deep — and found runestones glint where they stand;
-unfound ones stay the map's secret. Snapshot grew a `map <zone>` scene, the
-render matrix covers all sixteen charted combinations plus the from-indoors
-dot, and app tests pin the `m` round-trip, the gate-crossing flag and the
-interior dot resolution. Campfire/door marks were left off — the map reads
-as a keepsake already, and more icons started to make it a checklist.
-Original notes follow.
-
-Press `m` (or find it in the rest menu): a parchment-styled map screen of the
-whole journey. The zones are procedural but *deterministic*, so the map can be
-honest — a downsampled rendering of the real tile maps (a pixel per couple of
-tiles, terrain quantized to a parchment palette), the four zones laid along
-the road west to east with the gates drawn as the seams they are.
-
-- **Discovery, not spoilers**: zones you haven't entered yet are blank
-  parchment ("uncharted"); visited zones need a tiny `visited.<zone>` flag,
-  set on first entry (gate crossings already autosave, so it piggybacks on an
-  existing milestone).
-- Marks worth drawing: you (a blinking dot), place-name labels in the bitmap
-  font, campfires you've rested at, doors you've opened. Found runestones may
-  glint on it; unfound ones stay its secret. Gentle — a keepsake of where
-  you've been, not a checklist.
-- One more `Screen` variant through `App::on_key`, one more scene in
-  `examples/snapshot.rs`, one more row in the render matrix — same drill as
-  the grimoire.
-
-Invariants (to test): the map screen renders for every combination of
-visited-zone flags; `m` round-trips back to the world; snapshot scene added.
-
-## 5. Foley & jingles — DONE
-
-**Shipped**: the event queue exactly as designed — `SoundEvent` in the lib
-(`Stepped(Terrain)`, `DoorUsed`, `ChestOpened`, `KeepsakeGiven`,
-`RuneCaught`, `StoneFound`, `MenuMoved`, `PageTurned`), pushed as things
-happen and drained by the shell once a frame; the lib and tests stay
-silent, and tests now assert that a road step sounds like earth and a
-meadow step sounds soft without hearing a thing. Footsteps land every
-other step, two takes per surface (grass/earth/sand/wood/stone, with
-paths hardening to stone in the lightless places), doors creak on warp,
-the cellar chest groans, keepsakes chime like coins, dialogue pages flip,
-menus blip, a steel-drum sparkle greets a caught rune and an 8-bit gleam
-a found runestone (Kenney *RPG Audio* / *UI Audio* / *Music Jingles*).
-The two unused Junkala tracks found their homes: "Stage 2" is the
-campfire rest theme, "Level 1" the encounter sting, looped softly under
-their screens. A sound dial (off/quiet/full) joined text speed in the
-rest menu, saved behind `#[serde(default)]` and re-leveling live loops
-mid-note. The existing cast/pass/fizzle cues were kept as they are —
-they're already tuned, and doubling the pass with a second fanfare read
-as noise. All sources credited in `assets/CREDITS.md`. Original notes
-follow.
-
-The world has music; now it gets *sounds*. The shell derives all audio by
-diffing `App` state across frames, which was fine for screens and zones but
-too coarse for footsteps — so the lib grows a small, testable event queue:
-`App` pushes semantic events (`Stepped(Terrain)`, `DoorUsed`, `ChestOpened`,
-`QuestPassed`, `RuneCaught`, `StoneFound`, `MenuMoved`, …) and `main.rs`
-drains them into sounds each frame. The lib and tests stay silent and
-window-free; the tests can finally *assert* that walking on wood sounds
-different from grass, without hearing a thing.
-
-- **Footsteps by terrain** — soft grass, firmer path, wooden floors, cave
-  stone; quiet, every other step, mixed well under the music.
-- **The world's small noises** — door creaks on warp, the cellar chest's
-  groan, a coin-ish chime when a keepsake changes hands (Kenney *RPG Audio*).
-- **Jingles at the milestones** — a short fanfare on quest pass, a soft
-  sparkle when a rune joins the Grimoire, a gleam for a found runestone, and
-  the gentlest possible "no harm done" for a fizzle (Kenney *Music Jingles*).
-- **Menus blip** (Kenney *UI Audio*), the encounter gets its sting and the
-  campfire its rest theme (the unused Junkala tracks — 3 left in each pack).
-- **A sound option** joins text speed in the rest menu (off/quiet/full),
-  saved behind `#[serde(default)]` like everything else.
-
-All sources are already vetted CC0 on the asset shelf in `CLAUDE.md`; each
-gets its line in `assets/CREDITS.md` when it lands.
+Invariants (to test): a pre-slots `save.json` appears in slot one exactly
+as it was; each slot round-trips independently; the shelf renders at
+every ownership combination in the render matrix; the home room passes
+every interior invariant (warp back, reachable, standable).
 
 ---
 
 ## The shelf — considered, wanted, not this roadmap
 
-Ideas weighed for this cycle and deliberately deferred, so they aren't
-re-litigated from scratch next time:
-
-- **A fifth region** with an advanced quest arc (traits & generics,
-  lifetimes, iterators & closures) — flavors sketched: a harbor town on a
-  grey sea, deep mines under Hearthspire, a misty archipelago.
-- **Castable grimoire runes** — caught runes as gentle overworld magic.
-- **Gardening on the clock** and **cooking at Poppy's ovens**.
-- **Coins & a trading post.**
-- **Dynamic weather fronts & seasons**; **festival days**; a **fellow
-  traveler** you keep crossing on the road.
-- ~~**Visible wild-rune forms** in encounters~~ — **done between roadmaps**:
-  every wild rune now appears as a Ninja Adventure monster on the encounter
-  screen and in the grimoire (shadows until met). Item icons in the journal
-  satchel remain on the shelf.
-- **Save slots** and a home shelf displaying runestones and keepsakes.
+- **A sixth region** for the advanced arc — traits & generics, lifetimes,
+  iterators & closures (ch. 10 and 13 material). Flavors still banked:
+  deep mines under Hearthspire, a harbor town on a grey sea (whichever
+  Mistholm doesn't use).
+- **Collections & error handling** (ch. 8–9) as the bridge between
+  Mistholm and the advanced arc — `Vec`, `String` in anger, `HashMap`,
+  `Result` and `?`.
+- **Seasons that matter**: crops by season, festival menus by harvest —
+  deferred until the cosmetic year has been lived with.
+- **NPC-to-NPC life**: villagers talking to each other, visible errands
+  between anchors.
 
 ---
 
@@ -320,16 +211,21 @@ re-litigated from scratch next time:
 - All randomness derives from `hash2(x, y, seed)` — playthroughs stay
   deterministic and testable.
 - Anything derivable is derived, never stored: item ownership from
-  `completed`, NPC positions from the phase, the companion's spot from yours.
-  New persistent state goes in `SaveData` behind `#[serde(default)]` — an old
-  `save.json` must always keep loading.
+  `completed`, NPC positions from the hour, the shelf's contents from
+  flags, the whole turning year from one rest counter. New persistent
+  state goes in `SaveData` behind `#[serde(default)]` — an old `save.json`
+  must always keep loading.
+- Overworld-ness is a property, not an index range — nothing new may
+  assume `zone < 4`, and new zones append so existing indices never shift.
 - Tile appearance lives in one place: `tile_sprites()` in `gfx/scene.rs`.
-- Extend the render matrix (`tests/render.rs`) and the world invariant tests
-  (`world/zones.rs`) with every new screen, schedule anchor, or warp.
+- Extend the render matrix (`tests/render.rs`) and the world invariant
+  tests (`world/zones.rs`) with every new screen, region, anchor, or warp.
 - Autosave stays a milestone thing (quest pass, gate, quit) — frequent
   actions must not write to the cwd, or unit tests start littering the repo.
-- Sound lives entirely in the `src/main.rs` shell; the lib emits events, the
-  shell plays them. Tests assert events, never audio.
+- Sound lives entirely in the `src/main.rs` shell; the lib emits events,
+  the shell plays them. Tests assert events, never audio.
+- Nothing on the main road ever needs a coin, a cast rune, or a season —
+  the new layers stay optional, like fishing.
 - Names stay in-world and original: the Grimoire, keepsakes, fizzles —
   nothing borrowed from the franchises that inspired the shape.
 - Tone is spec: cozy, gentle, no fail states, the compiler is the politest
