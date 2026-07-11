@@ -226,8 +226,11 @@ pub enum Screen {
         selected: usize,
         phase: EncounterPhase,
     },
-    /// The collection of wild runes inscribed so far.
-    Grimoire,
+    /// The collection of wild runes inscribed so far, a few regions to the
+    /// page — arrows leaf through.
+    Grimoire {
+        page: usize,
+    },
     /// The parchment map of the journey (`m`): the four zones downsampled
     /// honestly from their real tiles, uncharted until first entered.
     WorldMap,
@@ -561,6 +564,15 @@ impl App {
             .all(|q| self.completed.contains(&q.id))
     }
 
+    /// The mainland road is walked: every quest up to the epilogue is done.
+    /// (The ferry to Mistholm won't cast off before this.)
+    pub fn road_complete(&self) -> bool {
+        QUESTS
+            .iter()
+            .filter(|q| q.id <= quests::ROAD_END)
+            .all(|q| self.completed.contains(&q.id))
+    }
+
     /// Put every named NPC where the hour says they should be: their
     /// authored post by day, their `content::schedule` spot after dark —
     /// except the active quest's giver, who ignores the hour and keeps
@@ -747,7 +759,7 @@ impl App {
             Screen::Dialogue(_) => self.dialogue_key(key),
             Screen::Journal => self.journal_key(key),
             Screen::Encounter { .. } => self.encounter_key(key),
-            Screen::Grimoire => self.grimoire_key(key),
+            Screen::Grimoire { .. } => self.grimoire_key(key),
             Screen::WorldMap => self.world_map_key(key),
             Screen::Resting { .. } => self.resting_key(key),
             Screen::Casting { .. } => {} // the runes are busy
@@ -952,7 +964,7 @@ impl App {
             Key::Enter | Key::Char('e') | Key::Char(' ') => self.interact(),
             Key::Char('c') => self.start_cast(),
             Key::Char('q') => self.screen = Screen::Journal,
-            Key::Char('g') => self.screen = Screen::Grimoire,
+            Key::Char('g') => self.screen = Screen::Grimoire { page: 0 },
             Key::Char('m') => self.screen = Screen::WorldMap,
             Key::Char('f') => self.ferris_hint(),
             Key::Esc => self.screen = Screen::Paused { selected: 0 },
@@ -1006,6 +1018,9 @@ impl App {
     }
 
     fn grimoire_key(&mut self, code: Key) {
+        let Screen::Grimoire { page } = &mut self.screen else {
+            return;
+        };
         match code {
             Key::Esc
             | Key::Char('g')
@@ -1014,6 +1029,12 @@ impl App {
             | Key::Enter
             | Key::Char(' ') => {
                 self.screen = Screen::World;
+            }
+            Key::Left | Key::Up | Key::PageUp | Key::Char('h') | Key::Char('k') => {
+                *page = page.saturating_sub(1);
+            }
+            Key::Right | Key::Down | Key::PageDown | Key::Char('l') | Key::Char('j') => {
+                *page = (*page + 1).min(wilds::GRIMOIRE_PAGES - 1);
             }
             _ => {}
         }
@@ -1027,7 +1048,11 @@ impl App {
         // Stepping off the west edge walks back toward the previous zone
         // (interiors have no edges worth walking to — only their door).
         if target.0 < 0 && !self.zone().interior {
-            if self.zone_idx > 0 {
+            if self.zone_idx == zones::MISTHOLM {
+                // No road west of the isles — only water. (No shore reaches
+                // the map edge, so this is a courtesy, not a route.)
+                self.toast("Open water, west to the horizon. The ferry knows the way home.");
+            } else if self.zone_idx > 0 {
                 self.zone_idx -= 1;
                 let gate = self.zone().gate.unwrap_or(self.zone().spawn);
                 self.player = (gate.0 - 2, gate.1);
@@ -1059,6 +1084,14 @@ impl App {
                 }
                 self.toast("You raise Bram's storm-lantern and step into the dark.");
             }
+            // The sea crossing waits for the road: the ferry casts off only
+            // once every errand on the mainland is done.
+            if warp.to_zone == zones::MISTHOLM && !self.road_complete() {
+                self.toast(
+                    "Wick pats the ferry's rail. \"She sails when the road's seen you through — every last errand. The sea can wait. It's good at it.\"",
+                );
+                return;
+            }
             self.zone_idx = warp.to_zone;
             self.player = warp.to_pos;
             self.companion_snap();
@@ -1067,6 +1100,16 @@ impl App {
             if self.zone().interior && !zones::needs_light(self.zone_idx) {
                 let name = self.zone().name;
                 self.toast(format!("You step inside — {name}."));
+            } else if zones::region_of(self.zone_idx).is_some() {
+                // The ferry is a gate in boat's clothing: landing in a
+                // region is a milestone, so it charts the map and saves.
+                if self.zone_idx == zones::MISTHOLM {
+                    self.toast("The ferry noses through the mist and ties up at the isles.");
+                } else {
+                    self.toast("The ferry finds the river again. Silverford, all around you.");
+                }
+                self.mark_visited();
+                self.autosave();
             }
             return;
         }
@@ -1574,7 +1617,7 @@ impl App {
                     // A keepsake changes hands with the thanks.
                     self.sound(SoundEvent::KeepsakeGiven);
                 }
-                if qid == QUESTS.len() as u8 {
+                if qid == quests::ROAD_END {
                     self.screen = Screen::Epilogue { page: 0 };
                 } else if self.zone_cleared(self.zone_idx) && self.zone().gate.is_some() {
                     let msg = self.zone().unlock_msg;

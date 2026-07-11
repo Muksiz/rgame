@@ -102,6 +102,16 @@ WILD_FORMS = [
     "Axolot",  # 16 the Mirror Rune — admiring its own reflection
 ]
 
+# The Mistholm runes (ids 17+), baked as their own tail block at the very end
+# of the atlas — the WILD_FORMS block above is mid-list and must never grow,
+# or every cell after it would shift. `atlas::wild_form(id)` picks the block.
+WILD_FORMS_SEA = [
+    "Mollusc2",  # 17 the Tide Rune — a shell; the tide is one of two kinds
+    "Octopus",  # 18 the Eightfold Rune — an arm for every case, none missed
+    "LanternGreen",  # 19 the Maybe Rune — a lantern-light: Some, or None
+    "FishRed",  # 20 the Letting Rune — the one fish you watch for; let the rest by
+]
+
 
 def na_tile(sheet_name, c, r):
     """One 16x16 cell from a Ninja Adventure tileset (margin-free grid)."""
@@ -1567,6 +1577,13 @@ def main(sheet_path, chars_path):
         ("BOAR", from_art(BOAR, PALETTE)),
         ("DUCK", from_art(DUCK, PALETTE)),
         ("DONKEY", from_art(DONKEY, PALETTE)),
+        # ── the Mistholm runes' forms (ids 17+): the sea's own tail block ──
+        *[
+            ("WILD_FORM_SEA" if i == 0 else None, frame)
+            for i, frame in enumerate(
+                frame for folder in WILD_FORMS_SEA for frame in na_monster(folder)
+            )
+        ],
     ]
 
     rows = (len(cells) + COLS - 1) // COLS

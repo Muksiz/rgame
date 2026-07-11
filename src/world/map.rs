@@ -139,6 +139,8 @@ pub enum Border {
     Forest,
     Meadow,
     Cliffs,
+    /// Open water to the horizon, the odd rock breaking the swell.
+    Sea,
     /// Interiors: past the walls there is only warm, harmless darkness.
     Void,
 }
@@ -163,6 +165,10 @@ impl Border {
                 0..=74 => Tile::Cliff,
                 75..=89 => Tile::Rock,
                 _ => Tile::Grass,
+            },
+            Border::Sea => match h {
+                0..=1 => Tile::WaterRock,
+                _ => Tile::Water,
             },
         }
     }

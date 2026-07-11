@@ -48,7 +48,7 @@ pub fn render(fb: &mut Frame, atlas: &Atlas, app: &App) {
                     selected,
                     phase,
                 } => encounter(fb, atlas, app, *rune, *selected, *phase),
-                Screen::Grimoire => grimoire(fb, atlas, app),
+                Screen::Grimoire { page } => grimoire(fb, atlas, app, *page),
                 Screen::Casting { .. } => casting(fb, atlas, app),
                 Screen::CastResult {
                     quest,
@@ -1071,7 +1071,7 @@ fn grass_decor(h: u32, zone_id: usize) -> Option<u16> {
     }
     // The swaying tuft pairs are reserved for TallGrass, so encounter grass
     // stays tellable from mere decoration.
-    const MIXES: [[u16; 6]; 4] = [
+    const MIXES: [[u16; 6]; 5] = [
         [
             atlas::SPROUT_ALT,
             atlas::FLOWER_SMALL_A,
@@ -1103,6 +1103,14 @@ fn grass_decor(h: u32, zone_id: usize) -> Option<u16> {
             atlas::ICE_B,
             atlas::ICE_A,
             atlas::SNOWROCK_A,
+        ],
+        [
+            atlas::TUFT_MARSH_A,
+            atlas::PEBBLE,
+            atlas::FLOWER_SMALL_B,
+            atlas::SHRUB_SMALL,
+            atlas::TUFT_MARSH_B,
+            atlas::PEBBLE,
         ],
     ];
     // Rooms (and any region beyond the mixes) borrow the last row, as ever.
@@ -2393,7 +2401,7 @@ fn encounter(
             EncounterPhase::Asking => (app.tick / 8) % 2,
             _ => 0,
         };
-        let id = atlas::WILD_FORM + (rune_id as u16 - 1) * 2 + frame as u16;
+        let id = atlas::wild_form(rune_id) + frame as u16;
         fb.sprite_scaled(atlas, id, ix + iw / 2 - 24, iy + 4, 3, 1.0);
     }
 
@@ -2465,19 +2473,22 @@ fn sprite_silhouette(fb: &mut Frame, atlas: &Atlas, id: u16, x: i32, y: i32, c: 
     }
 }
 
-fn grimoire(fb: &mut Frame, atlas: &Atlas, app: &App) {
+fn grimoire(fb: &mut Frame, atlas: &Atlas, app: &App, page: usize) {
     let (ix, iy, iw, ih) = centered_panel(fb, 464, 252, "Grimoire - wild runes of the road");
     // Two columns per region, each rune beside its little form — inscribed
     // ones bob on the page, unmet ones sit as shadows (the lore is read at
-    // catch time), so all four regions fit on one page.
+    // catch time). A few regions share each page; arrows leaf between them.
+    let page = page.min(wilds::GRIMOIRE_PAGES - 1);
+    let from = page * wilds::GRIMOIRE_REGIONS_PER_PAGE;
+    let to = (from + wilds::GRIMOIRE_REGIONS_PER_PAGE).min(REGIONS.len());
     let mut y = iy + 2;
-    for &zone in &REGIONS {
+    for &zone in &REGIONS[from..to] {
         font::text_lg(fb, ix + 4, y, app.zones[zone].name, WARM);
         y += font::LINE_LG + 1;
         let runes = wilds::in_zone(zone);
         for (i, rune) in runes.iter().enumerate() {
             let x = ix + 10 + (i as i32 % 2) * (iw / 2);
-            let form = atlas::WILD_FORM + (rune.id as u16 - 1) * 2;
+            let form = atlas::wild_form(rune.id);
             if app.grimoire.contains(&rune.id) {
                 let frame = form + ((app.tick / 8) % 2) as u16;
                 fb.sprite(atlas, frame, x, y - 4, 1.0);
@@ -2494,6 +2505,16 @@ fn grimoire(fb: &mut Frame, atlas: &Atlas, app: &App) {
             y += 16;
         }
         y += 5;
+    }
+    // Page dots, like the dialogue's, when the collection spans pages —
+    // a row above the footer, so neither crowds the other.
+    if wilds::GRIMOIRE_PAGES > 1 {
+        let dots_w = wilds::GRIMOIRE_PAGES as i32 * 8 - 4;
+        for p in 0..wilds::GRIMOIRE_PAGES {
+            let x = ix + (iw - dots_w) / 2 + p as i32 * 8;
+            let c = if p == page { WARM } else { (96, 86, 70) };
+            fb.fill(x, iy + ih - 17, 4, 4, c);
+        }
     }
     let footer = format!(
         "{}/{} inscribed . wild runes live in tall grass . esc",

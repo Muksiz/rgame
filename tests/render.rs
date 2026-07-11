@@ -120,9 +120,11 @@ fn every_screen_renders() {
         render(&atlas, &app);
     }
 
-    app.grimoire.extend([1, 5, 11]);
-    app.screen = Screen::Grimoire;
-    render(&atlas, &app);
+    app.grimoire.extend([1, 5, 11, 18]);
+    for page in 0..rgame::content::wilds::GRIMOIRE_PAGES {
+        app.screen = Screen::Grimoire { page };
+        render(&atlas, &app);
+    }
 
     app.screen = Screen::Casting { quest: 1 };
     render(&atlas, &app);
@@ -159,13 +161,14 @@ fn every_screen_renders() {
     render(&atlas, &app);
     app.banner = None;
 
-    // The parchment map, in every combination of charted zones — and once
+    // The parchment map, in every combination of charted regions — and once
     // from a room behind a door, where the dot resolves to the overworld.
+    let regions = rgame::world::zones::REGIONS;
     app.screen = Screen::WorldMap;
-    for mask in 0..16u32 {
+    for mask in 0..(1u32 << regions.len()) {
         app.flags.retain(|f| !f.starts_with("visited."));
-        for z in 0..4 {
-            if mask & (1 << z) != 0 {
+        for (i, &z) in regions.iter().enumerate() {
+            if mask & (1 << i) != 0 {
                 app.flags.insert(rgame::content::sides::visited_flag(z));
             }
         }
@@ -280,6 +283,8 @@ fn a_completed_game_still_renders() {
     render(&atlas, &app);
     app.screen = Screen::Journal;
     render(&atlas, &app);
-    app.screen = Screen::Grimoire;
-    render(&atlas, &app);
+    for page in 0..rgame::content::wilds::GRIMOIRE_PAGES {
+        app.screen = Screen::Grimoire { page };
+        render(&atlas, &app);
+    }
 }

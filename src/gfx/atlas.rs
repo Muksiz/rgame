@@ -400,9 +400,20 @@ pub const CAST_IVY: u16 = 806;
 pub const CAST_MOSS: u16 = 810;
 pub const CAST_BRACKEN: u16 = 814;
 /// The wild runes' visible forms (Ninja Adventure monsters, one per rune in
-/// id order): two bobbing frames each, so rune `id` wears
-/// `WILD_FORM + (id - 1) * 2` and the cell after it.
+/// id order): two bobbing frames each. The first sixteen live here; later
+/// arrivals bake at the end of the atlas (`WILD_FORM_SEA`), because this
+/// block sits mid-list and can never grow. Use `wild_form(id)`.
 pub const WILD_FORM: u16 = 818;
+
+/// The two bobbing frames of rune `id`'s visible form (the first frame;
+/// its partner is the cell after it).
+pub fn wild_form(id: u8) -> u16 {
+    if id <= 16 {
+        WILD_FORM + (id as u16 - 1) * 2
+    } else {
+        WILD_FORM_SEA + (id as u16 - 17) * 2
+    }
+}
 /// Spell FX (Ninja Adventure FX strips): 32x32 frames baked as 2x2 cell
 /// blocks, six frames each — frame `f` starts at the constant `+ f * 4`.
 /// The casting screen's blooming spark circle, and the fizzle's smoke puff.
@@ -416,6 +427,8 @@ pub const DOG: u16 = 898;
 pub const BOAR: u16 = 899;
 pub const DUCK: u16 = 900;
 pub const DONKEY: u16 = 901;
+/// The Mistholm runes' forms (ids 17+): the sea's own tail block.
+pub const WILD_FORM_SEA: u16 = 902;
 pub const HOUSE_SIZE: (i32, i32) = (5, 5);
 pub const SHED_SIZE: (i32, i32) = (3, 3);
 pub const STALL_SIZE: (i32, i32) = (5, 5);

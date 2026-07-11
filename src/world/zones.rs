@@ -156,13 +156,21 @@ pub const WOODS_LODGE: usize = 13;
 pub const ROWAN_COTTAGE: usize = 14;
 pub const FERNSHADE_COTTAGE: usize = 15;
 pub const GLOWWORM: usize = 16;
+pub const MISTHOLM: usize = 17;
 
-/// The overworld regions in journey order, west to east. Anything keyed
-/// per-region — zone music, Ferris's opinions, the parchment map's panels —
-/// goes through this list and `region_of`, never a raw `zone < 4`, so a new
-/// region can append at the end of `zones()` without shifting a single
-/// interior index (and without breaking a single old save).
-pub const REGIONS: [usize; 4] = [EMBERWICK, WHISPERING_WOODS, SILVERFORD, HEARTHSPIRE];
+/// The overworld regions in journey order, west to east — and then out to
+/// sea. Anything keyed per-region — zone music, Ferris's opinions, the
+/// parchment map's panels — goes through this list and `region_of`, never a
+/// raw `zone < 4`, so a new region can append at the end of `zones()`
+/// without shifting a single interior index (and without breaking a single
+/// old save).
+pub const REGIONS: [usize; 5] = [
+    EMBERWICK,
+    WHISPERING_WOODS,
+    SILVERFORD,
+    HEARTHSPIRE,
+    MISTHOLM,
+];
 
 /// A zone's position along the journey, if it lies under the open sky.
 /// `None` means a room behind a door.
@@ -270,6 +278,7 @@ pub fn zones() -> Vec<Zone> {
         rowan_cottage(),
         fernshade_cottage(),
         glowworm(),
+        mistholm(),
     ]
 }
 
@@ -303,6 +312,25 @@ fn barrier(b: &mut MapBuilder, x: i32, gate_ys: std::ops::RangeInclusive<i32>, t
             b.set(x, y, Tile::Gate);
         } else {
             b.set(x, y, tile);
+        }
+    }
+}
+
+/// An island risen from the sea: a ragged-edged ellipse of grass with a
+/// sand rim, the waterline wobbling tile by tile so no two shores match.
+fn isle(b: &mut MapBuilder, seed: u32, cx: i32, cy: i32, rx: i32, ry: i32) {
+    use crate::world::map::hash2;
+    for y in cy - ry - 1..=cy + ry + 1 {
+        for x in cx - rx - 1..=cx + rx + 1 {
+            let dx = (x - cx) as f32 / rx as f32;
+            let dy = (y - cy) as f32 / ry as f32;
+            let d = dx * dx + dy * dy;
+            let wobble = (hash2(x, y, seed ^ 0x15E5) % 100) as f32 / 500.0;
+            if d <= 0.58 - wobble {
+                b.set(x, y, Tile::Grass);
+            } else if d <= 1.0 - wobble {
+                b.set(x, y, Tile::Sand);
+            }
         }
     }
 }
@@ -1016,7 +1044,10 @@ fn silverford() -> Zone {
     for x in 145..=149 {
         b.set(x, 53, Tile::Pier);
     }
-    b.prefab(147, 51, atlas::BOAT, atlas::BOAT_SIZE, None);
+    // The ferry's rail gap amidships is a boarding plank: step aboard from
+    // the long pier and she'll cast off — once the road has seen you through
+    // (the gating lives in `App::try_move`, like the lantern's).
+    b.prefab(147, 51, atlas::BOAT, atlas::BOAT_SIZE, Some((1, 0)));
     b.prefab(147, 47, atlas::SKIFF, atlas::SKIFF_SIZE, None);
     // A third skiff upstream, pulled in by Juniper's fishing hole.
     b.prefab(157, 21, atlas::SKIFF, atlas::SKIFF_SIZE, None);
@@ -1041,6 +1072,7 @@ fn silverford() -> Zone {
 
     b.set(8, 38, Tile::Sign);
     b.set(140, 38, Tile::Sign);
+    b.set(143, 48, Tile::Sign);
 
     b.clearing(136, 45, 1);
     b.clearing(148, 22, 1);
@@ -1067,7 +1099,11 @@ fn silverford() -> Zone {
         interior: false,
         border: Border::Meadow,
         seed,
-        warps: vec![],
+        warps: vec![Warp {
+            at: (148, 51),
+            to_zone: MISTHOLM,
+            to_pos: (32, 38),
+        }],
         npcs: vec![
             Npc {
                 name: "Dockhand Fenn",
@@ -1144,6 +1180,10 @@ fn silverford() -> Zone {
             Sign {
                 pos: (140, 38),
                 text: "Bridge east to the Hearthspire road. Dock: south. Good moods: everywhere.",
+            },
+            Sign {
+                pos: (143, 48),
+                text: "The ferry to Mistholm, out where the river forgets its name. She sails when the road lets you go.",
             },
         ],
     }
@@ -1294,6 +1334,134 @@ fn hearthspire() -> Zone {
         ],
     }
 }
+fn mistholm() -> Zone {
+    let seed = 55;
+    let mut b = MapBuilder::new(seed);
+    use crate::gfx::atlas;
+    use crate::world::map::hash2;
+
+    // Grey water to every horizon, the odd rock breaking the swell.
+    b.rect(0, 0, MAP_W, MAP_H, Tile::Water);
+
+    // Five green stones in a grey sea, west to east: the ferry landing, the
+    // hamlet isle, the north skerry, the shrine isle, and a tide-pool islet.
+    isle(&mut b, seed, 46, 39, 15, 8); // the landing
+    isle(&mut b, seed, 104, 30, 22, 12); // the hamlet
+    isle(&mut b, seed, 152, 13, 10, 6); // the skerry
+    isle(&mut b, seed, 196, 42, 19, 10); // the shrine isle
+    isle(&mut b, seed, 142, 56, 8, 5); // the tide-pools
+
+    // Each isle grows its own grass — thick where the wild runes wait.
+    b.scatter(Tile::TallGrass, 120, (31, 31, 31, 17));
+    b.scatter(Tile::TallGrass, 210, (82, 18, 45, 25));
+    b.scatter(Tile::TallGrass, 300, (142, 7, 21, 13));
+    b.scatter(Tile::TallGrass, 190, (177, 32, 39, 21));
+    b.scatter(Tile::TallGrass, 250, (134, 51, 17, 11));
+    b.scatter_all(Tile::Reed, 55);
+    b.scatter_all(Tile::Flower, 20);
+    b.scatter_all(Tile::Bush, 25);
+
+    // Skerries and sea-rocks, sparse, clear of the pier lines.
+    for y in 0..MAP_H {
+        for x in 0..MAP_W {
+            if b.get(x, y) == Tile::Water && hash2(x, y, seed ^ 0x5EA) % 1000 < 8 {
+                b.set(x, y, Tile::WaterRock);
+            }
+        }
+    }
+
+    // The boardwalks: timber piers stitching the isles together over open
+    // water — Mistholm's roads.
+    for x in 31..=34 {
+        b.set(x, 38, Tile::Pier); // the landing jetty
+    }
+    for x in 56..=85 {
+        b.set(x, 34, Tile::Pier); // landing → hamlet
+    }
+    for x in 119..=152 {
+        b.set(x, 22, Tile::Pier); // hamlet → skerry (west leg)
+    }
+    for y in 16..=22 {
+        b.set(152, y, Tile::Pier); // hamlet → skerry (north leg)
+    }
+    for x in 119..=181 {
+        b.set(x, 38, Tile::Pier); // hamlet → shrine isle
+    }
+    for y in 49..=56 {
+        b.set(188, y, Tile::Pier); // shrine isle → tide-pools (south leg)
+    }
+    for x in 149..=188 {
+        b.set(x, 56, Tile::Pier); // shrine isle → tide-pools (west leg)
+    }
+
+    // The ferry, tied up at the landing jetty; stepping aboard sails home.
+    b.prefab(26, 38, atlas::BOAT, atlas::BOAT_SIZE, Some((4, 0)));
+
+    // The hamlet: two weathered homes above the boardwalk crossing.
+    b.prefab(92, 24, atlas::NA_HOUSE_PLAIN, atlas::NA_HOUSE_SIZE, None);
+    b.prefab(106, 25, atlas::NA_HOUSE_THATCH, atlas::NA_HOUSE_SIZE, None);
+
+    // Old growth, what little the wind allows.
+    b.prefab(98, 18, atlas::TREE_BIG_GREEN, atlas::TREE_BIG_SIZE, None);
+    b.prefab(196, 33, atlas::TREE_BIG_GREEN, atlas::TREE_BIG_SIZE, None);
+    b.prefab(
+        150,
+        10,
+        atlas::TREE_DEAD_BIG,
+        atlas::TREE_DEAD_BIG_SIZE,
+        None,
+    );
+
+    // A driftwood fire on the hamlet's south shore, and one by the shrine.
+    b.clearing(100, 31, 1);
+    b.set(100, 31, Tile::Campfire);
+    b.clearing(196, 44, 1);
+    b.set(196, 44, Tile::Campfire);
+
+    b.set(34, 37, Tile::Sign);
+    b.set(97, 29, Tile::Sign);
+    b.set(190, 40, Tile::Sign);
+
+    Zone {
+        id: MISTHOLM,
+        name: "Mistholm",
+        tiles: b.tiles,
+        spawn: (32, 38),
+        gate: None,
+        locked_msg: "",
+        unlock_msg: "",
+        weather: Some(Weather::Mist),
+        daylight: 0.45,
+        interior: false,
+        border: Border::Sea,
+        seed,
+        warps: vec![Warp {
+            at: (30, 38),
+            to_zone: SILVERFORD,
+            to_pos: (148, 50),
+        }],
+        npcs: vec![],
+        critters: vec![
+            Critter::new(CritterKind::Duck, (50, 42)),
+            Critter::new(CritterKind::Duck, (140, 54)),
+        ],
+        signs: vec![
+            Sign {
+                pos: (34, 37),
+                text: "Mistholm. Five green stones in a grey sea. The mist is a neighbor; wave.",
+            },
+            Sign {
+                pos: (97, 29),
+                text: "The hamlet. Nets dry by noon; questions keep till supper.",
+            },
+            Sign {
+                pos: (190, 40),
+                text: "The old shrine keeps the mist company. It insists it's the other way around.",
+            },
+        ],
+    }
+}
+
 // ── interiors ───────────────────────────────────────────────────────────────
 
 /// A room floating in the dark: stamp the art at `ROOM_AT`, spawn just inside

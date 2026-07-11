@@ -20,7 +20,7 @@ pub const CHAT: &[&str] = &[
 ];
 
 /// What he thinks of each overworld region, folded into the local rotation.
-pub const ZONE_CHAT: [&[&str]; 4] = [
+pub const ZONE_CHAT: [&[&str]; 5] = [
     // Emberwick
     &[
         "\"Village air,\" Ferris pronounces, taking some in. \"Bread, woodsmoke, chickens plotting. The good stuff.\"",
@@ -52,6 +52,14 @@ pub const ZONE_CHAT: [&[&str]; 4] = [
         "\"The mist keeps trying to be mysterious,\" Ferris clicks. \"It's just shy water. I'd know. Family trait.\"",
         "\"A library at the top of the world.\" Ferris nods slowly. \"That's where I'd keep the good books too.\"",
         "\"Look how far the road goes back,\" Ferris says quietly, looking west. \"Every step of it yours. I counted.\"",
+    ],
+    // Mistholm
+    &[
+        "\"SALT,\" Ferris announces, both claws raised to the wind. \"Salt water. Do you understand what this MEANS. We're HOME.\"",
+        "\"I told you the sea was past the last page,\" Ferris says, deeply satisfied. \"I keep excellent notes.\"",
+        "\"The tide comes in, the tide goes out. Ebb or Flood, never both.\" Ferris nods at it professionally. \"Well-typed, the sea.\"",
+        "\"Every crab on these isles is going to want an introduction,\" Ferris warns. \"Be gracious. I have a reputation.\"",
+        "\"Mist over salt water is just the sea practicing being sky,\" Ferris says. \"Ambition! I've always admired that in a puddle.\"",
     ],
 ];
 

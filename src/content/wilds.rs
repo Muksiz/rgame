@@ -6,7 +6,8 @@
 
 pub struct WildRune {
     pub id: u8,
-    /// Which overworld zone's grass it lives in (an index in `zones::REGIONS`).
+    /// The zone index of the overworld region whose grass it lives in
+    /// (a member of `zones::REGIONS`).
     pub zone: usize,
     pub name: &'static str,
     /// How it announces itself before the question.
@@ -27,7 +28,13 @@ pub fn in_zone(zone: usize) -> Vec<&'static WildRune> {
     WILDS.iter().filter(|w| w.zone == zone).collect()
 }
 
-pub static WILDS: [WildRune; 16] = [
+/// The grimoire shows a few regions to the page; arrows leaf between them.
+pub const GRIMOIRE_REGIONS_PER_PAGE: usize = 3;
+pub const GRIMOIRE_PAGES: usize = crate::world::zones::REGIONS
+    .len()
+    .div_ceil(GRIMOIRE_REGIONS_PER_PAGE);
+
+pub static WILDS: [WildRune; 20] = [
     // ── Emberwick, ch. 3: println!, mut, functions, statements & expressions ─
     WildRune {
         id: 1,
@@ -243,6 +250,59 @@ pub static WILDS: [WildRune; 16] = [
         ],
         answer: 0,
         lore: "Inside its own impl block, a type may call itself Self — every home needs a name for 'here'.",
+    },
+    // ── Mistholm, ch. 6: enums, match, Option, if let ──
+    WildRune {
+        id: 17,
+        zone: crate::world::zones::MISTHOLM,
+        name: "the Tide Rune",
+        stir: "A shelled rune rolls up with the tide, which is coming in. Or going out. One of the two.",
+        prompt: "A tide is either `Ebb` or `Flood`, never both. What fits best?",
+        options: [
+            "enum Tide { Ebb, Flood }",
+            "struct Tide { ebb: bool, flood: bool }",
+            "two separate variables",
+        ],
+        answer: 0,
+        lore: "When a thing is one of a fixed set of kinds, an enum says so — and the struct's two bools can never lie about it again.",
+    },
+    WildRune {
+        id: 18,
+        zone: crate::world::zones::MISTHOLM,
+        name: "the Eightfold Rune",
+        stir: "An octopus-shaped rune surfaces and raises every arm at once, so as not to miss anything.",
+        prompt: "What does the compiler insist every `match` must do?",
+        options: [
+            "Have exactly two arms",
+            "Handle every possible variant",
+            "Return a number",
+        ],
+        answer: 1,
+        lore: "A match is exhaustive: an arm for every case, none forgotten. The Eightfold Rune has arms to spare and checks twice.",
+    },
+    WildRune {
+        id: 19,
+        zone: crate::world::zones::MISTHOLM,
+        name: "the Maybe Rune",
+        stir: "A lantern-light bobs in the mist. There may be a rune under it. There may not.",
+        prompt: "What are the two variants of `Option<T>`?",
+        options: ["Ok(T) and Err(E)", "True and False", "Some(T) and None"],
+        answer: 2,
+        lore: "A light in the mist is Some, or it is None — and Rust makes you say which before you steer by it.",
+    },
+    WildRune {
+        id: 20,
+        zone: crate::world::zones::MISTHOLM,
+        name: "the Letting Rune",
+        stir: "A single red fish circles your ankles, clearly the one you were waiting for.",
+        prompt: "`if let Some(fish) = net { ... }` — and when `net` is `None`?",
+        options: [
+            "The block is skipped; no harm done",
+            "The program panics",
+            "It refuses to compile without an else",
+        ],
+        answer: 0,
+        lore: "if let watches for the one shape it cares about and lets the rest of the sea swim by.",
     },
 ];
 

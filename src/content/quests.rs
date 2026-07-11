@@ -16,6 +16,11 @@ pub fn quest(id: u8) -> &'static Quest {
     &QUESTS[(id - 1) as usize]
 }
 
+/// The last quest of the mainland road — passing it rolls the epilogue and
+/// lets the Silverford ferry cast off. Quests beyond it (Mistholm's) are the
+/// road after the road; they never move the epilogue.
+pub const ROAD_END: u8 = 23;
+
 /// Ferris's gentle one-liners when a rune fizzles.
 pub static FIZZLE_LINES: &[&str] = &[
     "Ferris pokes the smoking rune with a claw. \"No harm done! The compiler left you a note — they always mean well.\"",

@@ -7,7 +7,8 @@
 //! cargo run --example snapshot -- <title|charselect|world|dialogue|journal|casting|pass|fizzle|paused|resting|banner|epilogue|toast|encounter|caught|grimoire|book|reveal|map>
 //! ```
 //!
-//! `world` takes an optional zone (0-3 overworld, 4+ interiors) and
+//! `world` takes an optional zone (0-3 the mainland regions, 4-16 the
+//! interiors, 17 Mistholm) and
 //! `--pos x,y`; `--tick` drives animations; `--day <ticks>` sets the position
 //! in the day/night clock (0 = dawn; see `rgame::app::DAY_LEN`), so outdoor
 //! scenes can be shot at any hour; `--crab` places Ferris one tile west of
@@ -132,8 +133,12 @@ fn main() {
             }
         }
         "grimoire" => {
-            app.grimoire.extend([1, 2, 5, 11]);
-            app.screen = Screen::Grimoire;
+            app.grimoire.extend([1, 2, 5, 11, 17, 19]);
+            // The zone argument doubles as the page to open.
+            let page = args.get(1).and_then(|s| s.parse::<usize>().ok()).unwrap_or(0);
+            app.screen = Screen::Grimoire {
+                page: page.min(rgame::content::wilds::GRIMOIRE_PAGES - 1),
+            };
         }
         // The parchment world map. `map <zone>` charts every zone up to
         // (and including) that one — `map 3` shows the whole road, plain
