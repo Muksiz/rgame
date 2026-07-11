@@ -48,7 +48,7 @@ pub fn render(fb: &mut Frame, atlas: &Atlas, app: &App) {
                     selected,
                     phase,
                 } => encounter(fb, atlas, app, *rune, *selected, *phase),
-                Screen::Grimoire => grimoire(fb, app),
+                Screen::Grimoire => grimoire(fb, atlas, app),
                 Screen::Casting { .. } => casting(fb, app),
                 Screen::CastResult {
                     quest,
@@ -2444,10 +2444,24 @@ fn encounter(
     font::text(fb, ix + iw - w - 2, iy + ih - 8, footer, DIM, 1);
 }
 
-fn grimoire(fb: &mut Frame, app: &App) {
+/// A flat one-color impression of a sprite — the grimoire's "something lives
+/// here, but you haven't met it yet" shadow.
+fn sprite_silhouette(fb: &mut Frame, atlas: &Atlas, id: u16, x: i32, y: i32, c: (u8, u8, u8)) {
+    for sy in 0..TILE {
+        for sx in 0..TILE {
+            let (_, _, _, a) = atlas.pixel(id, sx, sy);
+            if a >= 8 {
+                fb.set(x + sx as i32, y + sy as i32, c);
+            }
+        }
+    }
+}
+
+fn grimoire(fb: &mut Frame, atlas: &Atlas, app: &App) {
     let (ix, iy, iw, ih) = centered_panel(fb, 464, 252, "Grimoire - wild runes of the road");
-    // Names only, two columns per zone — the lore is read at catch time —
-    // so all four zones fit on one page.
+    // Two columns per zone, each rune beside its little form — inscribed ones
+    // bob on the page, unmet ones sit as shadows (the lore is read at catch
+    // time), so all four zones fit on one page.
     let mut y = iy + 2;
     for zone in 0..=3 {
         font::text_lg(fb, ix + 4, y, app.zones[zone].name, WARM);
@@ -2455,19 +2469,23 @@ fn grimoire(fb: &mut Frame, app: &App) {
         let runes = wilds::in_zone(zone);
         for (i, rune) in runes.iter().enumerate() {
             let x = ix + 10 + (i as i32 % 2) * (iw / 2);
+            let form = atlas::WILD_FORM + (rune.id as u16 - 1) * 2;
             if app.grimoire.contains(&rune.id) {
-                font::text(fb, x, y, &format!("* {}", rune.name), BODY, 1);
+                let frame = form + ((app.tick / 8) % 2) as u16;
+                fb.sprite(atlas, frame, x, y - 4, 1.0);
+                font::text(fb, x + 20, y, rune.name, BODY, 1);
             } else {
-                font::text(fb, x, y, ". ???", (110, 102, 88), 1);
+                sprite_silhouette(fb, atlas, form, x, y - 4, (58, 52, 42));
+                font::text(fb, x + 20, y, "???", (110, 102, 88), 1);
             }
             if i % 2 == 1 {
-                y += 11;
+                y += 16;
             }
         }
         if runes.len() % 2 == 1 {
-            y += 11;
+            y += 16;
         }
-        y += 8;
+        y += 5;
     }
     let footer = format!(
         "{}/{} inscribed . wild runes live in tall grass . esc",
