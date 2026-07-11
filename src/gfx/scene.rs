@@ -13,8 +13,8 @@ use crate::world::camera;
 use crate::world::entity::{CritterKind, Npc};
 use crate::world::map::{MAP_H, MAP_W, Tile, Weather, Zone, hash2};
 use crate::world::zones::{
-    BAKERY, CARPENTER_HOUSE, ECHO_CAVE, GREAT_LIBRARY, SORREL_COTTAGE, STOREHOUSE,
-    STOREHOUSE_CELLAR, TILLY_COTTAGE, WOODS_LODGE, WOODS_RUIN,
+    BAKERY, CARPENTER_HOUSE, ECHO_CAVE, GREAT_LIBRARY, REGIONS, SORREL_COTTAGE, STOREHOUSE,
+    STOREHOUSE_CELLAR, TILLY_COTTAGE, WOODS_LODGE, WOODS_RUIN, region_of,
 };
 
 /// How many whole tiles it takes to cover a framebuffer of size `px`. The
@@ -1054,11 +1054,12 @@ fn sway_partner(id: u16) -> Option<u16> {
 /// clumps in the marsh, ice and drift-tufts — and the odd old bone — in
 /// the snow).
 fn grass_decor(h: u32, zone_id: usize) -> Option<u16> {
-    if zone_id == 3 && h % 179 == 3 {
+    let region = region_of(zone_id);
+    if region == Some(3) && h % 179 == 3 {
         return Some(atlas::BONE);
     }
     // Village gardens: the odd tall sunflower or rose bush between the homes.
-    if zone_id == 0 && h % 61 == 5 {
+    if region == Some(0) && h % 61 == 5 {
         return Some(if h.is_multiple_of(2) {
             atlas::SUNFLOWER_TALL
         } else {
@@ -1104,7 +1105,9 @@ fn grass_decor(h: u32, zone_id: usize) -> Option<u16> {
             atlas::SNOWROCK_A,
         ],
     ];
-    Some(MIXES[zone_id.min(3)][(h / 16) as usize % 6])
+    // Rooms (and any region beyond the mixes) borrow the last row, as ever.
+    let mix = region.unwrap_or(MIXES.len() - 1).min(MIXES.len() - 1);
+    Some(MIXES[mix][(h / 16) as usize % 6])
 }
 
 /// A curl of smoke over a campfire: three specks on staggered clocks, each
@@ -1802,7 +1805,7 @@ fn map_ink(tile: Tile, h: u32) -> Option<(u8, u8, u8)> {
     })
 }
 
-/// The journey on parchment (`m`): the four overworld zones downsampled a
+/// The journey on parchment (`m`): the overworld regions downsampled a
 /// tile to the pixel, laid two by two along the road, west to east and top
 /// to bottom. Zones you haven't entered stay uncharted; you are a blinking
 /// dot; found runestones glint. A keepsake, not a checklist.
@@ -1825,17 +1828,18 @@ fn world_map(fb: &mut Frame, app: &App) {
     let (pw, ph) = (MAP_W - 2 * CROP, MAP_H - 2 * CROP);
     let gap_x = ((w - 2 * pw) / 3).max(2);
     let label_h = 12;
-    let content_h = 18 + 2 * (ph + label_h) + 6;
+    let rows = REGIONS.len().div_ceil(2) as i32;
+    let content_h = 18 + rows * (ph + label_h) + 6;
     let top = ((h - content_h) / 2).max(2);
     font::text_center(fb, w / 2, top, "~ THE ROAD SO FAR ~", (96, 70, 44), 1);
 
     let ink = (96, 70, 44);
     let faint = (150, 124, 88);
     let (dot_zone, dot_pos) = app.map_spot();
-    for zi in 0..4usize {
+    for (pi, &zi) in REGIONS.iter().enumerate() {
         let zone = &app.zones[zi];
-        let x0 = gap_x + (zi as i32 % 2) * (pw + gap_x);
-        let y0 = top + 18 + (zi as i32 / 2) * (ph + label_h + 6);
+        let x0 = gap_x + (pi as i32 % 2) * (pw + gap_x);
+        let y0 = top + 18 + (pi as i32 / 2) * (ph + label_h + 6);
         // A thin ink border around each chart.
         for x in x0 - 1..=x0 + pw {
             fb.set(x, y0 - 1, faint);
@@ -2463,11 +2467,11 @@ fn sprite_silhouette(fb: &mut Frame, atlas: &Atlas, id: u16, x: i32, y: i32, c: 
 
 fn grimoire(fb: &mut Frame, atlas: &Atlas, app: &App) {
     let (ix, iy, iw, ih) = centered_panel(fb, 464, 252, "Grimoire - wild runes of the road");
-    // Two columns per zone, each rune beside its little form — inscribed ones
-    // bob on the page, unmet ones sit as shadows (the lore is read at catch
-    // time), so all four zones fit on one page.
+    // Two columns per region, each rune beside its little form — inscribed
+    // ones bob on the page, unmet ones sit as shadows (the lore is read at
+    // catch time), so all four regions fit on one page.
     let mut y = iy + 2;
-    for zone in 0..=3 {
+    for &zone in &REGIONS {
         font::text_lg(fb, ix + 4, y, app.zones[zone].name, WARM);
         y += font::LINE_LG + 1;
         let runes = wilds::in_zone(zone);

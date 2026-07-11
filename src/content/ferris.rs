@@ -75,13 +75,13 @@ pub const NIGHT_CHAT: &[&str] = &[
 
 /// The remark for this spot and hour. `seed` should come from `hash2`, so a
 /// given square at a given time of day always says the same thing. By day the
-/// general pool and the local zone's remarks rotate together (`zone` 0-3;
-/// anything higher counts as indoors); night keeps its own quiet set.
-pub fn chat(seed: u32, night: bool, zone: usize) -> &'static str {
+/// general pool and the local region's remarks rotate together (`region` from
+/// `zones::region_of`; `None` means indoors); night keeps its own quiet set.
+pub fn chat(seed: u32, night: bool, region: Option<usize>) -> &'static str {
     if night {
         return NIGHT_CHAT[seed as usize % NIGHT_CHAT.len()];
     }
-    let local: &[&str] = match ZONE_CHAT.get(zone) {
+    let local: &[&str] = match region.and_then(|r| ZONE_CHAT.get(r)) {
         Some(lines) => lines,
         None => INDOOR_CHAT,
     };
@@ -99,26 +99,30 @@ mod tests {
 
     #[test]
     fn every_seed_finds_a_line_day_and_night() {
-        for zone in 0..8 {
+        for region in (0..8).map(Some).chain([None]) {
             for seed in 0..64 {
-                assert!(!chat(seed, false, zone).is_empty());
-                assert!(!chat(seed, true, zone).is_empty());
+                assert!(!chat(seed, false, region).is_empty());
+                assert!(!chat(seed, true, region).is_empty());
             }
         }
         // Different seeds do reach different lines.
-        assert_ne!(chat(0, false, 0), chat(1, false, 0));
+        assert_ne!(chat(0, false, Some(0)), chat(1, false, Some(0)));
     }
 
     #[test]
     fn every_region_gets_its_own_remarks() {
-        // Some seed in each zone (and indoors) lands on a local line — one
+        // Some seed in each region (and indoors) lands on a local line — one
         // that no other pool contains.
-        let pools = ZONE_CHAT.iter().copied().chain([INDOOR_CHAT]);
-        for (zone, local) in pools.enumerate() {
-            let heard: Vec<&str> = (0..64).map(|s| chat(s, false, zone)).collect();
+        let pools = ZONE_CHAT.iter().map(|p| Some(*p)).chain([None]);
+        for (i, pool) in pools.enumerate() {
+            let (region, local) = match pool {
+                Some(p) => (Some(i), p),
+                None => (None, INDOOR_CHAT),
+            };
+            let heard: Vec<&str> = (0..64).map(|s| chat(s, false, region)).collect();
             assert!(
                 local.iter().any(|l| heard.contains(l)),
-                "zone {zone} never says its local lines"
+                "region {region:?} never says its local lines"
             );
         }
     }

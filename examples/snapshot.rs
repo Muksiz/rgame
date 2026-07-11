@@ -139,7 +139,9 @@ fn main() {
         // (and including) that one — `map 3` shows the whole road, plain
         // `map` just Emberwick.
         "map" => {
-            for z in 0..=app.zone_idx.min(3) {
+            use rgame::world::zones;
+            let region = zones::region_of(app.zone_idx).unwrap_or(0);
+            for &z in &zones::REGIONS[..=region] {
                 app.set_flag(&rgame::content::sides::visited_flag(z));
             }
             app.screen = Screen::WorldMap;

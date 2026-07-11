@@ -6,7 +6,7 @@
 
 pub struct WildRune {
     pub id: u8,
-    /// Which overworld zone's grass it lives in (0-3).
+    /// Which overworld zone's grass it lives in (an index in `zones::REGIONS`).
     pub zone: usize,
     pub name: &'static str,
     /// How it announces itself before the question.
@@ -252,12 +252,17 @@ mod tests {
 
     #[test]
     fn wilds_are_well_formed() {
+        use crate::world::zones;
         for (i, w) in WILDS.iter().enumerate() {
             assert_eq!(w.id as usize, i + 1, "ids are 1-based and in order");
-            assert!(w.zone <= 3, "{} lives in a non-overworld zone", w.name);
+            assert!(
+                zones::region_of(w.zone).is_some(),
+                "{} lives in a non-overworld zone",
+                w.name
+            );
             assert!(w.answer < w.options.len(), "{} has no right answer", w.name);
         }
-        for zone in 0..=3 {
+        for &zone in &zones::REGIONS {
             assert!(
                 in_zone(zone).len() >= 3,
                 "zone {zone} needs at least a few wild runes"

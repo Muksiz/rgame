@@ -93,8 +93,8 @@ const HEARTH_VOLUME: f32 = 0.4;
 /// jump-scare. Kept low on purpose.
 const OWL_VOLUME: f32 = 0.28;
 
-/// One looping chiptune per overworld zone (`assets/audio/music/`), indexed
-/// by `App::zone_idx` — interiors (zone 4+) stay quiet. See
+/// One looping chiptune per overworld region (`assets/audio/music/`), indexed
+/// by `zones::region_of(App::zone_idx)` — interiors stay quiet. See
 /// `assets/CREDITS.md` for licensing.
 static ZONE_MUSIC: &[&[u8]] = &[
     include_bytes!("../assets/audio/music/emberwick.ogg"),
@@ -103,7 +103,7 @@ static ZONE_MUSIC: &[&[u8]] = &[
     include_bytes!("../assets/audio/music/hearthspire.ogg"),
 ];
 
-/// A calmer nature ambience per overworld zone for after dark, same indexing
+/// A calmer nature ambience per overworld region for after dark, same indexing
 /// as `ZONE_MUSIC` — crickets over Emberwick, a living swamp in the Woods,
 /// rain on Silverford, wind off the Hearthspire road. Swapped in for the
 /// daytime loop whenever `App::is_night()`. See `assets/CREDITS.md`.
@@ -124,7 +124,7 @@ static NIGHT_THEME: &[u8] = include_bytes!("../assets/audio/music/night/theme.og
 /// their chiptune (Ninja Adventure ambience loops, CC0): wind through the
 /// Whispering Woods' canopy, the rain that always falls on Silverford, wind
 /// off the misty Hearthspire road. Emberwick keeps its clear morning — petals
-/// don't sound. Indexed by `App::zone_idx`, `None` where the air is still.
+/// don't sound. Indexed like `ZONE_MUSIC`, `None` where the air is still.
 static DAY_BEDS: [Option<&[u8]>; 4] = [
     None,
     Some(include_bytes!(
@@ -599,15 +599,16 @@ async fn main() {
             playing_title = in_menus;
         }
 
-        // Zone music: one loop per overworld zone, swapped on warp — and after
-        // dark, swapped for that zone's calmer night ambience. Interiors
-        // (zone_idx 4+) and the title/char-select screens stay quiet. The night
+        // Zone music: one loop per overworld region, swapped on warp — and
+        // after dark, swapped for that region's calmer night ambience.
+        // Interiors and the title/char-select screens stay quiet. The night
         // flag rides in the track identity so the loop also swaps when the
         // day/night clock turns, without any zone change.
         let past_menus = !in_menus;
         let night = app.is_night();
-        let zone_track = (past_menus && !app.zone().interior && app.zone_idx < zone_music.len())
-            .then_some((app.zone_idx, night));
+        let zone_track = rgame::world::zones::region_of(app.zone_idx)
+            .filter(|&r| past_menus && r < zone_music.len())
+            .map(|r| (r, night));
         if zone_track != playing_zone {
             let track = |&(z, on): &(usize, bool)| -> (&Sound, f32) {
                 if on {

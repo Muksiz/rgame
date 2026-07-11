@@ -521,7 +521,7 @@ impl App {
     /// Rides the flags (and so the existing autosave milestones) — first
     /// entry to a zone is always a gate crossing, which already saves.
     fn mark_visited(&mut self) {
-        if !self.zone().interior && self.zone_idx <= 3 {
+        if zones::region_of(self.zone_idx).is_some() {
             self.set_flag(&sides::visited_flag(self.zone_idx));
         }
     }
@@ -532,7 +532,7 @@ impl App {
     pub fn map_spot(&self) -> (usize, (i32, i32)) {
         let (mut zone, mut pos) = (self.zone_idx, self.player);
         for _ in 0..self.zones.len() {
-            if zone <= 3 {
+            if zones::region_of(zone).is_some() {
                 break;
             }
             let Some((pz, at)) = self.zones.iter().enumerate().find_map(|(zi, z)| {
@@ -906,9 +906,10 @@ impl App {
         // loaded hour and quest — a night save wakes with everyone home.
         self.apply_schedule();
         // A save from before the map existed backfills its charted zones:
-        // the road is linear, so everywhere up to here has been walked.
+        // the road is linear, so every region up to here has been walked.
         let (here, _) = self.map_spot();
-        for z in 0..=here {
+        let region = zones::region_of(here).unwrap_or(0);
+        for &z in &zones::REGIONS[..=region] {
             self.set_flag(&sides::visited_flag(z));
         }
     }
@@ -1282,7 +1283,7 @@ impl App {
     /// indoor set, under a roof) folded into the rotation.
     fn chat_with_ferris(&mut self) {
         let h = hash2(self.player.0, self.player.1, 0xFE44 ^ self.day_ticks);
-        let line = ferris::chat(h, self.is_night(), self.zone_idx);
+        let line = ferris::chat(h, self.is_night(), zones::region_of(self.zone_idx));
         self.screen = Screen::Dialogue(Dialogue::new(
             "Ferris",
             vec![line.to_string()],

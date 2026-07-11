@@ -138,7 +138,7 @@ const CAVE_ROOM: &str = concat!(
     "     %%:%%     ",
 );
 
-// Zone indices: the four overworld zones, then every room behind a door.
+// Zone indices: the overworld regions, then every room behind a door.
 pub const EMBERWICK: usize = 0;
 pub const WHISPERING_WOODS: usize = 1;
 pub const SILVERFORD: usize = 2;
@@ -156,6 +156,19 @@ pub const WOODS_LODGE: usize = 13;
 pub const ROWAN_COTTAGE: usize = 14;
 pub const FERNSHADE_COTTAGE: usize = 15;
 pub const GLOWWORM: usize = 16;
+
+/// The overworld regions in journey order, west to east. Anything keyed
+/// per-region — zone music, Ferris's opinions, the parchment map's panels —
+/// goes through this list and `region_of`, never a raw `zone < 4`, so a new
+/// region can append at the end of `zones()` without shifting a single
+/// interior index (and without breaking a single old save).
+pub const REGIONS: [usize; 4] = [EMBERWICK, WHISPERING_WOODS, SILVERFORD, HEARTHSPIRE];
+
+/// A zone's position along the journey, if it lies under the open sky.
+/// `None` means a room behind a door.
+pub fn region_of(zone: usize) -> Option<usize> {
+    REGIONS.iter().position(|&z| z == zone)
+}
 
 /// The lived-in rooms with a fire going — the shell loops a soft hearth
 /// crackle in these instead of leaving the indoors dead silent. Caves, the
