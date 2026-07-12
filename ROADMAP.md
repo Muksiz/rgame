@@ -33,56 +33,21 @@ the shelf can display everything the cycle added.
 
 ---
 
-## 1. Mistholm — the far shore (ch. 6, *Enums and Pattern Matching*)
+## 1. Mistholm — the far shore (ch. 6, *Enums and Pattern Matching*) — DONE
 
-The Silverford ferry — moored scenery since the day it was baked — finally
-sails. Once all 23 quests are done and the epilogue has rolled, boarding it
-carries you to **Mistholm**: a small grey-water archipelago, pier-linked
-isles under sea mist, gulls, waves (the vendored waves/storm ambience beds
-have waited for exactly this). The road ends; the sea doesn't.
-
-The region teaches **chapter 6** — the first of the banished tokens comes
-home. Six quests (ids 24–29), one lesson each, in book order:
-
-- **24** — define an `enum`, variants as the kinds a thing can be (a tide
-  is `Ebb` or `Flood`; a lamp is `Lit` or `Dark`) (6.1)
-- **25** — variants that carry data, constructing them (6.1)
-- **26** — `match`: every arm, exhaustiveness as a kindness (6.2)
-- **27** — patterns that bind values out of variants (6.2)
-- **28** — `Option<T>`: lights in the mist are `Some` or `None`; why the
-  compiler makes you say which (6.1 + 6.2)
-- **29** — `if let` / `let…else` for the one-armed cases (6.3)
-
-Everything past ch. 6 stays banished from templates and solutions (no
-`Vec`, no `Result`/`?`, no traits, no closures); everything earlier is
-fair game, as always.
-
-In lockstep, like last time:
-
-- **Four new wild runes** in the isle grass, quizzing ch. 6 — the grimoire
-  grows 16 → 20 (new pages, new Ninja Adventure forms).
-- **A small new cast** (a ferrykeeper, isle folk) quarried from the
-  vendored pack; a new zone music pick from the 42 tracks and a night bed
-  from the shelf; mist as the zone weather.
-- **Ferris has opinions** about the sea (`content/ferris.rs` grows a
-  region), and the parchment map learns a fifth panel.
-
-**Engineering — the one structural rule**: interiors currently start at
-zone index 4, and "overworld" is assumed as `zone 0–3` in the music
-tables, weather, the map, `visited.<zone>` flags, `content/wilds.rs`'s
-zone assertion and Ferris's regions. Mistholm therefore **appends at the
-end of `zones()`** (no existing index shifts, old saves keep loading), and
-overworld-ness becomes a first-class property — a regions list or a
-`Zone` field — consulted everywhere `0..4` is assumed today. Quest `zone`
-fields stay monotonic (17 > 3, the test keeps passing); keepsakes stay
-pinned at 6 and 17.
-
-Invariants (to test): template fails untouched / twin solution passes /
-identical `#[test]` blocks for 24–29; the journey test extends past the
-epilogue, boards the ferry and finishes quest 29; BFS reachability,
-standability and warp round-trips across every isle; the map renders every
-charted combination including the fifth panel; ids/zones monotonic; an old
-23-quest `save.json` still loads and the ferry is already waiting.
+Shipped whole. Overworld-ness became a property first
+(`zones::REGIONS` + `region_of`, appended at zone 17, no index shifts,
+old saves load); then the archipelago — five pier-linked isles under
+mist, the ferry a boat prefab whose plank is an ordinary warp that
+refuses until `road_complete()`, arrival a milestone like a gate. Six
+islanders teach ch. 6 in book order (quests 24–29: enum, variants with
+data, match, binding patterns, Option, if let / let-else), four sea
+runes grow the grimoire 16 → 20 behind `atlas::wild_form` (the paginated
+grimoire leafs at 3 regions a page), Ferris got sea opinions, the
+parchment map its fifth panel, and the isles their sound ("18 - Aquatic"
+by day over far-off surf, waves lapping the piers by night). The journey
+test now sails past the epilogue and finishes quest 29; every listed
+invariant landed as a test.
 
 ## 2. Castable grimoire runes
 

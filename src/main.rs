@@ -101,17 +101,20 @@ static ZONE_MUSIC: &[&[u8]] = &[
     include_bytes!("../assets/audio/music/whispering-woods.ogg"),
     include_bytes!("../assets/audio/music/silverford.ogg"),
     include_bytes!("../assets/audio/music/hearthspire.ogg"),
+    include_bytes!("../assets/audio/music/mistholm.ogg"),
 ];
 
 /// A calmer nature ambience per overworld region for after dark, same indexing
 /// as `ZONE_MUSIC` — crickets over Emberwick, a living swamp in the Woods,
-/// rain on Silverford, wind off the Hearthspire road. Swapped in for the
-/// daytime loop whenever `App::is_night()`. See `assets/CREDITS.md`.
+/// rain on Silverford, wind off the Hearthspire road, waves lapping the
+/// Mistholm piers. Swapped in for the daytime loop whenever `App::is_night()`.
+/// See `assets/CREDITS.md`.
 static NIGHT_MUSIC: &[&[u8]] = &[
     include_bytes!("../assets/audio/music/night/emberwick.ogg"),
     include_bytes!("../assets/audio/music/night/whispering-woods.ogg"),
     include_bytes!("../assets/audio/music/night/silverford.ogg"),
     include_bytes!("../assets/audio/music/night/hearthspire.ogg"),
+    include_bytes!("../assets/audio/music/night/mistholm.ogg"),
 ];
 
 /// The calm night theme ("Dream", from the Ninja Adventure pack — see
@@ -123,9 +126,10 @@ static NIGHT_THEME: &[u8] = include_bytes!("../assets/audio/music/night/theme.og
 /// By day, the zones whose *drawn* weather makes a sound lay it softly under
 /// their chiptune (Ninja Adventure ambience loops, CC0): wind through the
 /// Whispering Woods' canopy, the rain that always falls on Silverford, wind
-/// off the misty Hearthspire road. Emberwick keeps its clear morning — petals
-/// don't sound. Indexed like `ZONE_MUSIC`, `None` where the air is still.
-static DAY_BEDS: [Option<&[u8]>; 4] = [
+/// off the misty Hearthspire road, far-off surf around the Mistholm isles.
+/// Emberwick keeps its clear morning — petals don't sound. Indexed like
+/// `ZONE_MUSIC`, `None` where the air is still.
+static DAY_BEDS: [Option<&[u8]>; 5] = [
     None,
     Some(include_bytes!(
         "../assets/ninja_adventure/pack/Audio/Sounds/Ambient/Wind2.ogg"
@@ -135,6 +139,9 @@ static DAY_BEDS: [Option<&[u8]>; 4] = [
     )),
     Some(include_bytes!(
         "../assets/ninja_adventure/pack/Audio/Sounds/Ambient/Wind.ogg"
+    )),
+    Some(include_bytes!(
+        "../assets/ninja_adventure/pack/Audio/Sounds/Ambient/WaveFar.ogg"
     )),
 ];
 

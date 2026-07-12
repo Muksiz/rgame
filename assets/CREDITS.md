@@ -142,7 +142,11 @@ their own headings further down.
   `whispering-woods.ogg` is **"Lanterns in the Hollowed Forest"** by **Tsorthan
   Grove** (https://opengameart.org/content/lanterns-in-the-hollowed-forest,
   **CC0**) — a soft-horror loop of whispers drifting from the branches, re-encoded
-  from FLAC to Ogg Vorbis. Interiors (zone 4+) stay quiet. `title.ogg` is the
+  from FLAC to Ogg Vorbis. Mistholm, out past the ferry, plays from a third
+  well: `mistholm.ogg` is **"18 - Aquatic"** from the **Ninja Adventure asset
+  pack** by **Pixel-boy and AAA**
+  (https://pixel-boy.itch.io/ninja-adventure-asset-pack, **CC0**), unmodified.
+  Interiors (zone 4+) stay quiet. `title.ogg` is the
   "Title Screen" track from *5 Chiptunes (Action)*
   (https://opengameart.org/content/5-chiptunes-action, Juhani Junkala), looping
   through the title and char-select screens.
@@ -185,17 +189,20 @@ all 42 tracks (one of them, "22 - Dream", already plays as the night theme —
 see below), and `Sounds/` the 140+ effects in their category folders (Menu,
 Bonus, Magic & Skill, Ambient, …). Everything is unmodified except
 `Sounds/Ambient/`, whose long WAV loops (rain, river, storm, waves, wind)
-were re-encoded to Ogg Vorbis q4 to keep the repo light. Three of those now
+were re-encoded to Ogg Vorbis q4 to keep the repo light. Four of those now
 play as the daytime weather beds (`DAY_BEDS` in `src/main.rs`): `Wind2.ogg`
 through the Whispering Woods' canopy, `Rain.ogg` under Silverford's constant
-rain, `Wind.ogg` off the misty Hearthspire road — each looped softly under
-its zone's chiptune until dark, when the night beds take over.
+rain, `Wind.ogg` off the misty Hearthspire road, `WaveFar.ogg` as the far-off
+surf around the Mistholm isles — each looped softly under its zone's music
+until dark, when the night beds take over. From `Musics/`, "18 - Aquatic" is
+Mistholm's daytime loop (`audio/music/mistholm.ogg`, credited above) and
+`Wave.ogg` its night bed (`audio/music/night/mistholm.ogg` — see below).
 
 ### Night ambiences
 
 `audio/music/night/` — one calm nature bed per overworld zone, swapped in for
 the daytime loop after dark (`App::is_night()`), same filename per zone. All
-**CC0**, from OpenGameArt:
+**CC0**, from OpenGameArt and the Ninja Adventure pack:
 
 - `theme.ogg` — the calm melody laid *over* every zone's nature bed after
   dark: "22 - Dream" from the **Ninja Adventure asset pack** by **Pixel-boy
@@ -210,6 +217,8 @@ the daytime loop after dark (`App::is_night()`), same filename per zone. All
   (https://opengameart.org/content/amb-rain-loop-1), under Silverford's rain.
 - `hearthspire.ogg` — "Winter Wind" by **wipics**
   (https://opengameart.org/content/winter-wind), off the mountain road.
+- `mistholm.ogg` — `Wave.ogg` from the **Ninja Adventure asset pack**'s
+  ambience loops (see above, **CC0**): waves lapping the piers after dark.
 
 ### Hearth
 
