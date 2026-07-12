@@ -191,6 +191,8 @@ static SFX_DOOR: &[u8] = include_bytes!("../assets/kenney/audio/rpg-audio/doorOp
 static SFX_CHEST: &[u8] = include_bytes!("../assets/kenney/audio/rpg-audio/creak2.ogg");
 static SFX_COINS: &[u8] = include_bytes!("../assets/kenney/audio/rpg-audio/handleCoins.ogg");
 static SFX_PAGE: &[u8] = include_bytes!("../assets/kenney/audio/rpg-audio/bookFlip2.ogg");
+// A pot on the range for a dish leaving Poppy's ovens.
+static SFX_POT: &[u8] = include_bytes!("../assets/kenney/audio/rpg-audio/metalPot2.ogg");
 // Menu blips (Kenney *UI Audio*, CC0).
 static SFX_BLIP: &[u8] = include_bytes!("../assets/kenney/audio/ui-audio/click1.ogg");
 // Jingles at the milestones (Kenney *Music Jingles*, CC0): a steel-drum
@@ -362,6 +364,7 @@ async fn main() {
     let sfx_chest = sfx(SFX_CHEST).await;
     let sfx_coins = sfx(SFX_COINS).await;
     let sfx_page = sfx(SFX_PAGE).await;
+    let sfx_pot = sfx(SFX_POT).await;
     let sfx_blip = sfx(SFX_BLIP).await;
     let sfx_rune = sfx(SFX_RUNE).await;
     let sfx_stone = sfx(SFX_STONE).await;
@@ -575,6 +578,7 @@ async fn main() {
                 SoundEvent::ChestOpened => Some((&sfx_chest, FOLEY_VOLUME)),
                 SoundEvent::KeepsakeGiven => Some((&sfx_coins, FOLEY_VOLUME)),
                 SoundEvent::CoinsTraded => Some((&sfx_coins, FOLEY_VOLUME)),
+                SoundEvent::DishCooked => Some((&sfx_pot, FOLEY_VOLUME)),
                 SoundEvent::PageTurned => Some((&sfx_page, 0.4)),
                 SoundEvent::MenuMoved => Some((&sfx_blip, BLIP_VOLUME)),
                 SoundEvent::RuneCaught => Some((&sfx_rune, JINGLE_VOLUME)),

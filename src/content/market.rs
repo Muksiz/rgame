@@ -22,10 +22,14 @@ pub enum Good {
     TurnipSeeds,
     PumpkinSeeds,
     Pinwheel,
+    MushroomPasty,
+    BerryTart,
+    TurnipSoup,
+    PumpkinPie,
 }
 
 /// Every good, in basket (and menu) order.
-pub const GOODS: [Good; 7] = [
+pub const GOODS: [Good; 11] = [
     Good::Mushroom,
     Good::Berries,
     Good::Turnip,
@@ -33,6 +37,10 @@ pub const GOODS: [Good; 7] = [
     Good::TurnipSeeds,
     Good::PumpkinSeeds,
     Good::Pinwheel,
+    Good::MushroomPasty,
+    Good::BerryTart,
+    Good::TurnipSoup,
+    Good::PumpkinPie,
 ];
 
 impl Good {
@@ -46,6 +54,10 @@ impl Good {
             Good::TurnipSeeds => "turnip-seeds",
             Good::PumpkinSeeds => "pumpkin-seeds",
             Good::Pinwheel => "pinwheel",
+            Good::MushroomPasty => "mushroom-pasty",
+            Good::BerryTart => "berry-tart",
+            Good::TurnipSoup => "turnip-soup",
+            Good::PumpkinPie => "pumpkin-pie",
         }
     }
 
@@ -64,6 +76,10 @@ impl Good {
             Good::TurnipSeeds => "turnip seeds",
             Good::PumpkinSeeds => "pumpkin seeds",
             Good::Pinwheel => "paper pinwheel",
+            Good::MushroomPasty => "mushroom pasty",
+            Good::BerryTart => "berry tart",
+            Good::TurnipSoup => "turnip soup",
+            Good::PumpkinPie => "pumpkin pie",
         }
     }
 
@@ -88,6 +104,20 @@ impl Good {
             }
             Good::Pinwheel => {
                 "A striped paper pinwheel. It spins. That is all it does, and that is plenty."
+            }
+            // The dishes double as their own gift-tags: each blurb says,
+            // gently, whose day it would make.
+            Good::MushroomPasty => {
+                "Golden crust, golden filling. Forager Maren has never once cooked her own hoard - imagine her face."
+            }
+            Good::BerryTart => {
+                "Sharp-sweet and sticky at the seams. Juno at the fountain would trade every leaf-boat she owns for one."
+            }
+            Good::TurnipSoup => {
+                "Warm, honest, humble. Elder Rowan says his mother made it just like this. He says that about every soup - but say it he does."
+            }
+            Good::PumpkinPie => {
+                "Spiced and proud. Even a hermit who moved to a beach to be left alone might open up for this. Morrow, say."
             }
         }
     }

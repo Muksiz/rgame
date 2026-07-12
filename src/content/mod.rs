@@ -3,6 +3,7 @@ pub mod casts;
 pub mod critters;
 pub mod ferris;
 pub mod items;
+pub mod kitchen;
 pub mod lore;
 pub mod market;
 pub mod quests;

@@ -4,7 +4,7 @@
 use crate::app::{App, DayPhase, Dialogue, DialogueKind, EPILOGUE, EncounterPhase, Screen};
 use crate::checker::{self, Outcome};
 use crate::content::quests::{self, FIZZLE_LINES, PASS_LINES, QUESTS};
-use crate::content::{items, lore, market, sides, stones, wilds};
+use crate::content::{items, kitchen, lore, market, sides, stones, wilds};
 use crate::gfx::atlas::{self, Atlas, TILE};
 use crate::gfx::font::{self, GLYPH};
 use crate::gfx::frame::Frame;
@@ -52,6 +52,7 @@ pub fn render(fb: &mut Frame, atlas: &Atlas, app: &App) {
                 Screen::RuneRing { selected } => rune_ring(fb, atlas, app, *selected),
                 Screen::Trade { selected } => trade(fb, atlas, app, *selected),
                 Screen::Planting { selected, .. } => planting(fb, app, *selected),
+                Screen::Cooking { selected } => cooking(fb, app, *selected),
                 Screen::Casting { .. } => casting(fb, atlas, app),
                 Screen::CastResult {
                     quest,
@@ -2691,6 +2692,55 @@ fn planting(fb: &mut Frame, app: &App, selected: usize) {
     }
     draw_lines_lg(fb, ix + 4, iy + 2, &lines[..lines.len().min(7)]);
     let footer = "enter plant . esc not today";
+    let w = font::text_width(footer, 1);
+    font::text(fb, ix + iw - w - 2, iy + ih - 8, footer, DIM, 1);
+}
+
+/// Poppy's recipe book, open at her ovens: every dish with its makings,
+/// have-counts beside need-counts, rows the basket can't cover dimmed but
+/// never hidden. The blurb under the arrow doubles as the gift-tag — it
+/// says whose day the dish would make.
+fn cooking(fb: &mut Frame, app: &App, selected: usize) {
+    let (ix, iy, iw, ih) = centered_panel(fb, 440, 210, "Poppy's ovens");
+    let sel = selected.min(kitchen::RECIPES.len() - 1);
+    let mut lines: Vec<(String, (u8, u8, u8))> = Vec::new();
+    lines.push(("Mind the heat. What are we making?".to_string(), WARM));
+    lines.push((String::new(), DIM));
+    for (i, recipe) in kitchen::RECIPES.iter().enumerate() {
+        let cookable = kitchen::can_cook(recipe, &app.pantry);
+        let (marker, color) = if i == sel {
+            ("> ", GOLD)
+        } else if !cookable {
+            ("  ", DIM)
+        } else {
+            ("  ", BODY)
+        };
+        let ready = if cookable { " (ready)" } else { "" };
+        lines.push((format!("{marker}{}{ready}", recipe.dish.name()), color));
+    }
+    let y = draw_lines_lg(fb, ix + 4, iy + 2, &lines[..lines.len().min(10)]);
+
+    // The chosen recipe's makings, have beside need, then its gift-tag.
+    let recipe = &kitchen::RECIPES[sel];
+    let needs = recipe
+        .needs
+        .iter()
+        .map(|(good, n)| {
+            let have = app.pantry.get(good).copied().unwrap_or(0);
+            format!("{} {have}/{n}", good.name())
+        })
+        .collect::<Vec<_>>()
+        .join(" . ");
+    let cols = (iw / GLYPH - 1) as usize;
+    let mut detail: Vec<(String, (u8, u8, u8))> = vec![(format!("Needs: {needs}"), BODY)];
+    detail.extend(
+        font::wrap(recipe.dish.blurb(), cols)
+            .into_iter()
+            .map(|l| (l, DIM)),
+    );
+    draw_lines(fb, ix + 4, y + 6, &detail[..detail.len().min(4)]);
+
+    let footer = "up/down choose . enter cook . esc mind the loaves";
     let w = font::text_width(footer, 1);
     font::text(fb, ix + iw - w - 2, iy + ih - 8, footer, DIM, 1);
 }

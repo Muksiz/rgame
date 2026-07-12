@@ -172,6 +172,28 @@ fn every_screen_renders() {
     app.garden.clear();
     app.player = app.zones[0].spawn;
 
+    // Poppy's ovens: the recipe book bare-basketed and stocked, and a
+    // favorite dish changing hands.
+    app.screen = Screen::Cooking { selected: 0 };
+    render(&atlas, &app);
+    app.pantry.insert(Good::Mushroom, 2);
+    app.pantry.insert(Good::Turnip, 1);
+    app.screen = Screen::Cooking { selected: 2 };
+    render(&atlas, &app);
+    app.pantry.clear();
+    let fav = &rgame::content::kitchen::FAVORITES[0];
+    app.screen = Screen::Dialogue(Dialogue {
+        speaker: fav.npc.to_string(),
+        pages: fav.pages.iter().map(|p| p.to_string()).collect(),
+        page: 0,
+        revealed: 400,
+        kind: DialogueKind::Gift {
+            flag: fav.flag,
+            dish: fav.dish,
+        },
+    });
+    render(&atlas, &app);
+
     // The casting ring: standing quiet, part-filled, and brimming.
     let stashed = std::mem::take(&mut app.grimoire);
     app.screen = Screen::RuneRing { selected: 0 };

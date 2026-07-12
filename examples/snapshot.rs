@@ -198,6 +198,15 @@ fn main() {
             app.garden.insert((0, (86, 43)), (Good::Pumpkin, 1));
             app.player = (86, 42);
         }
+        // Poppy's recipe book, with the makings of a soup in the basket.
+        "cooking" => {
+            use rgame::content::market::Good;
+            app.zone_idx = rgame::world::zones::BAKERY;
+            app.player = app.zones[app.zone_idx].spawn;
+            app.pantry.insert(Good::Mushroom, 2);
+            app.pantry.insert(Good::Turnip, 1);
+            app.screen = Screen::Cooking { selected: 2 };
+        }
         // Marla's trading post, basket stocked and purse jingling.
         "trade" => {
             use rgame::content::market::Good;

@@ -5,7 +5,9 @@ use crate::checker::{self, Outcome};
 use crate::content::items::{self, Item};
 use crate::content::market::{self, Good, Pantry};
 use crate::content::quests::{self, QUESTS, Quest};
-use crate::content::{books, casts, critters, ferris, lore, schedule, sides, stones, wilds};
+use crate::content::{
+    books, casts, critters, ferris, kitchen, lore, schedule, sides, stones, wilds,
+};
 use crate::gfx::atlas::PLAYABLE;
 use crate::save::{self, SaveData};
 use crate::world::entity::CritterKind;
@@ -158,6 +160,9 @@ pub enum DialogueKind {
     Stone,
     /// Marla's stall-side greeting; closing it opens the trade screen.
     Trade,
+    /// A favorite dish changing hands; closing it spends the dish and sets
+    /// the flag that remembers the moment.
+    Gift { flag: &'static str, dish: Good },
 }
 
 pub struct Dialogue {
@@ -255,6 +260,11 @@ pub enum Screen {
         at: (i32, i32),
         selected: usize,
     },
+    /// Poppy's recipe book, open at her ovens (`e` at the bakery's range):
+    /// combine the basket's yield into a handful of little dishes.
+    Cooking {
+        selected: usize,
+    },
     /// Resting at a campfire: the screen fades to ember-dark, a scrap of Rust
     /// lore drifts past, and waking flips the world's clock.
     Resting {
@@ -334,6 +344,8 @@ pub enum SoundEvent {
     StoneFound,
     /// Coins changed hands at the trading post.
     CoinsTraded,
+    /// A dish came out of Poppy's ovens.
+    DishCooked,
     /// A menu selection moved (title, rest menu, encounter answers…).
     MenuMoved,
     /// A dialogue page turned.
@@ -823,6 +835,7 @@ impl App {
             Screen::WorldMap => self.world_map_key(key),
             Screen::Trade { .. } => self.trade_key(key),
             Screen::Planting { .. } => self.planting_key(key),
+            Screen::Cooking { .. } => self.cooking_key(key),
             Screen::Resting { .. } => self.resting_key(key),
             Screen::Casting { .. } => {} // the runes are busy
             Screen::CastResult { .. } => self.cast_result_key(key),
@@ -1342,6 +1355,45 @@ impl App {
         }
     }
 
+    /// Poppy's recipe book: Enter cooks the chosen dish if the basket holds
+    /// its makings; rows the basket can't cover sit dimmed and do nothing.
+    fn cooking_key(&mut self, code: Key) {
+        let Screen::Cooking { selected } = &mut self.screen else {
+            return;
+        };
+        let n = kitchen::RECIPES.len();
+        match code {
+            Key::Esc | Key::Char('q') => self.screen = Screen::World,
+            Key::Up | Key::Char('k') => {
+                *selected = (*selected + n - 1) % n;
+                self.sounds.push(SoundEvent::MenuMoved);
+            }
+            Key::Down | Key::Char('j') => {
+                *selected = (*selected + 1) % n;
+                self.sounds.push(SoundEvent::MenuMoved);
+            }
+            Key::Enter | Key::Char('e') | Key::Char(' ') => {
+                let recipe = &kitchen::RECIPES[(*selected).min(n - 1)];
+                if !kitchen::can_cook(recipe, &self.pantry) {
+                    return;
+                }
+                for (good, needed) in recipe.needs {
+                    let count = self.pantry.entry(*good).or_insert(0);
+                    *count = count.saturating_sub(*needed);
+                    if *count == 0 {
+                        self.pantry.remove(good);
+                    }
+                }
+                *self.pantry.entry(recipe.dish).or_insert(0) += 1;
+                let count = self.pantry[&recipe.dish];
+                let done = recipe.done;
+                self.sounds.push(SoundEvent::DishCooked);
+                self.toast(format!("{done} (basket: {count})"));
+            }
+            _ => {}
+        }
+    }
+
     /// Everything planted sleeps one rest closer to ripe — called on waking
     /// at a campfire, alongside the forage regrowing.
     fn grow_garden(&mut self) {
@@ -1658,6 +1710,16 @@ impl App {
             self.tend_plot(x, y);
             return;
         }
+        // Poppy's range within reach: the recipe book opens. Only the
+        // bakery cooks — every other hearth in the world is for warming.
+        let oven = self.zone_idx == zones::BAKERY
+            && spots
+                .iter()
+                .any(|&(x, y)| self.zone().tile(x, y) == Tile::Hearth);
+        if oven {
+            self.screen = Screen::Cooking { selected: 0 };
+            return;
+        }
         // A campfire within reach: sit a while. The screen fades to embers, a
         // little Rust lore drifts past, and waking rolls the clock on.
         let fire = spots
@@ -1889,6 +1951,28 @@ impl App {
         if npc.name == market::KEEPER {
             return Dialogue::new(npc.name, market::greeting(), DialogueKind::Trade);
         }
+        // A favorite dish in the basket: the gift changes hands — unless
+        // this villager has quest business waiting, which always comes
+        // first (nobody trades an errand for a pastry).
+        let active = self.active_quest().map(|q| q.id);
+        let quest_business = npc
+            .quest
+            .is_some_and(|qid| active == Some(qid) && !self.completed.contains(&qid));
+        if !quest_business
+            && let Some(fav) = kitchen::favorite(npc.name)
+            && !self.has_flag(fav.flag)
+            && self.pantry.get(&fav.dish).copied().unwrap_or(0) > 0
+        {
+            let pages = fav.pages.iter().map(|p| p.to_string()).collect();
+            return Dialogue::new(
+                npc.name,
+                pages,
+                DialogueKind::Gift {
+                    flag: fav.flag,
+                    dish: fav.dish,
+                },
+            );
+        }
         let idle = npc.idle.first().copied().unwrap_or("...").to_string();
         let Some(qid) = npc.quest else {
             return Dialogue::new(npc.name, vec![idle], DialogueKind::Flavor);
@@ -1904,7 +1988,6 @@ impl App {
                 .to_string();
             return Dialogue::new(npc.name, vec![thanks], DialogueKind::Flavor);
         }
-        let active = self.active_quest().map(|q| q.id);
         if active == Some(qid) {
             let quest = quests::quest(qid);
             if self.accepted.contains(&qid) {
@@ -2009,6 +2092,18 @@ impl App {
                 self.screen = Screen::World;
             }
             DialogueKind::Trade => self.screen = Screen::Trade { selected: 0 },
+            DialogueKind::Gift { flag, dish } => {
+                // The dish leaves the basket, the moment stays: one flag,
+                // set once, like the moon-mint. Deliberately no autosave.
+                self.set_flag(flag);
+                let count = self.pantry.entry(dish).or_insert(0);
+                *count = count.saturating_sub(1);
+                if *count == 0 {
+                    self.pantry.remove(&dish);
+                }
+                self.sound(SoundEvent::KeepsakeGiven);
+                self.screen = Screen::World;
+            }
             DialogueKind::Success(qid) => {
                 self.screen = Screen::World;
                 if items::reward(qid).is_some() {
@@ -3129,6 +3224,116 @@ mod tests {
         );
         assert!(app.toast.is_some());
         assert!(app.garden.is_empty());
+    }
+
+    /// Poppy's ovens, black-box through keys: the recipe book opens at the
+    /// bakery range, cooking spends the makings and yields the dish, and a
+    /// basket that can't cover a recipe cooks exactly nothing.
+    #[test]
+    fn poppys_ovens_cook_the_basket_into_dishes() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        app.zone_idx = zones::BAKERY;
+        app.pantry.insert(Good::Mushroom, 2);
+        let hearth = (0..MAP_H)
+            .flat_map(|y| (0..MAP_W).map(move |x| (x, y)))
+            .find(|&(x, y)| app.zone().tile(x, y) == Tile::Hearth)
+            .expect("Poppy's ovens never go cold");
+        app.player = (hearth.0, hearth.1 + 1);
+        app.on_key(Key::Char('e'));
+        assert!(
+            matches!(app.screen, Screen::Cooking { .. }),
+            "the bakery range should open the recipe book"
+        );
+        // The mushroom pasty leads the book: two chanterelles in, one out.
+        app.on_key(Key::Enter);
+        assert_eq!(app.pantry.get(&Good::MushroomPasty), Some(&1));
+        assert!(!app.pantry.contains_key(&Good::Mushroom));
+        assert!(app.drain_sounds().contains(&SoundEvent::DishCooked));
+        // The basket is spent; another Enter cooks nothing.
+        app.on_key(Key::Enter);
+        assert_eq!(app.pantry.get(&Good::MushroomPasty), Some(&1));
+        app.on_key(Key::Esc);
+        assert!(matches!(app.screen, Screen::World));
+
+        // Every other hearth in the world just warms: Sorrel's fire opens
+        // no recipe book.
+        app.zone_idx = zones::SORREL_COTTAGE;
+        let fire = (0..MAP_H)
+            .flat_map(|y| (0..MAP_W).map(move |x| (x, y)))
+            .find(|&(x, y)| app.zone().tile(x, y) == Tile::Hearth)
+            .expect("Sorrel keeps a fire");
+        app.player = (fire.0, fire.1 + 1);
+        app.on_key(Key::Char('e'));
+        assert!(
+            !matches!(app.screen, Screen::Cooking { .. }),
+            "only Poppy's ovens cook"
+        );
+    }
+
+    /// A favorite dish changes hands once, sets its flag, and never jumps
+    /// the quest queue.
+    #[test]
+    fn favorite_dishes_are_gifts_with_one_line_each() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        app.pantry.insert(Good::BerryTart, 1);
+        // Juno by the fountain has no errands — the tart goes straight over.
+        let juno = app.zones[0]
+            .npcs
+            .iter()
+            .find(|n| n.name == "Juno")
+            .expect("Juno sails leaf-boats by the fountain")
+            .pos;
+        app.player = (juno.0 + 1, juno.1);
+        app.on_key(Key::Char('e'));
+        let Screen::Dialogue(d) = &app.screen else {
+            panic!("Juno had nothing to say");
+        };
+        assert!(matches!(d.kind, DialogueKind::Gift { .. }));
+        click_through(&mut app);
+        assert!(app.has_flag("gift.juno"), "the moment should be remembered");
+        assert!(
+            !app.pantry.contains_key(&Good::BerryTart),
+            "the tart should be eaten"
+        );
+        // Once gifted, Juno is back to her leaf-boats.
+        app.on_key(Key::Char('e'));
+        let Screen::Dialogue(d) = &app.screen else {
+            panic!("Juno went quiet");
+        };
+        assert!(matches!(d.kind, DialogueKind::Flavor));
+        click_through(&mut app);
+
+        // Elder Rowan's soup waits its turn: his quest is the active one,
+        // so quest business speaks first — the gift comes after.
+        app.pantry.insert(Good::TurnipSoup, 1);
+        let rowan = app.zones[0]
+            .npcs
+            .iter()
+            .find(|n| n.name == "Elder Rowan")
+            .unwrap()
+            .pos;
+        app.player = (rowan.0, rowan.1 - 1);
+        app.on_key(Key::Char('e'));
+        let Screen::Dialogue(d) = &app.screen else {
+            panic!("Rowan had nothing to say");
+        };
+        assert!(
+            matches!(d.kind, DialogueKind::Intro(1)),
+            "nobody trades an errand for a pastry"
+        );
+        // Step away without accepting (closing an Intro would scaffold a
+        // quest scroll into the test's cwd).
+        app.screen = Screen::World;
+        app.completed.insert(1); // the lantern lit, the errand done
+        app.on_key(Key::Char('e'));
+        let Screen::Dialogue(d) = &app.screen else {
+            panic!("Rowan had nothing to say after the errand");
+        };
+        assert!(matches!(d.kind, DialogueKind::Gift { .. }));
+        click_through(&mut app);
+        assert!(app.has_flag("gift.rowan"));
     }
 
     /// The purse and basket ride the save scroll — and casts, forage and
