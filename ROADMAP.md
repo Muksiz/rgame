@@ -66,33 +66,23 @@ gate moves, and the ring renders at zero, some, and all runes caught
 (plus every cast shape mid-flight, in the render matrix and as
 `snapshot -- ring / cast` scenes).
 
-## 3. Coins & kitchens — economy & home life
+## 3. Coins & kitchens — economy & home life — DONE
 
-The villages learn to trade, quietly. Nothing on the main road ever costs
-a coin — money is a side-layer, like fishing.
-
-- **Coins**: the first stored counter — `SaveData::coins` behind
-  `#[serde(default)]`, earned gently and spent locally.
-- **The trading post**: the Emberwick market stall (the prefab is already
-  standing) gets a keeper who buys what the world already yields — caught
-  fish, moon-mint-style herbs, mushrooms — and sells seeds and small
-  goods.
-- **Gardening on the clock**: a few soil plots; plant a bought seed, and
-  growth advances one stage per campfire rest — the two-state clock
-  already measures nights, so crops literally grow while you sleep.
-  Derived where possible; the planted-state that can't be derived goes in
-  `SaveData` behind `#[serde(default)]`.
-- **Cooking at Poppy's ovens**: combine harvest into a handful of little
-  dishes at the bakery kitchen. Dishes are gifts — each named villager has
-  a favorite and a new line for receiving it (flags, like moon-mint).
-  No stats, no buffs; the reward is the line.
-- Autosave stays milestone-only: buying, planting and gifting don't write;
-  the existing milestones carry the state to disk soon enough.
-
-Invariants (to test): an old `save.json` (no coins, no garden) loads with
-empty pockets and bare plots; selling/buying/planting/cooking round-trip
-through `on_key` black-box; no new writes to cwd from unit tests; the main
-journey completes with zero coins touched.
+Shipped whole, in three pieces. Coins and the basket became the first
+stored counters (`SaveData::coins` / `pantry`, garden plantings beside
+them, all behind `#[serde(default)]` — old scrolls wake with empty
+pockets and bare plots). The world yields forage now: hedge-berry
+brambles along Emberwick's lanes and golden chanterelles in the woods'
+hollows (hand-pixeled so no decor wears their look), picked bare with
+`e` and regrown by every campfire rest. Greengrocer Marla's stall
+opens the trade screen — sell the yield, buy seeds and a pinwheel —
+and the market garden south of the square grows them on the campfire
+clock, one stage per rest, seedling to ripe crop drawn over the tilled
+soil. Poppy's range (only hers) opens the recipe book: four dishes,
+each a gift with a named favorite villager and one written moment,
+remembered by a `gift.*` flag; quest business always speaks first.
+Every listed invariant landed as a test, including the journey pin
+that the whole main road completes with zero coins touched.
 
 ## 4. The turning year
 
