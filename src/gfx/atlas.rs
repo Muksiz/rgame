@@ -429,6 +429,13 @@ pub const DUCK: u16 = 900;
 pub const DONKEY: u16 = 901;
 /// The Mistholm runes' forms (ids 17+): the sea's own tail block.
 pub const WILD_FORM_SEA: u16 = 902;
+// Mistholm's islanders (the chapter-6 arc), four idle facings each.
+pub const CAST_NERINE: u16 = 910;
+pub const CAST_COBLE: u16 = 914;
+pub const CAST_HALYARD: u16 = 918;
+pub const CAST_FATHOM: u16 = 922;
+pub const CAST_MURRE: u16 = 926;
+pub const CAST_BRINE: u16 = 930;
 pub const HOUSE_SIZE: (i32, i32) = (5, 5);
 pub const SHED_SIZE: (i32, i32) = (3, 3);
 pub const STALL_SIZE: (i32, i32) = (5, 5);

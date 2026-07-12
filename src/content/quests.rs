@@ -44,7 +44,7 @@ pub const WEAVING: [&str; 4] = [
     "asking rustc very nicely…",
 ];
 
-pub static QUESTS: [Quest; 23] = [
+pub static QUESTS: [Quest; 29] = [
     Quest {
         id: 1,
         zone: 0,
@@ -589,6 +589,151 @@ pub static QUESTS: [Quest; 23] = [
             "An associated function lives in the impl block but takes no `self`; it's called on the type with `::` — `CataloguePage::new(58)`, just like `String::from`.",
             "`Self` inside an impl block means the type itself: `fn new(number: u32) -> Self { Self { number, entries: 0 } }` (field init shorthand welcome).",
             "`record_entry` is an ordinary `&mut self` method: `self.entries += 1;` — the capstone is just the pieces you already know, standing together.",
+        ],
+    },
+    // ── Mistholm, ch. 6: enums & pattern matching — the road after the road ──
+    Quest {
+        id: 24,
+        zone: 17,
+        title: "The Tide Board",
+        npc: "Tidewatcher Nerine",
+        file_name: "24_the_tide_board.rs",
+        lesson: "enums: one of a fixed set of kinds",
+        template: include_str!("templates/24_the_tide_board.rs"),
+        intro: &[
+            "You made it across! Welcome to Mistholm, traveler — mind the spray. Now, since the sea has delivered you: behold the tide board. It currently reads EBB, ALSO FLOOD. Boards shouldn't be allowed to say that. The tide is ONE of two things; it always has been.",
+            "The mainland taught you structs — things with parts. Out here we deal in things with KINDS. Rust carves that as an `enum`: `enum Tide { Ebb, Flood }`. A Tide IS Ebb or IS Flood, written `Tide::Ebb`, and it can never be both at once — the compiler enforces the sea's own manners.",
+            "The scroll's in your satchel already. The Tide enum stands empty, and `turn` — the old rule that Ebb becomes Flood and Flood becomes Ebb — is still a hole. Carve the two variants, fix the turning, and this board tells the truth for the rest of its days.",
+        ],
+        reminder: "The Tide enum still wants its two variants — Ebb and Flood — and `turn` should hand back the other one: Ebb turns to Flood, Flood turns to Ebb.",
+        success: &[
+            "The board shudders, flickers... and settles: EBB. Just EBB. In an hour it will say FLOOD, and it will be right then, too. Nerine watches it the way a hawk watches something that finally owes it nothing.",
+            "\"One of two kinds, carved so it can't lie. That's an enum, and that's half of sailing.\" She nods along the boardwalk east. \"Coble's pots come up stranger than tides. Go see. And — thank you.\"",
+        ],
+        hints: &[
+            "An enum lists its kinds by name: `enum Tide { Ebb, Flood }` — then a value is written `Tide::Ebb`.",
+            "`turn` can be a plain if/else: `if tide == Tide::Ebb { Tide::Flood } else { Tide::Ebb }` — the derive line up top is what makes `==` work on tides.",
+            "No semicolon after the last expression: the answering tide walks out of the function on its own, just like the well taught you.",
+        ],
+    },
+    Quest {
+        id: 25,
+        zone: 17,
+        title: "The Crab Pots",
+        npc: "Shrimper Coble",
+        file_name: "25_the_crab_pots.rs",
+        lesson: "enum variants that carry data",
+        template: include_str!("templates/25_the_crab_pots.rs"),
+        intro: &[
+            "*The frog mask regards you for a while.* Good — you're real. The mist invents people, some mornings. My trouble: every pot comes up one of three ways. Nothing. Some NUMBER of shrimp. Or, once in a blue moon, a bottle with a note in it. No tally board holds a shape like that.",
+            "But an enum can, because variants may CARRY cargo, each its own: `Shrimp(u32)` carries a count, `Bottle(String)` carries the note, `Nothing` carries — well. You build one with the variant's name and its cargo in parentheses: `Catch::Shrimp(12)`. No parentheses on `Nothing`; it travels light.",
+            "The scroll holds an empty Catch enum and three pot-hauling spells beneath it, all holes. Give the enum its three variants and make each spell hand back the right kind of catch. Then, at last, my tally fits the sea.",
+        ],
+        reminder: "Catch wants its three variants — Nothing, Shrimp(u32), Bottle(String) — and the three pot functions should each build one: Catch::Nothing, Catch::Shrimp(count), Catch::Bottle(note).",
+        success: &[
+            "Three pots, three shapes, one tally: NOTHING — SHRIMP(12) — BOTTLE (the sea says hello). The board takes all three without a creak of complaint, which it has never once done. Behind the mask, something that is almost certainly a smile.",
+            "\"One kind of thing, three shapes of it. That's most of the sea, sorted.\" A webbed glove points on along the boardwalk. \"Halyard's nets next, if you're collecting good deeds. Mind the granny knots.\"",
+        ],
+        hints: &[
+            "Variants declare their cargo's type in parentheses: `enum Catch { Nothing, Shrimp(u32), Bottle(String) }`.",
+            "Build them the same way they're declared: `Catch::Shrimp(count)`, `Catch::Bottle(note)` — and plain `Catch::Nothing` when there's nothing to carry.",
+            "Each function already holds its cargo (`count`, `note`) — wrap it in the right variant and let it walk out, no semicolon.",
+        ],
+    },
+    Quest {
+        id: 26,
+        zone: 17,
+        title: "The Knotted Net",
+        npc: "Netwright Halyard",
+        file_name: "26_the_knotted_net.rs",
+        lesson: "match: every arm answered",
+        template: include_str!("templates/26_the_knotted_net.rs"),
+        intro: &[
+            "*A very large lion looks up from a very small net.* Every knot in a net has its proper mending. A reef knot wants both loops tightened. A bowline wants its rabbit hole re-threaded. A granny knot — everyone ties one eventually, nobody admits it — wants cutting out entirely.",
+            "Rust's word for this is `match`: it takes a value and answers it ARM by ARM — `Knot::Reef => ...` — one arm for every kind the value could be. And here is the mercy of it: forget an arm, any arm, and the compiler hands the net straight back. Exhaustive, the book calls it. Nets that hold, I call it.",
+            "The scroll has the three knots written and `mending_for` standing all hole. Match every knot to its mending, and this net will hold through any squall the sea can think up.",
+        ],
+        reminder: "`mending_for` still wants its match: Reef => tighten both loops, Bowline => re-thread the rabbit hole, Granny => cut it out and start over. All three arms, or the compiler hands it back.",
+        success: &[
+            "The net pulls taut — every knot answered — and holds. Halyard tests it with one enormous paw; nothing so much as creaks. \"Hm,\" says the lion, which from Halyard is a standing ovation.",
+            "\"That's the whole trick of match: no knot forgotten, ever, because the compiler counts them with you.\" A paw waves north. \"Fathom's up the skerry, fussing over the lights. The signals carry NUMBERS now, apparently. Go be clever at it.\"",
+        ],
+        hints: &[
+            "A match answers every variant: `match knot { Knot::Reef => ..., Knot::Bowline => ..., Knot::Granny => ... }`.",
+            "Each arm hands back a String: `Knot::Reef => String::from(\"tighten both loops\"),`.",
+            "Make the whole match the function's last expression — no semicolon after its closing brace, and the mending walks out.",
+        ],
+    },
+    Quest {
+        id: 27,
+        zone: 17,
+        title: "The Mist-Lights",
+        npc: "Light-keeper Fathom",
+        file_name: "27_the_mist_lights.rs",
+        lesson: "match arms that bind values",
+        template: include_str!("templates/27_the_mist_lights.rs"),
+        intro: &[
+            "Down in the channel, the mist-lights are talking. ALL CLEAR is easy — a single steady lamp. But 'three ships in the channel'? The THREE rides inside the signal. 'Fog seven gulls thick'? The SEVEN rides inside. My reading glass shows me the signal and keeps the number locked in it.",
+            "A match arm can open the signal as it answers: write `Signal::Ships(count) =>` and just like that, `count` names what rode inside — yours to weave into the answer with `format!`. The book calls it binding: the pattern reaches in and hands you the cargo.",
+            "The scroll has the Signal enum written and `read_signal` standing hole. Three arms — AllClear plain, Ships and Fog each opening their number — and the channel will read itself aloud.",
+        ],
+        reminder: "`read_signal` wants a match whose arms open the signal: AllClear => all clear, Ships(count) => '{count} ships in the channel', Fog(thickness) => 'fog {thickness} gulls thick'.",
+        success: &[
+            "The glass sweeps the channel: ALL CLEAR — 3 SHIPS IN THE CHANNEL — FOG 7 GULLS THICK. Every number steps out of its signal like it had only been waiting to be asked properly. Fathom polishes the glass with tremendous satisfaction.",
+            "\"The pattern names the cargo; the cargo answers to the name. Binding.\" The light-keeper looks south, toward the shrine isle. \"Murre's bowl has troubled the shrine for a season now. It's an either-or with a hole in it. You're ready.\"",
+        ],
+        hints: &[
+            "An arm that binds: `Signal::Ships(count) => format!(\"{count} ships in the channel\"),` — `count` names the number inside.",
+            "AllClear carries nothing, so its arm stays plain: `Signal::AllClear => String::from(\"all clear\"),`.",
+            "`format!` builds a String with values woven in — the same spell as the catalogue card, back at the Library.",
+        ],
+    },
+    Quest {
+        id: 28,
+        zone: 17,
+        title: "The Offering Bowl",
+        npc: "Keeper Murre",
+        file_name: "28_the_offering_bowl.rs",
+        lesson: "Option<T>: Some or None",
+        template: include_str!("templates/28_the_offering_bowl.rs"),
+        intro: &[
+            "Welcome, traveler. The shrine keeps an offering bowl, and the sea keeps its own counsel: some mornings the bowl holds a gift — a shell, a pebble, once an entire crab (he was visiting). Some mornings, nothing. Both are answers. The trouble is writing that down honestly.",
+            "Rust has a word for exactly this, and it lives in every scroll already: `Option<T>`. It's an enum like your tides — `Some(gift)` or `None` — and the compiler will not let you thank anyone until you've said WHICH. No pretending the bowl is full. No forgetting it might be. The mainland calls that the billion-dollar lesson; we just call it manners.",
+            "Two holes in the scroll: `shell_if_low_tide` — the sea leaves a pink shell at low tide, nothing otherwise — and `thanks_for`, which must thank the sea for Some gift by name, and thank it for the quiet when there's None. Both answers, honestly written.",
+        ],
+        reminder: "`shell_if_low_tide` returns Some(String::from(\"a pink shell\")) at low tide and None otherwise; `thanks_for` matches Some(gift) and None, one thanks for each.",
+        success: &[
+            "Dawn, the bowl: a green pebble — 'the shrine thanks the sea for a green pebble.' Next dawn, empty — 'the shrine thanks the sea for the quiet.' Both answers true, neither forgotten. The shrine's bell rings once, unprompted; Murre says it only does that for honest bookkeeping.",
+            "\"Some, or None, and no pretending — half the world's grief is a bowl somebody swore was full.\" Murre bows toward the tide-pools below. \"Grandmother Brine has been expecting you since the ferry docked. She always is.\"",
+        ],
+        hints: &[
+            "Option needs no import: `Some(String::from(\"a pink shell\"))` and `None` are ready to use bare.",
+            "A plain if/else fits `shell_if_low_tide`: low tide gets the Some(...), otherwise None.",
+            "`thanks_for` is a two-armed match: `Some(gift) => format!(...)` and `None => String::from(...)` — the same binding trick as the mist-lights.",
+        ],
+    },
+    Quest {
+        id: 29,
+        zone: 17,
+        title: "The Tide-Pools",
+        npc: "Grandmother Brine",
+        file_name: "29_the_tide_pools.rs",
+        lesson: "if let & let else",
+        template: include_str!("templates/29_the_tide_pools.rs"),
+        intro: &[
+            "*She doesn't look up from the pools.* Sit. Watch. Most pools hold patience and nothing else, and that's fine — but you can't hold a full formal match ceremony over every puddle on a shore. Sometimes only one shape matters, and the craft is greeting it lightly.",
+            "`if let Some(pearl) = pool { ... }` — greet the one shape you care about, name what it carries, and if the pool holds None the block is simply skipped. No harm done. And when a pearl is REQUIRED before the work goes on: `let Some(pearl) = pool else { return ... };` takes it in hand or steps out early, and the rest of the function never doubts.",
+            "The last scroll of the isles, traveler. `greet` wants an if-let with an else for the patient pools; `weigh` wants a let-else that takes the size in hand or returns naught. Small spells. The sea is mostly small spells.",
+        ],
+        reminder: "`greet`: if let Some(size) — 'oh, a pearl! {size} grains' — else 'just patience in this one'. `weigh`: let Some(size) = pool else { return 0; }; then hand back size.",
+        success: &[
+            "Pool by pool: 'oh, a pearl! 9 grains' — 'just patience in this one' — and the scales come out honest to the grain. Grandmother Brine turns one of your pearls in the grey light and, at last, looks up. \"Yes. Greet what matters; let the rest swim by. That's the craft.\"",
+            "\"The mainland taught you to hold things. The isles taught you that things come in kinds — and sometimes not at all. Ebb and flood; Some and None.\" She waves a hand at the whole grey horizon. \"The mist will bring more questions. It always does. We'll keep them warm for you.\"",
+        ],
+        hints: &[
+            "`if let Some(size) = pool { format!(\"oh, a pearl! {size} grains\") } else { String::from(\"just patience in this one\") }` — the whole if-let is one expression.",
+            "`let Some(size) = pool else { return 0; };` — after that line, `size` is simply in hand for the rest of the function.",
+            "Both functions end without a semicolon on their last expression — the answer walks out on its own.",
         ],
     },
 ];

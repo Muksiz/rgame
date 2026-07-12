@@ -1770,6 +1770,13 @@ fn npc_sprite(npc: &Npc) -> u16 {
         "Dockhand Fenn" => atlas::CAST_FENN,
         "Net-mender Sil" => atlas::CAST_SIL,
         "Scribe Faye" => atlas::CAST_FAYE,
+        // Mistholm's islanders.
+        "Tidewatcher Nerine" => atlas::CAST_NERINE,
+        "Shrimper Coble" => atlas::CAST_COBLE,
+        "Netwright Halyard" => atlas::CAST_HALYARD,
+        "Light-keeper Fathom" => atlas::CAST_FATHOM,
+        "Keeper Murre" => atlas::CAST_MURRE,
+        "Grandmother Brine" => atlas::CAST_BRINE,
         _ => TOWNSFOLK[npc.name.bytes().map(usize::from).sum::<usize>() % 3],
     }
 }

@@ -128,8 +128,7 @@ fn the_whole_journey_can_be_walked() {
         assert!(app.completed.contains(&quest.id));
 
         // End of a zone: cross the gate east (or arrive at the epilogue).
-        let is_finale = i + 1 == QUESTS.len();
-        if is_finale {
+        if quest.id == rgame::content::quests::ROAD_END {
             assert!(
                 matches!(app.screen, Screen::Epilogue { .. }),
                 "finishing quest {} should roll the epilogue",
@@ -139,6 +138,26 @@ fn the_whole_journey_can_be_walked() {
                 key(&mut app, Key::Enter);
             }
             assert!(matches!(app.screen, Screen::World));
+
+            // The road is walked; the sea is next. Walk back off the west
+            // edge to Silverford, stand on the long pier, and step aboard
+            // the ferry — it only sails now that every errand is done.
+            app.player = (0, 36); // the Hearthspire road at the map's edge
+            key(&mut app, Key::Left);
+            assert_eq!(
+                app.zone_idx, 2,
+                "the west edge should walk back to Silverford"
+            );
+            app.player = (148, 50); // the long pier, beside the boarding plank
+            key(&mut app, Key::Down);
+            assert_eq!(
+                app.zone_idx,
+                rgame::world::zones::MISTHOLM,
+                "the ferry should sail once the road is complete"
+            );
+        } else if i + 1 == QUESTS.len() {
+            // The last errand of the isles: no gate, no second epilogue —
+            // just Grandmother Brine's blessing and the open sea.
         } else if QUESTS[i + 1].zone != quest.zone {
             // The road just opened, and the little gate-reveal cutscene has
             // the camera — watch it play out before walking east (a lone

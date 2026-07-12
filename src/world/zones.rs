@@ -1422,6 +1422,14 @@ fn mistholm() -> Zone {
     b.set(97, 29, Tile::Sign);
     b.set(190, 40, Tile::Sign);
 
+    // The islanders' spots, each guaranteed a clear square to stand on.
+    b.clearing(41, 36, 1); // Tidewatcher Nerine, above the landing
+    b.clearing(96, 33, 1); // Shrimper Coble, between fire and shore
+    b.clearing(114, 28, 1); // Netwright Halyard, past the thatched house
+    b.clearing(152, 11, 1); // Light-keeper Fathom, up on the skerry
+    b.clearing(196, 39, 1); // Keeper Murre, before the shrine fire
+    b.clearing(140, 57, 1); // Grandmother Brine, among the tide-pools
+
     Zone {
         id: MISTHOLM,
         name: "Mistholm",
@@ -1440,7 +1448,62 @@ fn mistholm() -> Zone {
             to_zone: SILVERFORD,
             to_pos: (148, 50),
         }],
-        npcs: vec![],
+        npcs: vec![
+            Npc {
+                name: "Tidewatcher Nerine",
+                pos: (41, 36),
+                quest: Some(24),
+                idle: &[
+                    "The tide board says the tide is coming in AND going out. Boards shouldn't be allowed to say that.",
+                    "Ebb or Flood, one or the other, carved so it can't lie. The board minds its manners now — and the harbor breathes easier.",
+                ],
+            },
+            Npc {
+                name: "Shrimper Coble",
+                pos: (96, 33),
+                quest: Some(25),
+                idle: &[
+                    "Every pot comes up different: nothing, shrimp, or once — a note in a bottle. My tally can't hold all three shapes.",
+                    "Nothing, shrimp, or a bottled note — one kind of catch, three shapes of it. The tally takes them all now. *the frog mask nods*",
+                ],
+            },
+            Npc {
+                name: "Netwright Halyard",
+                pos: (114, 28),
+                quest: Some(26),
+                idle: &[
+                    "Every knot has its mending. Miss one — just one — and the whole net unravels in a squall. I don't miss knots.",
+                    "Every knot answered for, and the net holds in any weather. That's what 'exhaustive' means, out here.",
+                ],
+            },
+            Npc {
+                name: "Light-keeper Fathom",
+                pos: (152, 11),
+                quest: Some(27),
+                idle: &[
+                    "The mist-lights carry news, if you can read them: how many ships, how thick the fog. The numbers ride inside the signal.",
+                    "The lights read clean now — the count comes out of the signal like a pearl out of a shell. The channel thanks you.",
+                ],
+            },
+            Npc {
+                name: "Keeper Murre",
+                pos: (196, 39),
+                quest: Some(28),
+                idle: &[
+                    "Some mornings the offering bowl holds a gift. Some mornings it holds nothing. Both are answers, if you write them properly.",
+                    "Some or None, and thanks given rightly either way. The shrine is very pleased. It said so. In its way.",
+                ],
+            },
+            Npc {
+                name: "Grandmother Brine",
+                pos: (140, 57),
+                quest: Some(29),
+                idle: &[
+                    "Most pools hold nothing but patience. You learn to greet the one pearl and let the rest of the sea swim by.",
+                    "You've the eye now — greet what matters, wave the rest past. That's the whole craft, and most of the living too.",
+                ],
+            },
+        ],
         critters: vec![
             Critter::new(CritterKind::Duck, (50, 42)),
             Critter::new(CritterKind::Duck, (140, 54)),

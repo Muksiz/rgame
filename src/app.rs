@@ -136,8 +136,8 @@ pub enum Key {
 pub static EPILOGUE: &[&str] = &[
     "The tall doors of the Great Library swing wide, and warm lamplight spills down the steps and into the mist. Somewhere above, the shelves go up and up until they look like a night full of square stars.",
     "You think of the whole road at once: a lantern blooming gold over Emberwick, sheep folding into meadow grass, a token handed back across a rain-specked dock, a letter mended mid-sentence. Twenty-three small runes. One quiet journey.",
-    "Ferris scuttles up your sleeve and settles on your shoulder, watching the lamplight — the same little crab who has walked every step of this road beside you. \"You know,\" he says, \"most spellbooks end where the good part starts. Enums, lifetimes, traits... whole wings of this place we haven't touched.\"",
-    "\"But that,\" Ferris yawns, \"is a journey for another evening. For now: armchairs.\"\n\n~ Thank you for playing RUNE & ROAD ~\n\nThe world stays open — wander back down the road whenever you like.",
+    "Ferris scuttles up your sleeve and settles on your shoulder, watching the lamplight — the same little crab who has walked every step of this road beside you. \"You know,\" he says, \"most spellbooks end where the good part starts. Traits, lifetimes, closures... whole wings of this place we haven't touched.\"",
+    "\"But that,\" Ferris yawns, \"is a journey for another evening. For now: armchairs.\"\n\n~ Thank you for playing RUNE & ROAD ~\n\nThe world stays open — wander back down the road whenever you like. And word at the dock is the Silverford ferry has finally begun taking passengers. Ferris keeps glancing at the sea.",
 ];
 
 pub enum DialogueKind {
@@ -1996,6 +1996,25 @@ mod tests {
             app.zones[0].warp_at(pos.0, pos.1).is_some(),
             "the dot should sit on the storehouse door"
         );
+    }
+
+    #[test]
+    fn the_ferry_waits_for_the_road() {
+        // Stepping onto the boarding plank before the mainland is done
+        // gets a kindly refusal, not a voyage (the sailing itself is
+        // exercised by the journey test, in its temp dir — it autosaves).
+        let mut app = App::new();
+        app.screen = Screen::World;
+        app.zone_idx = zones::SILVERFORD;
+        app.player = (148, 50);
+        app.try_move(0, 1);
+        assert_eq!(
+            app.zone_idx,
+            zones::SILVERFORD,
+            "the ferry must not sail before the road is walked"
+        );
+        assert_eq!(app.player, (148, 50), "the plank is not for standing on");
+        assert!(app.toast.is_some(), "Wick should say why she stays moored");
     }
 
     #[test]

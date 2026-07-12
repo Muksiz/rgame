@@ -80,6 +80,17 @@ FERN_CAST = [
     ("BRACKEN", "FighterWhite"),  # Innkeep Bracken of the Glowworm
 ]
 
+# Mistholm's islanders (the chapter-6 arc past the epilogue) — their own
+# tail block at the very end of the atlas, same append-only rule as ever.
+MIST_CAST = [
+    ("NERINE", "Cavegirl2"),  # 24 Tidewatcher Nerine (salt-tangled hair)
+    ("COBLE", "MaskFrog"),  # 25 Shrimper Coble (never takes the frog mask off)
+    ("HALYARD", "CaveLion"),  # 26 Netwright Halyard (a shaggy lion, patient hands)
+    ("FATHOM", "Sultan"),  # 27 Light-keeper Fathom (keeps the mist-lights)
+    ("MURRE", "Shaman"),  # 28 Keeper Murre of the old shrine
+    ("BRINE", "NinjaEskimo"),  # 29 Grandmother Brine, bundled against the wind
+]
+
 # The wild runes' visible forms (Ninja Adventure monsters, CC0), one per rune
 # in id order 1-16 — the little creature that bobs on the encounter screen.
 # Each is chosen to fit its rune's stir line in src/content/wilds.rs.
@@ -1583,6 +1594,12 @@ def main(sheet_path, chars_path):
             for i, frame in enumerate(
                 frame for folder in WILD_FORMS_SEA for frame in na_monster(folder)
             )
+        ],
+        # ── Mistholm's islanders, four idle facings each ──
+        *[
+            (f"CAST_{name}" if d == 0 else None, frame)
+            for name, folder in MIST_CAST
+            for d, frame in enumerate(na_idles(folder))
         ],
     ]
 
