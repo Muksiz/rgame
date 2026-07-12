@@ -4,6 +4,7 @@ pub mod critters;
 pub mod ferris;
 pub mod items;
 pub mod lore;
+pub mod market;
 pub mod quests;
 pub mod schedule;
 pub mod sides;

@@ -574,6 +574,7 @@ async fn main() {
                 SoundEvent::DoorUsed => Some((&sfx_door, FOLEY_VOLUME)),
                 SoundEvent::ChestOpened => Some((&sfx_chest, FOLEY_VOLUME)),
                 SoundEvent::KeepsakeGiven => Some((&sfx_coins, FOLEY_VOLUME)),
+                SoundEvent::CoinsTraded => Some((&sfx_coins, FOLEY_VOLUME)),
                 SoundEvent::PageTurned => Some((&sfx_page, 0.4)),
                 SoundEvent::MenuMoved => Some((&sfx_blip, BLIP_VOLUME)),
                 SoundEvent::RuneCaught => Some((&sfx_rune, JINGLE_VOLUME)),

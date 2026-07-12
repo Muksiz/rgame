@@ -4,7 +4,7 @@
 //!
 //! ```sh
 //! cargo run --example snapshot -- world 0 --tick 600 --out shot.png
-//! cargo run --example snapshot -- <title|charselect|world|dialogue|journal|casting|pass|fizzle|paused|resting|banner|epilogue|toast|encounter|caught|grimoire|ring|cast|book|reveal|map>
+//! cargo run --example snapshot -- <title|charselect|world|dialogue|journal|casting|pass|fizzle|paused|resting|banner|epilogue|toast|encounter|caught|grimoire|ring|cast|book|reveal|map|trade>
 //! ```
 //!
 //! `world` takes an optional zone (0-3 the mainland regions, 4-16 the
@@ -187,6 +187,14 @@ fn main() {
                 app.completed.insert(q.id);
             }
             app.gate_reveal = Some((app.zone_idx, tick.min(600)));
+        }
+        // Marla's trading post, basket stocked and purse jingling.
+        "trade" => {
+            use rgame::content::market::Good;
+            app.coins = 11;
+            app.pantry.insert(Good::Mushroom, 3);
+            app.pantry.insert(Good::Berries, 2);
+            app.screen = Screen::Trade { selected: 0 };
         }
         "book" => {
             let book = &rgame::content::books::BOOKS[1];

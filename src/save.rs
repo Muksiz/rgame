@@ -23,6 +23,15 @@ pub struct SaveData {
     pub grimoire: Vec<u8>,
     #[serde(default)]
     pub fish: u32,
+    /// The purse: the first stored counter (coins can't be derived). Old
+    /// scrolls load with empty pockets, which is exactly what they had.
+    #[serde(default)]
+    pub coins: u32,
+    /// The basket: goods gathered, grown, or cooked, as (good id, count)
+    /// pairs (ids from `content::market::Good::id`). Unknown ids are simply
+    /// dropped on load, so the format can grow without breaking old scrolls.
+    #[serde(default)]
+    pub pantry: Vec<(String, u32)>,
     /// World-state flags (side quests, runestones found, opened chests).
     /// `default` again: old scrolls simply have no flags set yet.
     #[serde(default)]
@@ -84,6 +93,8 @@ mod tests {
             hints,
             grimoire: vec![1, 11],
             fish: 3,
+            coins: 17,
+            pantry: vec![("mushroom".to_string(), 2), ("turnip-seeds".to_string(), 1)],
             flags: vec!["sorrel.asked".to_string(), "runestone.4".to_string()],
             zone: 1,
             pos: (42, 17),
@@ -103,6 +114,8 @@ mod tests {
         let back: SaveData = serde_json::from_str(old).unwrap();
         assert!(back.grimoire.is_empty());
         assert_eq!(back.fish, 0);
+        assert_eq!(back.coins, 0, "old scrolls wake with empty pockets");
+        assert!(back.pantry.is_empty(), "and a bare basket");
         assert!(back.flags.is_empty());
         assert_eq!(back.day_ticks, 0);
         assert_eq!(back.player_char, 0);

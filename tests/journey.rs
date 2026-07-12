@@ -184,4 +184,8 @@ fn the_whole_journey_can_be_walked() {
         "the journey was never saved"
     );
     assert_eq!(app.completed.len(), QUESTS.len());
+    // Money is a side-layer, like fishing: the whole road, walked end to
+    // end, without a coin earned or a basket filled.
+    assert_eq!(app.coins, 0, "the main road must never touch a coin");
+    assert!(app.pantry.is_empty(), "nor fill the basket");
 }

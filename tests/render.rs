@@ -126,6 +126,23 @@ fn every_screen_renders() {
         render(&atlas, &app);
     }
 
+    // The trading post: an empty basket (stock only), then a full one with
+    // a purse — selected row first and last.
+    app.screen = Screen::Trade { selected: 0 };
+    render(&atlas, &app);
+    app.coins = 12;
+    app.pantry.insert(rgame::content::market::Good::Mushroom, 3);
+    app.pantry.insert(rgame::content::market::Good::Berries, 1);
+    let rows = rgame::content::market::trade_rows(&app.pantry);
+    app.screen = Screen::Trade {
+        selected: rows.len() - 1,
+    };
+    render(&atlas, &app);
+    app.screen = Screen::Journal; // the purse & basket line
+    render(&atlas, &app);
+    app.coins = 0;
+    app.pantry.clear();
+
     // The casting ring: standing quiet, part-filled, and brimming.
     let stashed = std::mem::take(&mut app.grimoire);
     app.screen = Screen::RuneRing { selected: 0 };

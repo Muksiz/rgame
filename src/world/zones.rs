@@ -304,6 +304,38 @@ pub fn runestone_id(zone: usize, pos: (i32, i32)) -> Option<u8> {
         .map(|i| i as u8 + 1)
 }
 
+/// Where things worth picking grow: hedge-berry brambles along Emberwick's
+/// lanes, red-capped mushrooms in the Whispering Woods' hollows. The zone
+/// builders plant these, `App` picks them bare (tile → grass, never saved),
+/// and every campfire rest — or simply loading the game — regrows them.
+pub fn forage_spots() -> [(usize, (i32, i32), Tile); 11] {
+    [
+        (EMBERWICK, (24, 36), Tile::Berry),  // beside the west road
+        (EMBERWICK, (66, 47), Tile::Berry),  // east of the chicken pen
+        (EMBERWICK, (84, 53), Tile::Berry),  // past Tilly's garden fence
+        (EMBERWICK, (117, 17), Tile::Berry), // the north meadow
+        (EMBERWICK, (176, 26), Tile::Berry), // the long east stretch
+        (WHISPERING_WOODS, (31, 34), Tile::Mushroom), // off the western trail
+        (WHISPERING_WOODS, (52, 20), Tile::Mushroom), // Wren's stump clearing
+        (WHISPERING_WOODS, (98, 44), Tile::Mushroom), // Maren's hollow (the boar keeps (99, 45))
+        (WHISPERING_WOODS, (103, 49), Tile::Mushroom), // the hollow's south lip
+        (WHISPERING_WOODS, (140, 43), Tile::Mushroom), // off the middle trail
+        (WHISPERING_WOODS, (216, 14), Tile::Mushroom), // Old Nettle's dooryard
+    ]
+}
+
+/// Plant this zone's forage (called by its builder, after everything that
+/// could pave over it): a small clearing so each patch can be reached, then
+/// the pickable tile itself.
+fn plant_forage(b: &mut MapBuilder, zone: usize) {
+    for (z, (x, y), tile) in forage_spots() {
+        if z == zone {
+            b.clearing(x, y, 1);
+            b.set(x, y, tile);
+        }
+    }
+}
+
 /// A tree line across the map with an opening for the gate tiles, so the gate
 /// can't simply be strolled around.
 fn barrier(b: &mut MapBuilder, x: i32, gate_ys: std::ops::RangeInclusive<i32>, tile: Tile) {
@@ -533,6 +565,9 @@ fn emberwick() -> Zone {
 
     // A runestone in the chicken pen, glossy from generations of hens.
     b.set(60, 46, Tile::Runestone);
+
+    // Hedge-berry brambles along the lanes, for the trading post's ledger.
+    plant_forage(&mut b, EMBERWICK);
 
     Zone {
         id: 0,
@@ -870,6 +905,9 @@ fn whispering_woods() -> Zone {
     // A traveller's campfire off the road, for resting the day away.
     b.clearing(140, 46, 1);
     b.set(140, 46, Tile::Campfire);
+
+    // Red-capped mushrooms in the hollows, for whoever walks out this deep.
+    plant_forage(&mut b, WHISPERING_WOODS);
 
     Zone {
         id: 1,
@@ -2165,6 +2203,44 @@ mod tests {
                 z.name
             );
         }
+    }
+
+    #[test]
+    fn forage_grows_where_the_catalogue_says_and_can_be_reached() {
+        let all = zones();
+        let seen: Vec<_> = all.iter().map(reachable).collect();
+        for (zone, (x, y), tile) in forage_spots() {
+            assert!(
+                region_of(zone).is_some(),
+                "forage under a roof at {:?}",
+                (x, y)
+            );
+            assert_eq!(
+                all[zone].tile(x, y),
+                tile,
+                "{tile:?} missing at {:?} in {}",
+                (x, y),
+                all[zone].name
+            );
+            assert!(
+                adjacent_reachable(&seen[zone], (x, y)),
+                "{tile:?} at {:?} unreachable in {}",
+                (x, y),
+                all[zone].name
+            );
+        }
+        // And nothing pickable grows uncatalogued (the regrow pass would
+        // never find it).
+        let standing: usize = all
+            .iter()
+            .map(|z| {
+                (0..H)
+                    .flat_map(|y| (0..W).map(move |x| (x, y)))
+                    .filter(|&(x, y)| matches!(z.tile(x, y), Tile::Mushroom | Tile::Berry))
+                    .count()
+            })
+            .sum();
+        assert_eq!(standing, forage_spots().len());
     }
 
     #[test]

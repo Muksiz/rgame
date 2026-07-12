@@ -436,6 +436,14 @@ pub const CAST_HALYARD: u16 = 918;
 pub const CAST_FATHOM: u16 = 922;
 pub const CAST_MURRE: u16 = 926;
 pub const CAST_BRINE: u16 = 930;
+// Coins & kitchens: the pickable berry bramble (drawn nothing like the
+// everyday bush decor), tilled garden soil, and the crops that ripen on the
+// campfire clock.
+pub const BERRY_LADEN: u16 = 934;
+pub const SOIL: u16 = 935;
+pub const TURNIP_RIPE: u16 = 936;
+pub const PUMPKIN_RIPE: u16 = 937;
+pub const CHANTERELLES: u16 = 938;
 pub const HOUSE_SIZE: (i32, i32) = (5, 5);
 pub const SHED_SIZE: (i32, i32) = (3, 3);
 pub const STALL_SIZE: (i32, i32) = (5, 5);

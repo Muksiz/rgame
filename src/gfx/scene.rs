@@ -4,7 +4,7 @@
 use crate::app::{App, DayPhase, Dialogue, DialogueKind, EPILOGUE, EncounterPhase, Screen};
 use crate::checker::{self, Outcome};
 use crate::content::quests::{self, FIZZLE_LINES, PASS_LINES, QUESTS};
-use crate::content::{items, lore, sides, stones, wilds};
+use crate::content::{items, lore, market, sides, stones, wilds};
 use crate::gfx::atlas::{self, Atlas, TILE};
 use crate::gfx::font::{self, GLYPH};
 use crate::gfx::frame::Frame;
@@ -50,6 +50,7 @@ pub fn render(fb: &mut Frame, atlas: &Atlas, app: &App) {
                 } => encounter(fb, atlas, app, *rune, *selected, *phase),
                 Screen::Grimoire { page } => grimoire(fb, atlas, app, *page),
                 Screen::RuneRing { selected } => rune_ring(fb, atlas, app, *selected),
+                Screen::Trade { selected } => trade(fb, atlas, app, *selected),
                 Screen::Casting { .. } => casting(fb, atlas, app),
                 Screen::CastResult {
                     quest,
@@ -1008,6 +1009,13 @@ fn tile_sprites(
             (furniture_base(zone, x, y), Some(id))
         }
         Tile::Herb => (ground, Some(atlas::HERB)),
+        // The pickable forage wears art nothing else outdoors uses, so a
+        // patch worth `e`-ing reads at a glance: golden chanterelles in the
+        // woods' moss (the decor mushrooms are all red-capped), a laden
+        // bramble along the village lanes.
+        Tile::Mushroom => (ground, Some(atlas::CHANTERELLES)),
+        Tile::Berry => (ground, Some(atlas::BERRY_LADEN)),
+        Tile::Soil => (atlas::SOIL, None),
         Tile::Chest => (furniture_base(zone, x, y), Some(atlas::CHEST)),
         Tile::Runestone => (furniture_base(zone, x, y), Some(atlas::RUNESTONE)),
         Tile::Window => {
@@ -2516,6 +2524,24 @@ fn journal(fb: &mut Frame, app: &App) {
         push(&format!("Satchel: {}", owned.join(" . ")), WARM, &mut lines);
     }
 
+    // The purse and basket: the side-economy, mentioned only once it exists.
+    if app.coins > 0 || !app.pantry.is_empty() {
+        lines.push((String::new(), DIM));
+        let mut parts: Vec<String> = vec![format!("{} coins", app.coins)];
+        parts.extend(app.pantry.iter().map(|(good, &n)| {
+            if n > 1 {
+                format!("{} x{}", good.name(), n)
+            } else {
+                good.name().to_string()
+            }
+        }));
+        push(
+            &format!("Purse & basket: {}", parts.join(" . ")),
+            WARM,
+            &mut lines,
+        );
+    }
+
     // Side business underway: little memory-aids, never demands.
     let notes = sides::journal_notes(&app.flags);
     if !notes.is_empty() {
@@ -2549,6 +2575,55 @@ fn journal(fb: &mut Frame, app: &App) {
     );
     let w = font::text_width(&footer, 1);
     font::text(fb, ix + iw - w - 2, iy + ih - 8, &footer, DIM, 1);
+}
+
+// ── the trading post ───────────────────────────────────────────────────────
+
+/// Marla's stall: sell rows for whatever the basket holds that she buys,
+/// then her standing stock. Renders whole with an empty basket (the stock
+/// rows always stand) and with the purse at zero (wants are dimmed, never
+/// hidden).
+fn trade(fb: &mut Frame, atlas: &Atlas, app: &App, selected: usize) {
+    let (ix, iy, iw, ih) = centered_panel(fb, 440, 240, "The Emberwick trading post");
+    // Marla minds her stall from the panel's corner, when she's in sight.
+    if let Some(npc) = app.zone().npcs.iter().find(|n| n.name == market::KEEPER) {
+        fb.sprite_scaled(atlas, npc_sprite(npc), ix + iw - 52, iy + 2, 3, 1.0);
+    }
+
+    let rows = market::trade_rows(&app.pantry);
+    let sel = selected.min(rows.len() - 1);
+    let mut lines: Vec<(String, (u8, u8, u8))> = Vec::new();
+    lines.push((format!("Purse: {} coins", app.coins), GOLD));
+    lines.push((String::new(), DIM));
+    for (i, row) in rows.iter().enumerate() {
+        let label = if row.sell {
+            let count = app.pantry.get(&row.good).copied().unwrap_or(0);
+            format!("Sell {} (x{}) - {}c", row.good.name(), count, row.price)
+        } else {
+            format!("Buy {} - {}c", row.good.name(), row.price)
+        };
+        let (marker, color) = if i == sel {
+            ("> ", GOLD)
+        } else if !row.sell && app.coins < row.price {
+            ("  ", DIM) // wanting, not having — dimmed, never hidden
+        } else {
+            ("  ", BODY)
+        };
+        lines.push((format!("{marker}{label}"), color));
+    }
+    let y = draw_lines_lg(fb, ix + 4, iy + 2, &lines[..lines.len().min(13)]);
+
+    // A word about whatever the arrow rests on.
+    let cols = (iw / GLYPH - 1) as usize;
+    let blurb: Vec<_> = font::wrap(rows[sel].good.blurb(), cols)
+        .into_iter()
+        .map(|l| (l, DIM))
+        .collect();
+    draw_lines(fb, ix + 4, y + 6, &blurb[..blurb.len().min(3)]);
+
+    let footer = "up/down choose . enter trade . esc done";
+    let w = font::text_width(footer, 1);
+    font::text(fb, ix + iw - w - 2, iy + ih - 8, footer, DIM, 1);
 }
 
 // ── wild runes: encounters & the grimoire ──────────────────────────────────

@@ -80,6 +80,15 @@ pub enum Tile {
     Awning,
     /// A patch of something pickable (moon-mint, so far). Press `e` beside it.
     Herb,
+    /// A cluster of red-capped forest mushrooms, pickable (`e`) and sellable
+    /// at the trading post. Picked clean it turns to grass; it regrows with
+    /// the campfire rests (and on every load — never saved).
+    Mushroom,
+    /// A bramble heavy with hedge-berries, pickable like the mushrooms.
+    Berry,
+    /// A tilled garden plot. Plant a bought seed (`e`), and it grows one
+    /// stage per campfire rest — the planted state lives in `App::garden`.
+    Soil,
     /// A sturdy old chest. Locked, until it isn't.
     Chest,
     /// A hidden standing stone with a rune worth collecting. Press `e`.

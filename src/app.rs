@@ -3,6 +3,7 @@ use std::sync::mpsc::Receiver;
 
 use crate::checker::{self, Outcome};
 use crate::content::items::{self, Item};
+use crate::content::market::{self, Good, Pantry};
 use crate::content::quests::{self, QUESTS, Quest};
 use crate::content::{books, casts, critters, ferris, lore, schedule, sides, stones, wilds};
 use crate::gfx::atlas::PLAYABLE;
@@ -155,6 +156,8 @@ pub enum DialogueKind {
     Side(Option<&'static str>),
     /// A runestone read aloud (gets the stone portrait).
     Stone,
+    /// Marla's stall-side greeting; closing it opens the trade screen.
+    Trade,
 }
 
 pub struct Dialogue {
@@ -240,6 +243,12 @@ pub enum Screen {
     /// The parchment map of the journey (`m`): the four zones downsampled
     /// honestly from their real tiles, uncharted until first entered.
     WorldMap,
+    /// Marla's trading post: sell the basket's yield, buy seeds and small
+    /// goods. A side-layer through and through — the main road never needs
+    /// a coin.
+    Trade {
+        selected: usize,
+    },
     /// Resting at a campfire: the screen fades to ember-dark, a scrap of Rust
     /// lore drifts past, and waking flips the world's clock.
     Resting {
@@ -317,6 +326,8 @@ pub enum SoundEvent {
     RuneCast,
     /// A runestone's rune was rubbed into the journal.
     StoneFound,
+    /// Coins changed hands at the trading post.
+    CoinsTraded,
     /// A menu selection moved (title, rest menu, encounter answers…).
     MenuMoved,
     /// A dialogue page turned.
@@ -395,6 +406,11 @@ pub struct App {
     pub grimoire: BTreeSet<u8>,
     /// Fish met (and released) with Juniper's spare rod.
     pub fish: u32,
+    /// The purse. Earned gently (forage, garden crops), spent locally
+    /// (Marla's stall) — the main road never touches it.
+    pub coins: u32,
+    /// The basket: goods gathered, grown, or cooked, by count.
+    pub pantry: Pantry,
     /// Steps taken through tall grass; part of the deterministic encounter roll.
     pub grass_steps: u32,
     /// World-state flags: side quests, runestones, opened chests. Anything
@@ -459,6 +475,8 @@ impl App {
             hints: BTreeMap::new(),
             grimoire: BTreeSet::new(),
             fish: 0,
+            coins: 0,
+            pantry: Pantry::new(),
             grass_steps: 0,
             flags: BTreeSet::new(),
             toast: None,
@@ -792,6 +810,7 @@ impl App {
             Screen::Grimoire { .. } => self.grimoire_key(key),
             Screen::RuneRing { .. } => self.rune_ring_key(key),
             Screen::WorldMap => self.world_map_key(key),
+            Screen::Trade { .. } => self.trade_key(key),
             Screen::Resting { .. } => self.resting_key(key),
             Screen::Casting { .. } => {} // the runes are busy
             Screen::CastResult { .. } => self.cast_result_key(key),
@@ -899,6 +918,8 @@ impl App {
         self.hints.clear();
         self.grimoire.clear();
         self.fish = 0;
+        self.coins = 0;
+        self.pantry.clear();
         self.grass_steps = 0;
         self.flags.clear();
         self.play_ticks = 0;
@@ -931,6 +952,15 @@ impl App {
         self.hints = data.hints;
         self.grimoire = data.grimoire.into_iter().collect();
         self.fish = data.fish;
+        self.coins = data.coins;
+        // Goods come back by their stable ids; anything unrecognized (a save
+        // from a newer game) quietly drops out rather than breaking the load.
+        self.pantry = data
+            .pantry
+            .iter()
+            .filter_map(|(id, n)| Good::from_id(id).map(|g| (g, *n)))
+            .filter(|&(_, n)| n > 0)
+            .collect();
         self.flags = data.flags.into_iter().collect();
         self.zone_idx = data.zone.min(self.zones.len() - 1);
         self.play_ticks = data.play_ticks;
@@ -966,6 +996,13 @@ impl App {
             hints: self.hints.clone(),
             grimoire: self.grimoire.iter().copied().collect(),
             fish: self.fish,
+            coins: self.coins,
+            pantry: self
+                .pantry
+                .iter()
+                .filter(|&(_, &n)| n > 0)
+                .map(|(g, &n)| (g.id().to_string(), n))
+                .collect(),
             flags: self.flags.iter().cloned().collect(),
             zone: self.zone_idx,
             pos: self.player,
@@ -1140,6 +1177,92 @@ impl App {
             })
             .map(|&(_, pos)| pos)
             .min_by_key(|pos| (pos.0 - self.player.0).abs() + (pos.1 - self.player.1).abs())
+    }
+
+    /// The trading post's menu: sell rows first (whatever the basket holds
+    /// that Marla buys), then her standing stock. Enter trades one of the
+    /// chosen row; the rows re-derive from the basket every keystroke.
+    fn trade_key(&mut self, code: Key) {
+        let Screen::Trade { selected } = &mut self.screen else {
+            return;
+        };
+        let rows = market::trade_rows(&self.pantry);
+        let n = rows.len(); // never zero: the stock rows always stand
+        *selected = (*selected).min(n - 1);
+        match code {
+            Key::Esc | Key::Char('q') => self.screen = Screen::World,
+            Key::Up | Key::Char('k') => {
+                *selected = (*selected + n - 1) % n;
+                self.sounds.push(SoundEvent::MenuMoved);
+            }
+            Key::Down | Key::Char('j') => {
+                *selected = (*selected + 1) % n;
+                self.sounds.push(SoundEvent::MenuMoved);
+            }
+            Key::Enter | Key::Char('e') | Key::Char(' ') => {
+                let row = rows[*selected];
+                if row.sell {
+                    let count = self.pantry.entry(row.good).or_insert(0);
+                    *count = count.saturating_sub(1);
+                    if *count == 0 {
+                        self.pantry.remove(&row.good);
+                    }
+                    self.coins += row.price;
+                    self.sounds.push(SoundEvent::CoinsTraded);
+                } else if self.coins >= row.price {
+                    self.coins -= row.price;
+                    *self.pantry.entry(row.good).or_insert(0) += 1;
+                    self.sounds.push(SoundEvent::CoinsTraded);
+                }
+                // Buying beyond the purse simply does nothing — the menu
+                // shows the shortfall, and Marla would never embarrass you.
+            }
+            _ => {}
+        }
+    }
+
+    /// Pick a forage tile bare: the good goes in the basket, the tile turns
+    /// to grass until the next campfire rest regrows it. Deliberately no
+    /// autosave — the existing milestones carry the basket to disk.
+    fn pick_forage(&mut self, tile: Tile, x: i32, y: i32) {
+        let good = match tile {
+            Tile::Mushroom => Good::Mushroom,
+            _ => Good::Berries,
+        };
+        let idx = (y * MAP_W + x) as usize;
+        self.zones[self.zone_idx].tiles[idx] = Tile::Grass;
+        *self.pantry.entry(good).or_insert(0) += 1;
+        let count = self.pantry[&good];
+        let msg = match good {
+            Good::Mushroom => format!(
+                "You ease a clutch of golden chanterelles out of the moss. The woods will grow more by and by. (basket: {count})"
+            ),
+            _ => format!(
+                "You pick the bramble's hedge-berries, and only eat some. (basket: {count})"
+            ),
+        };
+        self.toast(msg);
+        // The first thing foraged points the way to the stall, once.
+        if self.coins == 0 && self.pantry.values().sum::<u32>() == 1 {
+            self.toast(format!(
+                "{} at the Emberwick market stall pays good coin for finds like this.",
+                market::KEEPER
+            ));
+        }
+    }
+
+    /// Everything picked bare grows back while you sleep — called on waking
+    /// from a campfire rest. (Loading a save rebuilds the zones whole, so a
+    /// night away from the game regrows the world too.) A patch the player
+    /// happens to be standing on waits for the next rest.
+    fn regrow_forage(&mut self) {
+        for (zone, (x, y), tile) in zones::forage_spots() {
+            let idx = (y * MAP_W + x) as usize;
+            let stood_on = zone == self.zone_idx && (x, y) == self.player;
+            if self.zones[zone].tiles[idx] == Tile::Grass && !stood_on {
+                self.zones[zone].tiles[idx] = tile;
+            }
+        }
     }
 
     fn try_move(&mut self, dx: i32, dy: i32) {
@@ -1351,14 +1474,23 @@ impl App {
             self.read_shelf(x, y);
             return;
         }
-        // The quiet secrets: herbs to pick, stones to find, chests to try.
+        // The quiet secrets: herbs and forage to pick, stones to find,
+        // chests to try.
         let secret = spots.iter().find_map(|&(x, y)| {
             let tile = self.zone().tile(x, y);
-            matches!(tile, Tile::Herb | Tile::Chest | Tile::Runestone).then_some((tile, x, y))
+            matches!(
+                tile,
+                Tile::Herb | Tile::Mushroom | Tile::Berry | Tile::Chest | Tile::Runestone
+            )
+            .then_some((tile, x, y))
         });
         match secret {
             Some((Tile::Herb, ..)) => {
                 self.pick_herb();
+                return;
+            }
+            Some((tile @ (Tile::Mushroom | Tile::Berry), x, y)) => {
+                self.pick_forage(tile, x, y);
                 return;
             }
             Some((Tile::Chest, ..)) => {
@@ -1571,8 +1703,10 @@ impl App {
                     _ => DAY_ANCHOR,
                 };
                 // The clock turned while you dozed — the folk of the world
-                // went where their evening (or their morning) takes them.
+                // went where their evening (or their morning) takes them,
+                // and everything picked bare grew quietly back.
                 self.apply_schedule();
+                self.regrow_forage();
                 self.screen = Screen::World;
                 let msg = match wake {
                     DayPhase::Night => {
@@ -1593,6 +1727,10 @@ impl App {
         // Side business first: some folk have favors going, off the quest road.
         if let Some(talk) = sides::talk(npc.name, &self.flags) {
             return Dialogue::new(npc.name, talk.pages, DialogueKind::Side(talk.set));
+        }
+        // The trading post's keeper: her greeting opens the stall.
+        if npc.name == market::KEEPER {
+            return Dialogue::new(npc.name, market::greeting(), DialogueKind::Trade);
         }
         let idle = npc.idle.first().copied().unwrap_or("...").to_string();
         let Some(qid) = npc.quest else {
@@ -1713,6 +1851,7 @@ impl App {
                 }
                 self.screen = Screen::World;
             }
+            DialogueKind::Trade => self.screen = Screen::Trade { selected: 0 },
             DialogueKind::Success(qid) => {
                 self.screen = Screen::World;
                 if items::reward(qid).is_some() {
@@ -2673,6 +2812,114 @@ mod tests {
             app.on_key(Key::Enter);
         }
         panic!("dialogue never ended");
+    }
+
+    /// Forage: `e` picks the patch bare into the basket, and a campfire
+    /// rest grows it back. No coins, no flags, no save touched.
+    #[test]
+    fn forage_fills_the_basket_and_regrows_with_a_rest() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        let (zone, spot, tile) = zones::forage_spots()[1]; // east of the chicken pen
+        assert_eq!(zone, zones::EMBERWICK);
+        app.player = (spot.0, spot.1 + 1);
+        app.on_key(Key::Char('e'));
+        assert_eq!(app.pantry.get(&Good::Berries), Some(&1));
+        assert_eq!(
+            app.zones[zone].tile(spot.0, spot.1),
+            Tile::Grass,
+            "the bramble should be picked bare"
+        );
+        // Picked bare, a second e finds nothing here but Ferris.
+        app.on_key(Key::Char('e'));
+        assert_eq!(app.pantry.get(&Good::Berries), Some(&1));
+        app.on_key(Key::Esc);
+
+        // Sleep on it: the bramble regrows while you dream.
+        let fire = (0..MAP_H)
+            .flat_map(|y| (0..MAP_W).map(move |x| (x, y)))
+            .find(|&(x, y)| app.zones[zone].tile(x, y) == Tile::Campfire)
+            .expect("Emberwick keeps a campfire");
+        app.player = (fire.0, fire.1 + 1);
+        app.on_key(Key::Char('e'));
+        assert!(matches!(app.screen, Screen::Resting { .. }));
+        for _ in 0..5 {
+            app.on_tick();
+        }
+        app.on_key(Key::Enter);
+        assert_eq!(
+            app.zones[zone].tile(spot.0, spot.1),
+            tile,
+            "the bramble should regrow overnight"
+        );
+    }
+
+    /// The trading post, black-box through keys: Marla's greeting opens the
+    /// stall, selling fills the purse, buying empties it, and an empty purse
+    /// buys nothing (kindly).
+    #[test]
+    fn the_trading_post_buys_the_basket_and_sells_seeds() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        app.pantry.insert(Good::Mushroom, 2);
+        let marla = app.zones[0]
+            .npcs
+            .iter()
+            .find(|n| n.name == market::KEEPER)
+            .expect("Marla minds the Emberwick stall")
+            .pos;
+        app.player = (marla.0, marla.1 + 1);
+        app.on_key(Key::Char('e'));
+        let Screen::Dialogue(d) = &app.screen else {
+            panic!("Marla had nothing to say");
+        };
+        assert!(matches!(d.kind, DialogueKind::Trade));
+        click_through(&mut app);
+        assert!(matches!(app.screen, Screen::Trade { .. }));
+
+        // Sell both mushrooms (the sell row leads the menu).
+        app.on_key(Key::Enter);
+        assert_eq!(app.coins, 3);
+        app.on_key(Key::Enter);
+        assert_eq!(app.coins, 6);
+        assert!(app.pantry.is_empty(), "the basket should be sold through");
+
+        // The menu re-derives: only stock now, and turnip seeds lead it.
+        app.on_key(Key::Enter);
+        assert_eq!(app.coins, 4, "turnip seeds cost 2");
+        assert_eq!(app.pantry.get(&Good::TurnipSeeds), Some(&1));
+
+        // The pinwheel costs 5; four coins buy exactly nothing.
+        app.on_key(Key::Down);
+        app.on_key(Key::Down);
+        app.on_key(Key::Enter);
+        assert_eq!(app.coins, 4, "an empty purse mustn't go negative");
+        assert!(!app.pantry.contains_key(&Good::Pinwheel));
+
+        app.on_key(Key::Esc);
+        assert!(matches!(app.screen, Screen::World));
+    }
+
+    /// The purse and basket ride the save scroll — and casts, forage and
+    /// trade never write one on their own.
+    #[test]
+    fn coins_and_pantry_round_trip_through_the_save() {
+        let mut app = App::new();
+        app.coins = 12;
+        app.pantry.insert(Good::Pumpkin, 1);
+        let data = SaveData {
+            coins: app.coins,
+            pantry: app
+                .pantry
+                .iter()
+                .map(|(g, &n)| (g.id().to_string(), n))
+                .collect(),
+            ..Default::default()
+        };
+        let mut back = App::new();
+        back.apply_save(data);
+        assert_eq!(back.coins, 12);
+        assert_eq!(back.pantry.get(&Good::Pumpkin), Some(&1));
     }
 
     #[test]
