@@ -143,6 +143,35 @@ fn every_screen_renders() {
     app.coins = 0;
     app.pantry.clear();
 
+    // The market garden at every stage: seedling, growing, and both crops
+    // ripe — camera parked on the walkway between the rows.
+    use rgame::content::market::Good;
+    app.garden.insert((0, (84, 41)), (Good::Turnip, 0));
+    app.garden.insert((0, (85, 41)), (Good::Turnip, 1));
+    app.garden.insert((0, (86, 41)), (Good::Turnip, 2));
+    app.garden.insert((0, (84, 43)), (Good::Pumpkin, 3));
+    app.player = (86, 42);
+    app.screen = Screen::World;
+    render(&atlas, &app);
+    app.screen = Screen::Journal; // the garden tally line
+    render(&atlas, &app);
+    // The planting chooser, with one seed kind and with both.
+    app.pantry.insert(Good::TurnipSeeds, 2);
+    app.screen = Screen::Planting {
+        at: (85, 43),
+        selected: 0,
+    };
+    render(&atlas, &app);
+    app.pantry.insert(Good::PumpkinSeeds, 1);
+    app.screen = Screen::Planting {
+        at: (85, 43),
+        selected: 1,
+    };
+    render(&atlas, &app);
+    app.pantry.clear();
+    app.garden.clear();
+    app.player = app.zones[0].spawn;
+
     // The casting ring: standing quiet, part-filled, and brimming.
     let stashed = std::mem::take(&mut app.grimoire);
     app.screen = Screen::RuneRing { selected: 0 };

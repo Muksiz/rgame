@@ -249,6 +249,12 @@ pub enum Screen {
     Trade {
         selected: usize,
     },
+    /// Choosing which seeds go into a tilled plot (`e` at empty soil with
+    /// seeds in the basket).
+    Planting {
+        at: (i32, i32),
+        selected: usize,
+    },
     /// Resting at a campfire: the screen fades to ember-dark, a scrap of Rust
     /// lore drifts past, and waking flips the world's clock.
     Resting {
@@ -411,6 +417,10 @@ pub struct App {
     pub coins: u32,
     /// The basket: goods gathered, grown, or cooked, by count.
     pub pantry: Pantry,
+    /// The garden: what's planted in which plot, keyed (zone, tile), as
+    /// (crop, rests slept). Ripens on the campfire clock; persisted in the
+    /// save scroll since nothing about a seed in the ground is derivable.
+    pub garden: BTreeMap<(usize, (i32, i32)), (Good, u8)>,
     /// Steps taken through tall grass; part of the deterministic encounter roll.
     pub grass_steps: u32,
     /// World-state flags: side quests, runestones, opened chests. Anything
@@ -477,6 +487,7 @@ impl App {
             fish: 0,
             coins: 0,
             pantry: Pantry::new(),
+            garden: BTreeMap::new(),
             grass_steps: 0,
             flags: BTreeSet::new(),
             toast: None,
@@ -811,6 +822,7 @@ impl App {
             Screen::RuneRing { .. } => self.rune_ring_key(key),
             Screen::WorldMap => self.world_map_key(key),
             Screen::Trade { .. } => self.trade_key(key),
+            Screen::Planting { .. } => self.planting_key(key),
             Screen::Resting { .. } => self.resting_key(key),
             Screen::Casting { .. } => {} // the runes are busy
             Screen::CastResult { .. } => self.cast_result_key(key),
@@ -920,6 +932,7 @@ impl App {
         self.fish = 0;
         self.coins = 0;
         self.pantry.clear();
+        self.garden.clear();
         self.grass_steps = 0;
         self.flags.clear();
         self.play_ticks = 0;
@@ -960,6 +973,21 @@ impl App {
             .iter()
             .filter_map(|(id, n)| Good::from_id(id).map(|g| (g, *n)))
             .filter(|&(_, n)| n > 0)
+            .collect();
+        // Plantings come home only if they still land on tilled soil (and
+        // name a crop this game grows) — anything else is composted, and
+        // the rests-slept count is clamped to ripe.
+        self.garden = data
+            .garden
+            .iter()
+            .filter_map(|(zone, pos, crop_id, stage)| {
+                let crop = Good::from_id(crop_id)?;
+                let ripe = market::rests_to_ripen(crop)?;
+                (*zone < self.zones.len()
+                    && in_bounds(*pos)
+                    && self.zones[*zone].tile(pos.0, pos.1) == Tile::Soil)
+                    .then_some(((*zone, *pos), (crop, (*stage).min(ripe))))
+            })
             .collect();
         self.flags = data.flags.into_iter().collect();
         self.zone_idx = data.zone.min(self.zones.len() - 1);
@@ -1002,6 +1030,11 @@ impl App {
                 .iter()
                 .filter(|&(_, &n)| n > 0)
                 .map(|(g, &n)| (g.id().to_string(), n))
+                .collect(),
+            garden: self
+                .garden
+                .iter()
+                .map(|(&(zone, pos), &(crop, stage))| (zone, pos, crop.id().to_string(), stage))
                 .collect(),
             flags: self.flags.iter().cloned().collect(),
             zone: self.zone_idx,
@@ -1218,6 +1251,103 @@ impl App {
                 // shows the shortfall, and Marla would never embarrass you.
             }
             _ => {}
+        }
+    }
+
+    /// The planting chooser: which of the seeds in the basket goes into
+    /// this plot. One row per seed kind carried; Enter tucks one in.
+    fn planting_key(&mut self, code: Key) {
+        let Screen::Planting { at, selected } = &mut self.screen else {
+            return;
+        };
+        let seeds = market::seeds_carried(&self.pantry);
+        if seeds.is_empty() {
+            self.screen = Screen::World;
+            return;
+        }
+        let n = seeds.len();
+        *selected = (*selected).min(n - 1);
+        match code {
+            Key::Esc | Key::Char('q') => self.screen = Screen::World,
+            Key::Up | Key::Char('k') => {
+                *selected = (*selected + n - 1) % n;
+                self.sounds.push(SoundEvent::MenuMoved);
+            }
+            Key::Down | Key::Char('j') => {
+                *selected = (*selected + 1) % n;
+                self.sounds.push(SoundEvent::MenuMoved);
+            }
+            Key::Enter | Key::Char('e') | Key::Char(' ') => {
+                let (at, seed) = (*at, seeds[*selected]);
+                let count = self.pantry.entry(seed).or_insert(0);
+                *count = count.saturating_sub(1);
+                if *count == 0 {
+                    self.pantry.remove(&seed);
+                }
+                let (crop, _) = market::crop_of(seed).expect("seeds_carried only lists seeds");
+                self.garden.insert((self.zone_idx, at), (crop, 0));
+                self.screen = Screen::World;
+                self.toast(format!(
+                    "You tuck the {} into the tilled earth. They'll do their growing while you sleep.",
+                    seed.name()
+                ));
+            }
+            _ => {}
+        }
+    }
+
+    /// `e` at a tilled plot: pull what's ripe, admire what's growing, plant
+    /// what's empty (the chooser opens if the basket holds seeds).
+    fn tend_plot(&mut self, x: i32, y: i32) {
+        let key = (self.zone_idx, (x, y));
+        match self.garden.get(&key).copied() {
+            Some((crop, stage)) => {
+                let ripe = market::rests_to_ripen(crop).unwrap_or(u8::MAX);
+                if stage >= ripe {
+                    self.garden.remove(&key);
+                    *self.pantry.entry(crop).or_insert(0) += 1;
+                    let count = self.pantry[&crop];
+                    let line = match crop {
+                        Good::Pumpkin => {
+                            "You cut the pumpkin free of its vine. It is heavier than it has any right to be."
+                        }
+                        _ => "You pull the turnip. It comes up with a deeply satisfying pop.",
+                    };
+                    self.toast(format!("{line} (basket: {count})"));
+                } else {
+                    let left = ripe - stage;
+                    let wait = if left == 1 {
+                        "one more campfire rest".to_string()
+                    } else {
+                        format!("{left} more campfire rests")
+                    };
+                    self.toast(format!(
+                        "The {} is coming along nicely. Give it {wait} and it'll be ready.",
+                        crop.name()
+                    ));
+                }
+            }
+            None => {
+                if market::seeds_carried(&self.pantry).is_empty() {
+                    self.toast(
+                        "A tilled plot, patient and empty. Marla's stall sells seeds - and they grow while you sleep.",
+                    );
+                } else {
+                    self.screen = Screen::Planting {
+                        at: (x, y),
+                        selected: 0,
+                    };
+                }
+            }
+        }
+    }
+
+    /// Everything planted sleeps one rest closer to ripe — called on waking
+    /// at a campfire, alongside the forage regrowing.
+    fn grow_garden(&mut self) {
+        for (crop, stage) in self.garden.values_mut() {
+            let ripe = market::rests_to_ripen(*crop).unwrap_or(u8::MAX);
+            *stage = stage.saturating_add(1).min(ripe);
         }
     }
 
@@ -1503,6 +1633,31 @@ impl App {
             }
             _ => {}
         }
+        // A tilled plot in reach: tend the most deserving one — a ripe
+        // crop first, then an empty plot to plant, and a still-growing one
+        // only for the pleasure of checking on it.
+        let soils: Vec<(i32, i32)> = spots
+            .iter()
+            .copied()
+            .filter(|&(x, y)| self.zone().tile(x, y) == Tile::Soil)
+            .collect();
+        let best_soil =
+            soils
+                .iter()
+                .copied()
+                .min_by_key(|&pos| match self.garden.get(&(self.zone_idx, pos)) {
+                    Some(&(crop, stage))
+                        if stage >= market::rests_to_ripen(crop).unwrap_or(u8::MAX) =>
+                    {
+                        0
+                    }
+                    None => 1,
+                    Some(_) => 2,
+                });
+        if let Some((x, y)) = best_soil {
+            self.tend_plot(x, y);
+            return;
+        }
         // A campfire within reach: sit a while. The screen fades to embers, a
         // little Rust lore drifts past, and waking rolls the clock on.
         let fire = spots
@@ -1704,9 +1859,11 @@ impl App {
                 };
                 // The clock turned while you dozed — the folk of the world
                 // went where their evening (or their morning) takes them,
-                // and everything picked bare grew quietly back.
+                // everything picked bare grew quietly back, and the garden
+                // slept one rest closer to ripe.
                 self.apply_schedule();
                 self.regrow_forage();
+                self.grow_garden();
                 self.screen = Screen::World;
                 let msg = match wake {
                     DayPhase::Night => {
@@ -2900,6 +3057,80 @@ mod tests {
         assert!(matches!(app.screen, Screen::World));
     }
 
+    /// The whole gardening loop, black-box through keys: plant a bought
+    /// seed, sleep at campfires until it ripens, pull it home.
+    #[test]
+    fn seeds_grow_on_the_campfire_clock() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        app.pantry.insert(Good::TurnipSeeds, 1);
+        // The market garden's first plot, from the walkway between the rows.
+        let plot = (0..MAP_H)
+            .flat_map(|y| (0..MAP_W).map(move |x| (x, y)))
+            .find(|&(x, y)| app.zones[0].tile(x, y) == Tile::Soil)
+            .expect("Emberwick keeps a market garden");
+        app.player = (plot.0, plot.1 + 1);
+        assert!(app.zone().tile(app.player.0, app.player.1).walkable());
+        app.on_key(Key::Char('e'));
+        assert!(
+            matches!(app.screen, Screen::Planting { .. }),
+            "seeds in the basket should open the chooser"
+        );
+        app.on_key(Key::Enter);
+        assert!(matches!(app.screen, Screen::World));
+        assert_eq!(
+            app.garden.get(&(0, plot)),
+            Some(&(Good::Turnip, 0)),
+            "the seed should be in the ground"
+        );
+        assert!(app.pantry.is_empty(), "the seed packet is spent");
+
+        // Checking on it is pure pleasure — nothing changes.
+        app.on_key(Key::Char('e'));
+        assert!(matches!(app.screen, Screen::World));
+        assert_eq!(app.garden.get(&(0, plot)), Some(&(Good::Turnip, 0)));
+
+        // Two rests ripen a turnip.
+        let fire = (0..MAP_H)
+            .flat_map(|y| (0..MAP_W).map(move |x| (x, y)))
+            .find(|&(x, y)| app.zones[0].tile(x, y) == Tile::Campfire)
+            .expect("Emberwick keeps a campfire");
+        for _ in 0..2 {
+            app.player = (fire.0, fire.1 + 1);
+            app.on_key(Key::Char('e'));
+            assert!(matches!(app.screen, Screen::Resting { .. }));
+            for _ in 0..5 {
+                app.on_tick();
+            }
+            app.on_key(Key::Enter);
+        }
+        assert_eq!(app.garden.get(&(0, plot)), Some(&(Good::Turnip, 2)));
+
+        // And the harvest comes home.
+        app.player = (plot.0, plot.1 + 1);
+        app.on_key(Key::Char('e'));
+        assert_eq!(app.pantry.get(&Good::Turnip), Some(&1));
+        assert!(app.garden.is_empty(), "the plot should stand empty again");
+    }
+
+    #[test]
+    fn an_empty_plot_without_seeds_just_nudges() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        let plot = (0..MAP_H)
+            .flat_map(|y| (0..MAP_W).map(move |x| (x, y)))
+            .find(|&(x, y)| app.zones[0].tile(x, y) == Tile::Soil)
+            .expect("Emberwick keeps a market garden");
+        app.player = (plot.0, plot.1 + 1);
+        app.on_key(Key::Char('e'));
+        assert!(
+            matches!(app.screen, Screen::World),
+            "no seeds, no chooser — just a kindly toast"
+        );
+        assert!(app.toast.is_some());
+        assert!(app.garden.is_empty());
+    }
+
     /// The purse and basket ride the save scroll — and casts, forage and
     /// trade never write one on their own.
     #[test]
@@ -2914,12 +3145,28 @@ mod tests {
                 .iter()
                 .map(|(g, &n)| (g.id().to_string(), n))
                 .collect(),
+            garden: vec![
+                // A real plot in the market garden...
+                (0, (84, 41), "turnip".to_string(), 1),
+                // ...one that overslept (clamps to ripe)...
+                (0, (85, 41), "pumpkin".to_string(), 9),
+                // ...and two that no longer make sense: composted on load.
+                (0, (10, 10), "turnip".to_string(), 0),
+                (0, (86, 41), "pinwheel".to_string(), 0),
+            ],
             ..Default::default()
         };
         let mut back = App::new();
         back.apply_save(data);
         assert_eq!(back.coins, 12);
         assert_eq!(back.pantry.get(&Good::Pumpkin), Some(&1));
+        assert_eq!(back.garden.get(&(0, (84, 41))), Some(&(Good::Turnip, 1)));
+        assert_eq!(
+            back.garden.get(&(0, (85, 41))),
+            Some(&(Good::Pumpkin, 3)),
+            "an overslept planting clamps to ripe"
+        );
+        assert_eq!(back.garden.len(), 2, "nonsense plantings are composted");
     }
 
     #[test]

@@ -32,6 +32,11 @@ pub struct SaveData {
     /// dropped on load, so the format can grow without breaking old scrolls.
     #[serde(default)]
     pub pantry: Vec<(String, u32)>,
+    /// The garden: what's planted where, as (zone, plot, crop id, rests
+    /// slept). Old scrolls wake to bare plots; entries that no longer land
+    /// on tilled soil are quietly composted on load.
+    #[serde(default)]
+    pub garden: Vec<(usize, (i32, i32), String, u8)>,
     /// World-state flags (side quests, runestones found, opened chests).
     /// `default` again: old scrolls simply have no flags set yet.
     #[serde(default)]
@@ -95,6 +100,7 @@ mod tests {
             fish: 3,
             coins: 17,
             pantry: vec![("mushroom".to_string(), 2), ("turnip-seeds".to_string(), 1)],
+            garden: vec![(0, (84, 41), "turnip".to_string(), 1)],
             flags: vec!["sorrel.asked".to_string(), "runestone.4".to_string()],
             zone: 1,
             pos: (42, 17),
@@ -116,6 +122,7 @@ mod tests {
         assert_eq!(back.fish, 0);
         assert_eq!(back.coins, 0, "old scrolls wake with empty pockets");
         assert!(back.pantry.is_empty(), "and a bare basket");
+        assert!(back.garden.is_empty(), "and bare garden plots");
         assert!(back.flags.is_empty());
         assert_eq!(back.day_ticks, 0);
         assert_eq!(back.player_char, 0);

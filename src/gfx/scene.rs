@@ -51,6 +51,7 @@ pub fn render(fb: &mut Frame, atlas: &Atlas, app: &App) {
                 Screen::Grimoire { page } => grimoire(fb, atlas, app, *page),
                 Screen::RuneRing { selected } => rune_ring(fb, atlas, app, *selected),
                 Screen::Trade { selected } => trade(fb, atlas, app, *selected),
+                Screen::Planting { selected, .. } => planting(fb, app, *selected),
                 Screen::Casting { .. } => casting(fb, atlas, app),
                 Screen::CastResult {
                     quest,
@@ -189,6 +190,7 @@ fn world_scene(fb: &mut Frame, atlas: &Atlas, app: &App) {
                 }
                 Tile::Rug => rug_detail(fb, zone, wx, wy, px, py, dl),
                 Tile::Runestone => stone_glimmer(fb, app, wx, wy, px, py),
+                Tile::Soil => garden_growth(fb, atlas, app, wx, wy, px, py, dl),
                 Tile::Campfire => smoke_wisp(fb, px, py, app.tick, zone.seed ^ 0x5F0, dl),
                 Tile::Gate => gate_barrier(fb, atlas, app, wx, wy, px, py, dl),
                 _ => {}
@@ -1694,6 +1696,38 @@ fn gate_barrier(
     }
 }
 
+/// Whatever is growing in a tilled plot, drawn over the soil: a seedling
+/// fresh from planting, a young plant most of the way there, the ripe crop
+/// itself once the rests add up. The planted state rides `App::garden`;
+/// bare plots draw nothing.
+#[allow(clippy::too_many_arguments)]
+fn garden_growth(
+    fb: &mut Frame,
+    atlas: &Atlas,
+    app: &App,
+    wx: i32,
+    wy: i32,
+    px: i32,
+    py: i32,
+    dl: f32,
+) {
+    let Some(&(crop, stage)) = app.garden.get(&(app.zone_idx, (wx, wy))) else {
+        return;
+    };
+    let ripe = market::rests_to_ripen(crop).unwrap_or(u8::MAX);
+    let id = if stage == 0 {
+        atlas::SPROUT
+    } else if stage < ripe {
+        atlas::SHRUB_SMALL
+    } else {
+        match crop {
+            market::Good::Pumpkin => atlas::PUMPKIN_RIPE,
+            _ => atlas::TURNIP_RIPE,
+        }
+    };
+    fb.sprite(atlas, id, px, py, dl);
+}
+
 /// An undiscovered runestone catches the light now and then — a small cyan
 /// twinkle beside the stone. Once its rune is in the journal, it rests.
 fn stone_glimmer(fb: &mut Frame, app: &App, wx: i32, wy: i32, px: i32, py: i32) {
@@ -2541,6 +2575,21 @@ fn journal(fb: &mut Frame, app: &App) {
             &mut lines,
         );
     }
+    if !app.garden.is_empty() {
+        let ready = app
+            .garden
+            .values()
+            .filter(|&&(crop, stage)| stage >= market::rests_to_ripen(crop).unwrap_or(u8::MAX))
+            .count();
+        let line = match ready {
+            0 => format!(
+                "Garden: {} planted, growing on the campfire clock.",
+                app.garden.len()
+            ),
+            n => format!("Garden: {} planted, {n} ready to pull.", app.garden.len()),
+        };
+        push(&line, (168, 200, 168), &mut lines);
+    }
 
     // Side business underway: little memory-aids, never demands.
     let notes = sides::journal_notes(&app.flags);
@@ -2622,6 +2671,26 @@ fn trade(fb: &mut Frame, atlas: &Atlas, app: &App, selected: usize) {
     draw_lines(fb, ix + 4, y + 6, &blurb[..blurb.len().min(3)]);
 
     let footer = "up/down choose . enter trade . esc done";
+    let w = font::text_width(footer, 1);
+    font::text(fb, ix + iw - w - 2, iy + ih - 8, footer, DIM, 1);
+}
+
+/// The planting chooser: one row per seed kind in the basket. Small and
+/// quick — `e` at the plot, `e` on the seeds, done.
+fn planting(fb: &mut Frame, app: &App, selected: usize) {
+    let (ix, iy, iw, ih) = centered_panel(fb, 320, 140, "The tilled plot");
+    let seeds = market::seeds_carried(&app.pantry);
+    let mut lines: Vec<(String, (u8, u8, u8))> = Vec::new();
+    lines.push(("What goes in the ground?".to_string(), WARM));
+    lines.push((String::new(), DIM));
+    let sel = selected.min(seeds.len().saturating_sub(1));
+    for (i, seed) in seeds.iter().enumerate() {
+        let count = app.pantry.get(seed).copied().unwrap_or(0);
+        let (marker, color) = if i == sel { ("> ", GOLD) } else { ("  ", BODY) };
+        lines.push((format!("{marker}{} (x{count})", seed.name()), color));
+    }
+    draw_lines_lg(fb, ix + 4, iy + 2, &lines[..lines.len().min(7)]);
+    let footer = "enter plant . esc not today";
     let w = font::text_width(footer, 1);
     font::text(fb, ix + iw - w - 2, iy + ih - 8, footer, DIM, 1);
 }

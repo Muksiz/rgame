@@ -115,6 +115,40 @@ pub const STOCK: [(Good, u32); 3] = [
     (Good::Pinwheel, 5),
 ];
 
+/// What a seed grows into, and how many campfire rests it takes to come
+/// good — `None` for anything that isn't a seed.
+pub fn crop_of(seed: Good) -> Option<(Good, u8)> {
+    match seed {
+        Good::TurnipSeeds => Some((Good::Turnip, 2)),
+        Good::PumpkinSeeds => Some((Good::Pumpkin, 3)),
+        _ => None,
+    }
+}
+
+/// The seed that grows a crop — `crop_of`, read backwards (the save scroll
+/// stores plantings by crop, so loading needs this direction too).
+pub fn seed_of(crop: Good) -> Option<Good> {
+    GOODS
+        .iter()
+        .copied()
+        .find(|&g| crop_of(g).is_some_and(|(c, _)| c == crop))
+}
+
+/// How many campfire rests a planted crop needs to come good — `None` for
+/// anything that doesn't grow in a plot.
+pub fn rests_to_ripen(crop: Good) -> Option<u8> {
+    seed_of(crop).and_then(crop_of).map(|(_, rests)| rests)
+}
+
+/// Every seed kind in the basket, in menu order — the planting chooser.
+pub fn seeds_carried(pantry: &Pantry) -> Vec<Good> {
+    GOODS
+        .iter()
+        .copied()
+        .filter(|&g| crop_of(g).is_some() && pantry.get(&g).copied().unwrap_or(0) > 0)
+        .collect()
+}
+
 /// One row of the trade menu: a good, its price, and which way it moves.
 #[derive(Clone, Copy)]
 pub struct TradeRow {

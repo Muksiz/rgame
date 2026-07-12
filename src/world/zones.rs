@@ -513,6 +513,26 @@ fn emberwick() -> Zone {
     b.rect(81, 38, 3, 2, Tile::Flower);
     b.rect(88, 38, 3, 2, Tile::Flower);
 
+    // The market garden, just south of the square: a low fence with its
+    // gate to the west, and two tilled rows either side of a walkway —
+    // waiting for seeds, which Marla sells three steps away. What's
+    // planted where lives in `App::garden`; the soil itself is world.
+    b.rect(83, 40, 8, 5, Tile::Grass);
+    for x in 83..91 {
+        b.set(x, 40, Tile::Fence);
+        b.set(x, 44, Tile::Fence);
+    }
+    for y in 40..=44 {
+        b.set(83, y, Tile::Fence);
+        b.set(90, y, Tile::Fence);
+    }
+    b.set(83, 42, Tile::Grass); // the garden gate
+    b.clearing(82, 42, 1); // and a clear step up to it
+    for x in 84..=88 {
+        b.set(x, 41, Tile::Soil);
+        b.set(x, 43, Tile::Soil);
+    }
+
     // The old well, up a short lane: a proper roofed draw-well now, not a
     // ring of rocks around a puddle.
     b.prefab(109, 22, atlas::WELL, atlas::WELL_SIZE, None);
@@ -2241,6 +2261,35 @@ mod tests {
             })
             .sum();
         assert_eq!(standing, forage_spots().len());
+    }
+
+    #[test]
+    fn every_garden_plot_can_be_tended() {
+        let all = zones();
+        let seen: Vec<_> = all.iter().map(reachable).collect();
+        let mut plots = 0;
+        for (i, zone) in all.iter().enumerate() {
+            for y in 0..H {
+                for x in 0..W {
+                    if zone.tile(x, y) == Tile::Soil {
+                        plots += 1;
+                        assert!(
+                            region_of(i).is_some(),
+                            "a garden plot under a roof at {:?} in {}",
+                            (x, y),
+                            zone.name
+                        );
+                        assert!(
+                            adjacent_reachable(&seen[i], (x, y)),
+                            "the plot at {:?} in {} can't be tended",
+                            (x, y),
+                            zone.name
+                        );
+                    }
+                }
+            }
+        }
+        assert_eq!(plots, 10, "the market garden keeps ten tilled plots");
     }
 
     #[test]

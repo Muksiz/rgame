@@ -188,6 +188,16 @@ fn main() {
             }
             app.gate_reveal = Some((app.zone_idx, tick.min(600)));
         }
+        // The market garden mid-season: every growth stage in one frame.
+        "garden" => {
+            use rgame::content::market::Good;
+            app.garden.insert((0, (84, 41)), (Good::Turnip, 0));
+            app.garden.insert((0, (85, 41)), (Good::Turnip, 1));
+            app.garden.insert((0, (86, 41)), (Good::Turnip, 2));
+            app.garden.insert((0, (84, 43)), (Good::Pumpkin, 3));
+            app.garden.insert((0, (86, 43)), (Good::Pumpkin, 1));
+            app.player = (86, 42);
+        }
         // Marla's trading post, basket stocked and purse jingling.
         "trade" => {
             use rgame::content::market::Good;
