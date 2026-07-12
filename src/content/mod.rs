@@ -1,4 +1,5 @@
 pub mod books;
+pub mod casts;
 pub mod critters;
 pub mod ferris;
 pub mod items;

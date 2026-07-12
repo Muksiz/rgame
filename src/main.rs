@@ -199,6 +199,9 @@ static SFX_RUNE: &[u8] =
     include_bytes!("../assets/kenney/audio/music-jingles/Steel jingles/jingles_STEEL07.ogg");
 static SFX_STONE: &[u8] =
     include_bytes!("../assets/kenney/audio/music-jingles/8-Bit jingles/jingles_NES00.ogg");
+// A soft pizzicato flourish when a grimoire rune is cast from the ring.
+static SFX_RUNE_CAST: &[u8] =
+    include_bytes!("../assets/kenney/audio/music-jingles/Pizzicato jingles/jingles_PIZZI00.ogg");
 // The encounter's sting and the campfire's rest theme — the shelf's unused
 // Junkala tracks (CC0), looped softly for as long as their screens hold.
 static ENCOUNTER_MUSIC: &[u8] =
@@ -362,6 +365,7 @@ async fn main() {
     let sfx_blip = sfx(SFX_BLIP).await;
     let sfx_rune = sfx(SFX_RUNE).await;
     let sfx_stone = sfx(SFX_STONE).await;
+    let sfx_rune_cast = sfx(SFX_RUNE_CAST).await;
     let encounter_music = sfx(ENCOUNTER_MUSIC).await;
     let rest_music = sfx(REST_MUSIC).await;
 
@@ -574,6 +578,7 @@ async fn main() {
                 SoundEvent::MenuMoved => Some((&sfx_blip, BLIP_VOLUME)),
                 SoundEvent::RuneCaught => Some((&sfx_rune, JINGLE_VOLUME)),
                 SoundEvent::StoneFound => Some((&sfx_stone, JINGLE_VOLUME)),
+                SoundEvent::RuneCast => Some((&sfx_rune_cast, JINGLE_VOLUME)),
             };
             if let Some((sound, volume)) = played
                 && gain > 0.0

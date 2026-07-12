@@ -126,6 +126,50 @@ fn every_screen_renders() {
         render(&atlas, &app);
     }
 
+    // The casting ring: standing quiet, part-filled, and brimming.
+    let stashed = std::mem::take(&mut app.grimoire);
+    app.screen = Screen::RuneRing { selected: 0 };
+    render(&atlas, &app);
+    app.grimoire = stashed;
+    app.screen = Screen::RuneRing { selected: 2 };
+    render(&atlas, &app);
+    app.grimoire
+        .extend(rgame::content::wilds::WILDS.iter().map(|w| w.id));
+    app.screen = Screen::RuneRing {
+        selected: rgame::content::wilds::WILDS.len() - 1,
+    };
+    render(&atlas, &app);
+
+    // Every cast shape mid-flight over the world, early and late in the arc
+    // (one rune per shape suffices — the shape is the renderer's whole key).
+    app.screen = Screen::World;
+    let mut seen = Vec::new();
+    for w in &rgame::content::wilds::WILDS {
+        let shape = rgame::content::casts::cast(w.id).shape;
+        if seen.contains(&shape) {
+            continue;
+        }
+        seen.push(shape);
+        for burn in [2, 20, 42] {
+            app.rune_fx = Some(rgame::app::RuneFx {
+                rune: w.id,
+                at: app.player,
+                start: app.tick.saturating_sub(burn),
+                seek: None,
+            });
+            render(&atlas, &app);
+        }
+    }
+    // The seeking cast with a stone to lean toward.
+    app.rune_fx = Some(rgame::app::RuneFx {
+        rune: 16,
+        at: app.player,
+        start: app.tick.saturating_sub(20),
+        seek: Some((app.player.0 + 12, app.player.1 - 4)),
+    });
+    render(&atlas, &app);
+    app.rune_fx = None;
+
     app.screen = Screen::Casting { quest: 1 };
     render(&atlas, &app);
 

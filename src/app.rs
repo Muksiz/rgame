@@ -4,7 +4,7 @@ use std::sync::mpsc::Receiver;
 use crate::checker::{self, Outcome};
 use crate::content::items::{self, Item};
 use crate::content::quests::{self, QUESTS, Quest};
-use crate::content::{books, critters, ferris, lore, schedule, sides, stones, wilds};
+use crate::content::{books, casts, critters, ferris, lore, schedule, sides, stones, wilds};
 use crate::gfx::atlas::PLAYABLE;
 use crate::save::{self, SaveData};
 use crate::world::entity::CritterKind;
@@ -231,6 +231,12 @@ pub enum Screen {
     Grimoire {
         page: usize,
     },
+    /// The casting ring (`r`): every rune in the grimoire stands in a circle,
+    /// and choosing one casts it — gentle, cosmetic overworld magic. Charm,
+    /// not keys: no cast opens anything the keepsakes gate.
+    RuneRing {
+        selected: usize,
+    },
     /// The parchment map of the journey (`m`): the four zones downsampled
     /// honestly from their real tiles, uncharted until first entered.
     WorldMap,
@@ -259,6 +265,20 @@ pub enum Screen {
     Epilogue {
         page: usize,
     },
+}
+
+/// How long a cast rune's light and motion play over the world, in ticks.
+pub const RUNE_FX_TICKS: u64 = 44;
+
+/// A rune cast in flight: which rune, the tile it was cast on, when — and,
+/// for the seeking cast, the runestone its sparks drift toward. Pure light
+/// and motion: cosmetic, never saved, gone on its own in `RUNE_FX_TICKS`.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct RuneFx {
+    pub rune: u8,
+    pub at: (i32, i32),
+    pub start: u64,
+    pub seek: Option<(i32, i32)>,
 }
 
 /// What the ground underfoot is made of — the shell picks footstep foley
@@ -293,6 +313,8 @@ pub enum SoundEvent {
     KeepsakeGiven,
     /// A wild rune joined the grimoire.
     RuneCaught,
+    /// A grimoire rune was cast from the ring.
+    RuneCast,
     /// A runestone's rune was rubbed into the journal.
     StoneFound,
     /// A menu selection moved (title, rest menu, encounter answers…).
@@ -387,6 +409,8 @@ pub struct App {
     /// ephemeral — never saved, and an old save simply finds its cleared
     /// gates already standing open.
     pub gate_reveal: Option<(usize, u64)>,
+    /// The rune cast currently playing over the world, if any — see `RuneFx`.
+    pub rune_fx: Option<RuneFx>,
     /// Every NPC's authored daytime post, captured from the fresh world:
     /// (name, zone, tile). `apply_schedule` re-derives live positions from
     /// this plus the hour and the active quest — derived, never stored.
@@ -440,6 +464,7 @@ impl App {
             toast: None,
             banner: None,
             gate_reveal: None,
+            rune_fx: None,
             schedule_home,
             sounds: Vec::new(),
             sound_level: 2,
@@ -682,6 +707,11 @@ impl App {
         {
             self.gate_reveal = None;
         }
+        if let Some(fx) = &self.rune_fx
+            && self.tick.saturating_sub(fx.start) >= RUNE_FX_TICKS
+        {
+            self.rune_fx = None;
+        }
         let step = self.reveal_step();
         if let Screen::Dialogue(d) = &mut self.screen {
             d.revealed = d.revealed.saturating_add(step);
@@ -760,6 +790,7 @@ impl App {
             Screen::Journal => self.journal_key(key),
             Screen::Encounter { .. } => self.encounter_key(key),
             Screen::Grimoire { .. } => self.grimoire_key(key),
+            Screen::RuneRing { .. } => self.rune_ring_key(key),
             Screen::WorldMap => self.world_map_key(key),
             Screen::Resting { .. } => self.resting_key(key),
             Screen::Casting { .. } => {} // the runes are busy
@@ -965,6 +996,7 @@ impl App {
             Key::Char('c') => self.start_cast(),
             Key::Char('q') => self.screen = Screen::Journal,
             Key::Char('g') => self.screen = Screen::Grimoire { page: 0 },
+            Key::Char('r') => self.screen = Screen::RuneRing { selected: 0 },
             Key::Char('m') => self.screen = Screen::WorldMap,
             Key::Char('f') => self.ferris_hint(),
             Key::Esc => self.screen = Screen::Paused { selected: 0 },
@@ -1038,6 +1070,76 @@ impl App {
             }
             _ => {}
         }
+    }
+
+    fn rune_ring_key(&mut self, code: Key) {
+        let Screen::RuneRing { selected } = &mut self.screen else {
+            return;
+        };
+        let n = self.grimoire.len();
+        match code {
+            Key::Esc | Key::Char('r') | Key::Char('g') | Key::Char('q') => {
+                self.screen = Screen::World;
+            }
+            Key::Left | Key::Up | Key::Char('h') | Key::Char('k') if n > 0 => {
+                *selected = (*selected + n - 1) % n;
+                self.sounds.push(SoundEvent::MenuMoved);
+            }
+            Key::Right | Key::Down | Key::Char('l') | Key::Char('j') if n > 0 => {
+                *selected = (*selected + 1) % n;
+                self.sounds.push(SoundEvent::MenuMoved);
+            }
+            Key::Enter | Key::Char('e') | Key::Char(' ') => {
+                // An empty ring has nothing to cast; confirm simply closes it.
+                match self.grimoire.iter().copied().nth(*selected) {
+                    Some(rune) => self.cast_rune(rune),
+                    None => self.screen = Screen::World,
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Cast a caught rune from the ring: light and motion over the world, a
+    /// line underneath, and nothing else — no flag, no save, no gate. The
+    /// effect rides `App::rune_fx` and burns out on its own.
+    fn cast_rune(&mut self, rune: u8) {
+        let cast = casts::cast(rune);
+        let seek = if cast.shape == casts::CastShape::Seek {
+            self.nearest_unfound_stone()
+        } else {
+            None
+        };
+        self.rune_fx = Some(RuneFx {
+            rune,
+            at: self.player,
+            start: self.tick,
+            seek,
+        });
+        self.sounds.push(SoundEvent::RuneCast);
+        self.screen = Screen::World;
+        if cast.shape == casts::CastShape::Seek && seek.is_none() {
+            // Every stone hereabouts already rests in the journal (or none
+            // ever stood here) — the sparks have nowhere to lean.
+            self.toast("The sparks circle, find nothing hidden left to point to, and settle, proud of you.");
+        } else {
+            self.toast(cast.line);
+        }
+    }
+
+    /// The closest runestone in this zone whose rune is still unrubbed —
+    /// where the Seek cast's sparks drift. The chest's stone doesn't count:
+    /// it is behind a key, and no cast opens anything gated.
+    fn nearest_unfound_stone(&self) -> Option<(i32, i32)> {
+        zones::runestone_spots()
+            .iter()
+            .filter(|&&(zone, pos)| {
+                zone == self.zone_idx
+                    && zones::runestone_id(zone, pos)
+                        .is_some_and(|id| !self.has_flag(&sides::runestone_flag(id)))
+            })
+            .map(|&(_, pos)| pos)
+            .min_by_key(|pos| (pos.0 - self.player.0).abs() + (pos.1 - self.player.1).abs())
     }
 
     fn try_move(&mut self, dx: i32, dy: i32) {
@@ -2253,6 +2355,106 @@ mod tests {
                 "a mastered rune rustled anyway"
             );
         }
+    }
+
+    /// Every caught rune can be cast from the ring, and every cast is pure
+    /// charm: back to the world cleanly, light in flight, and not one flag,
+    /// quest, inscription or save touched.
+    #[test]
+    fn every_caught_rune_casts_and_changes_nothing() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        for w in &wilds::WILDS {
+            app.grimoire.insert(w.id);
+        }
+        let flags_before = app.flags.clone();
+        let completed_before = app.completed.clone();
+        let had_save = app.has_save;
+        for (i, w) in wilds::WILDS.iter().enumerate() {
+            app.on_key(Key::Char('r'));
+            assert!(matches!(app.screen, Screen::RuneRing { .. }));
+            for _ in 0..i {
+                app.on_key(Key::Right);
+            }
+            app.on_key(Key::Enter);
+            assert!(
+                matches!(app.screen, Screen::World),
+                "{} did not return to the world",
+                w.name
+            );
+            let fx = app.rune_fx.expect("a cast should leave light in the air");
+            assert_eq!(fx.rune, w.id, "{} cast the wrong rune", w.name);
+            assert!(
+                app.drain_sounds().contains(&SoundEvent::RuneCast),
+                "{} cast silently",
+                w.name
+            );
+            // The light burns out on its own.
+            for _ in 0..=RUNE_FX_TICKS {
+                app.on_tick();
+            }
+            assert!(app.rune_fx.is_none(), "{}'s light never faded", w.name);
+        }
+        assert_eq!(app.flags, flags_before, "a cast set a flag");
+        assert_eq!(app.completed, completed_before, "a cast completed a quest");
+        assert_eq!(app.grimoire.len(), wilds::WILDS.len(), "a cast lost a rune");
+        assert_eq!(app.has_save, had_save, "a cast wrote a save");
+    }
+
+    #[test]
+    fn the_empty_ring_stands_quiet() {
+        let mut app = App::new();
+        app.screen = Screen::World;
+        app.on_key(Key::Char('r'));
+        assert!(matches!(app.screen, Screen::RuneRing { .. }));
+        // Arrows have nothing to choose between; confirm simply closes.
+        app.on_key(Key::Right);
+        app.on_key(Key::Enter);
+        assert!(matches!(app.screen, Screen::World));
+        assert!(app.rune_fx.is_none(), "an empty ring cast something");
+    }
+
+    /// The seeking cast leans toward the nearest unfound runestone — and
+    /// once every stone in the zone rests in the journal, it has nowhere to
+    /// point and settles.
+    #[test]
+    fn the_seeking_cast_leans_toward_unfound_stones() {
+        use crate::content::casts::{self, CastShape};
+        let seeker = wilds::WILDS
+            .iter()
+            .find(|w| casts::cast(w.id).shape == CastShape::Seek)
+            .expect("the ring keeps one honest utility")
+            .id;
+        let mut app = App::new();
+        app.screen = Screen::World;
+        app.grimoire.insert(seeker);
+        let spots: Vec<(i32, i32)> = zones::runestone_spots()
+            .iter()
+            .filter(|&&(z, _)| z == app.zone_idx)
+            .map(|&(_, p)| p)
+            .collect();
+        assert!(!spots.is_empty(), "Emberwick should hide a runestone");
+        app.on_key(Key::Char('r'));
+        app.on_key(Key::Enter);
+        let fx = app.rune_fx.expect("the seeker cast nothing");
+        assert!(
+            fx.seek.is_some_and(|p| spots.contains(&p)),
+            "the sparks should lean toward a stone of this zone"
+        );
+        // Rub every stone here into the journal; the sparks settle.
+        for &pos in &spots {
+            let id = zones::runestone_id(app.zone_idx, pos).unwrap();
+            app.set_flag(&sides::runestone_flag(id));
+        }
+        app.on_key(Key::Char('r'));
+        app.on_key(Key::Enter);
+        let fx = app
+            .rune_fx
+            .expect("the seeker cast nothing the second time");
+        assert!(
+            fx.seek.is_none(),
+            "with every stone found, the sparks have nowhere to lean"
+        );
     }
 
     /// The campfires are the world's clock: the sky holds still between

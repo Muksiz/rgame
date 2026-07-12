@@ -49,6 +49,7 @@ pub fn render(fb: &mut Frame, atlas: &Atlas, app: &App) {
                     phase,
                 } => encounter(fb, atlas, app, *rune, *selected, *phase),
                 Screen::Grimoire { page } => grimoire(fb, atlas, app, *page),
+                Screen::RuneRing { selected } => rune_ring(fb, atlas, app, *selected),
                 Screen::Casting { .. } => casting(fb, atlas, app),
                 Screen::CastResult {
                     quest,
@@ -324,8 +325,173 @@ fn world_scene(fb: &mut Frame, atlas: &Atlas, app: &App) {
     }
 
     ambient_life(fb, atlas, app, cam_x, cam_y, dl);
+    rune_cast_fx(fb, atlas, app, cam_x, cam_y, dl);
     if let Some(kind) = zone.weather {
         weather(fb, kind, app.tick, dl, cam_x, cam_y);
+    }
+}
+
+/// A cast rune's moment over the world: light and motion keyed to the rune's
+/// nature (see `content::casts`), playing out over `RUNE_FX_TICKS` and gone.
+/// Everything derives from the tick and `hash2` — cosmetic through and through.
+fn rune_cast_fx(fb: &mut Frame, atlas: &Atlas, app: &App, cam_x: i32, cam_y: i32, dl: f32) {
+    use crate::app::RUNE_FX_TICKS;
+    use crate::content::casts::{self, CastShape};
+    let Some(fx) = &app.rune_fx else {
+        return;
+    };
+    let age = app.tick.saturating_sub(fx.start);
+    if age >= RUNE_FX_TICKS {
+        return;
+    }
+    let t = TILE as i32;
+    let k = age as f32 / RUNE_FX_TICKS as f32; // 0..1 through the cast
+    // Quick to arrive, gentle to leave.
+    let fade = (k * 5.0).min(1.0 - k).clamp(0.0, 1.0) * 1.25;
+    let (cx, cy) = (fx.at.0 * t + t / 2 - cam_x, fx.at.1 * t + t / 2 - cam_y);
+    let tau = std::f32::consts::TAU;
+    match casts::cast(fx.rune).shape {
+        CastShape::Bloom => {
+            // A ring of flowers opens around the caster's feet, then closes.
+            if k > 0.9 {
+                return;
+            }
+            let r = 10.0 + k * 16.0;
+            for i in 0..8 {
+                let a = i as f32 / 8.0 * tau + k * 0.6;
+                let (px, py) = (
+                    cx + (a.cos() * r) as i32 - 8,
+                    cy + (a.sin() * r * 0.65) as i32 - 8,
+                );
+                let flower = [
+                    atlas::FLOWER_O_OVER,
+                    atlas::FLOWER_W_OVER,
+                    atlas::FLOWER_B_OVER,
+                ][(hash2(i, 3, 0xB100) % 3) as usize];
+                fb.sprite(atlas, flower, px, py, dl);
+            }
+        }
+        CastShape::Ripple => {
+            // Rings spread as on still water, squashed to the world's tilt.
+            for ring in 0..3 {
+                let kr = k - ring as f32 * 0.22;
+                if kr <= 0.0 {
+                    continue;
+                }
+                let r = kr * 44.0;
+                let a8 = (fade * 190.0 * (1.0 - kr)) as u8;
+                for step in 0..72 {
+                    let a = step as f32 / 72.0 * tau;
+                    fb.blend(
+                        cx + (a.cos() * r) as i32,
+                        cy + (a.sin() * r * 0.55) as i32,
+                        (176, 224, 236),
+                        a8,
+                    );
+                }
+            }
+        }
+        CastShape::Birds => {
+            // A scatter of startled wings, up and away.
+            for i in 0..6i32 {
+                let h = hash2(i, 7, 0xB19D);
+                let a = -0.25 * tau - 0.35 + (h % 100) as f32 / 100.0 * 0.7; // fanned skyward
+                let speed = 1.4 + (h >> 8 & 0x3) as f32 * 0.4;
+                let d = age as f32 * speed + 6.0;
+                let (bx, by) = (cx + (a.cos() * d) as i32, cy + (a.sin() * d) as i32);
+                let a8 = (fade * 220.0) as u8;
+                let c = (52, 46, 40);
+                // Two-frame wingbeat: a small v, then a dash.
+                if (app.tick / 2 + i as u64).is_multiple_of(2) {
+                    fb.blend(bx - 1, by - 1, c, a8);
+                    fb.blend(bx + 1, by - 1, c, a8);
+                    fb.blend(bx, by, c, a8);
+                } else {
+                    for dx in -1..=1 {
+                        fb.blend(bx + dx, by, c, a8);
+                    }
+                }
+            }
+        }
+        CastShape::Chime => {
+            // One bright ring on arrival, then a slow fall of golden motes.
+            if k < 0.25 {
+                let r = (k * 56.0) as i32;
+                diamond(fb, cx, cy - 6, r, (250, 232, 150), false);
+            }
+            for i in 0..10i32 {
+                let h = hash2(i, 11, 0xC41E);
+                let px = cx - 14 + (h % 29) as i32;
+                let py = cy - 18 + ((h >> 6) % 10) as i32 + (k * 26.0) as i32;
+                if (app.tick / 3 + i as u64).is_multiple_of(3) {
+                    continue; // motes twinkle rather than burn
+                }
+                fb.blend(px, py, (250, 230, 140), (fade * 230.0) as u8);
+            }
+        }
+        CastShape::Gleam => {
+            // A moment of warm light around the casting spot. It fades on its
+            // own and opens nothing — the storm-lantern keeps its job.
+            for i in 0..150i32 {
+                let h = hash2(i, 13, 0x61EA);
+                let a = (h % 128) as f32 / 128.0 * tau;
+                let r = ((h >> 7) % 30) as f32;
+                let (px, py) = (cx + (a.cos() * r) as i32, cy + (a.sin() * r * 0.8) as i32);
+                let a8 = (fade * (1.0 - r / 30.0) * 195.0) as u8;
+                fb.blend(px, py, (255, 218, 128), a8);
+            }
+        }
+        CastShape::Ferris => {
+            // The magic happens next to your ankles: a small orange flourish
+            // around wherever Ferris currently stands. (His words ride the
+            // toast below.)
+            let (fx_, fy_) = (
+                app.companion.0 * t + t / 2 - cam_x,
+                app.companion.1 * t + t / 2 - cam_y,
+            );
+            for i in 0..6i32 {
+                let a = k * tau * 1.5 + i as f32 / 6.0 * tau;
+                let r = 11.0 + (i % 2) as f32 * 5.0;
+                let (px, py) = (
+                    fx_ + (a.cos() * r) as i32,
+                    fy_ + (a.sin() * r * 0.7) as i32 - 4,
+                );
+                if (app.tick / 2 + i as u64).is_multiple_of(5) {
+                    continue;
+                }
+                fb.blend(px, py, FERRIS_ORANGE, (fade * 240.0) as u8);
+            }
+        }
+        CastShape::Seek => {
+            // Sparks lean toward the nearest unfound runestone — or, with
+            // nothing left to find, circle the caster and settle.
+            let c = (170, 230, 240);
+            match fx.seek {
+                Some(stone) => {
+                    let (tx, ty) = (stone.0 * t + t / 2 - cam_x, stone.1 * t + t / 2 - cam_y);
+                    for i in 0..6i32 {
+                        let p = (k * 1.4 + i as f32 * 0.13) % 1.0;
+                        let h = hash2(i, 17, 0x5EEC);
+                        let jx = (h % 7) as i32 - 3;
+                        let jy = ((h >> 4) % 7) as i32 - 3;
+                        let px = cx + ((tx - cx) as f32 * p) as i32 + jx;
+                        let py = cy - 6 + ((ty - cy) as f32 * p) as i32 + jy;
+                        fb.blend(px, py, c, (fade * 230.0 * (1.0 - p * 0.5)) as u8);
+                    }
+                }
+                None => {
+                    for i in 0..6i32 {
+                        let a = k * tau * 2.0 + i as f32 / 6.0 * tau;
+                        let r = 12.0 - k * 6.0;
+                        let (px, py) = (
+                            cx + (a.cos() * r) as i32,
+                            cy - 8 + (a.sin() * r * 0.6) as i32,
+                        );
+                        fb.blend(px, py, c, (fade * 220.0) as u8);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1957,7 +2123,7 @@ fn bottom_bar(fb: &mut Frame, app: &App) {
                     npc.name
                 ),
                 None => {
-                    "arrows move . e talk . c cast . q journal . g grimoire . m map . f hint . esc"
+                    "arrows move . e talk . c cast . q journal . g grimoire . r ring . m map . f hint . esc"
                         .into()
                 }
             };
@@ -2528,6 +2694,77 @@ fn grimoire(fb: &mut Frame, atlas: &Atlas, app: &App, page: usize) {
         app.grimoire.len(),
         wilds::WILDS.len()
     );
+    let w = font::text_width(&footer, 1);
+    font::text(fb, ix + iw - w - 2, iy + ih - 8, &footer, DIM, 1);
+}
+
+/// The casting ring (`r`): every rune in the grimoire stands in a circle,
+/// the chosen one steps into the middle, and `e` casts it. Renders whole at
+/// zero, some, or all runes caught — an empty ring simply stands quiet.
+fn rune_ring(fb: &mut Frame, atlas: &Atlas, app: &App, selected: usize) {
+    let (ix, iy, iw, ih) = centered_panel(fb, 420, 232, "The casting ring");
+    let caught: Vec<u8> = app.grimoire.iter().copied().collect();
+    let (cx, cy) = (ix + iw / 2, iy + ih / 2 - 6);
+
+    if caught.is_empty() {
+        font::text_center_lg(
+            fb,
+            cx,
+            cy - font::LINE_LG - 6,
+            "The ring stands quiet.",
+            BODY,
+        );
+        font::text_center(
+            fb,
+            cx,
+            cy + 6,
+            "Runes from your grimoire answer here -",
+            DIM,
+            1,
+        );
+        font::text_center(
+            fb,
+            cx,
+            cy + 16,
+            "listen for rustling in the tall grass.",
+            DIM,
+            1,
+        );
+    } else {
+        let selected = selected.min(caught.len() - 1);
+        let tau = std::f32::consts::TAU;
+        let (rx, ry) = ((iw / 2 - 26) as f32, (ih / 2 - 34) as f32);
+        for (i, &id) in caught.iter().enumerate() {
+            // The circle turns, very slowly, on its own — a ring, not a shelf.
+            let a =
+                i as f32 / caught.len() as f32 * tau - tau / 4.0 + (app.tick as f32 / 900.0) % tau;
+            let (px, py) = (
+                cx + (a.cos() * rx) as i32 - 8,
+                cy + (a.sin() * ry) as i32 - 8,
+            );
+            let frame = atlas::wild_form(id) + ((app.tick / 8 + i as u64) % 2) as u16;
+            let light = if i == selected { 1.0 } else { 0.55 };
+            fb.sprite(atlas, frame, px, py, light);
+            if i == selected {
+                diamond(fb, px + 8, py + 20, 2, GOLD, true);
+            }
+        }
+        // The chosen rune steps into the middle of the ring.
+        let rune = wilds::wild(caught[selected]);
+        let frame = atlas::wild_form(rune.id) + ((app.tick / 8) % 2) as u16;
+        fb.sprite_scaled(atlas, frame, cx - 16, cy - 22, 2, 1.0);
+        font::text_center(fb, cx, cy + 14, &format!("~ {} ~", rune.name), GOLD, 1);
+    }
+
+    let footer = if caught.is_empty() {
+        "esc . back to the road".to_string()
+    } else {
+        format!(
+            "{}/{} in the ring . arrows choose . e cast . esc",
+            caught.len(),
+            wilds::WILDS.len()
+        )
+    };
     let w = font::text_width(&footer, 1);
     font::text(fb, ix + iw - w - 2, iy + ih - 8, &footer, DIM, 1);
 }

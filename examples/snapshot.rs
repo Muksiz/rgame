@@ -4,7 +4,7 @@
 //!
 //! ```sh
 //! cargo run --example snapshot -- world 0 --tick 600 --out shot.png
-//! cargo run --example snapshot -- <title|charselect|world|dialogue|journal|casting|pass|fizzle|paused|resting|banner|epilogue|toast|encounter|caught|grimoire|book|reveal|map>
+//! cargo run --example snapshot -- <title|charselect|world|dialogue|journal|casting|pass|fizzle|paused|resting|banner|epilogue|toast|encounter|caught|grimoire|ring|cast|book|reveal|map>
 //! ```
 //!
 //! `world` takes an optional zone (0-3 the mainland regions, 4-16 the
@@ -139,6 +139,33 @@ fn main() {
             app.screen = Screen::Grimoire {
                 page: page.min(rgame::content::wilds::GRIMOIRE_PAGES - 1),
             };
+        }
+        // The casting ring. `ring <n>` puts the first n wild runes in the
+        // ring (default a handful; 0 shows it standing quiet).
+        "ring" => {
+            let n = args.get(1).and_then(|s| s.parse::<usize>().ok()).unwrap_or(7);
+            app.grimoire
+                .extend(rgame::content::wilds::WILDS.iter().take(n).map(|w| w.id));
+            app.screen = Screen::RuneRing {
+                selected: 2.min(n.saturating_sub(1)),
+            };
+        }
+        // A rune cast mid-flight over the world. `cast <rune id>` (default
+        // the Mut Rune's bloom); `--tick` scrubs it — the cast starts at
+        // tick 590, so the default 600 is ten ticks in.
+        "cast" => {
+            let rune = args
+                .get(1)
+                .and_then(|s| s.parse::<u8>().ok())
+                .unwrap_or(2)
+                .clamp(1, rgame::content::wilds::WILDS.len() as u8);
+            app.grimoire.insert(rune);
+            app.rune_fx = Some(rgame::app::RuneFx {
+                rune,
+                at: app.player,
+                start: tick.saturating_sub(10),
+                seek: None,
+            });
         }
         // The parchment world map. `map <zone>` charts every zone up to
         // (and including) that one — `map 3` shows the whole road, plain

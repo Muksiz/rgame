@@ -49,27 +49,22 @@ by day over far-off surf, waves lapping the piers by night). The journey
 test now sails past the epilogue and finishes quest 29; every listed
 invariant landed as a test.
 
-## 2. Castable grimoire runes
+## 2. Castable grimoire runes — DONE
 
-Caught runes stop being trophies. In the world, a new key opens a small
-casting ring of everything in the grimoire; choosing a rune casts it —
-gentle, cosmetic-first overworld magic in the existing spark/puff FX
-style. Charm, not keys: **no cast may substitute for a keepsake or open
-anything gated** — the storm-lantern and the rod keep their jobs.
-
-- Each rune's effect keys to its name and nature: flowers bloom in a ring,
-  water ripples, startled birds, a soft chime, a moment of light that
-  doesn't count as the lantern, a rune that makes Ferris weigh in, and one
-  small honest utility — a rune that makes the nearest unfound runestone
-  glimmer for a breath.
-- All effects derive from `hash2` and tick — nothing persists, nothing
-  saved. Casting is free and can't fail; fizzles stay quest-things.
-- One new `Screen` (or overlay) reachable through `App::on_key`, a
-  snapshot scene, a render-matrix row.
-
-Invariants (to test): every caught rune is castable and every cast
-returns cleanly to the world; casting changes no flag, no save, no gate;
-the ring renders at 0, some, and all runes caught.
+Caught runes stopped being trophies: `r` opens the casting ring
+(`Screen::RuneRing`), every inscribed rune standing in a slow-turning
+circle, and `e` casts the chosen one. `content/casts.rs` keys each of
+the twenty to its nature — flowers bloom for the Mut and Clone runes,
+ripples for the tide-minded, startled wings for the Arrow and the
+Summoning, chimes, a moment of warm light that is not the lantern,
+Ferris weighing in (loudly), and the Mirror Rune's one honest utility:
+sparks that lean toward the nearest unfound runestone. Effects ride
+`App::rune_fx` (tick + `hash2`, never saved, gone in `RUNE_FX_TICKS`),
+a pizzicato flourish plays from the shell, and the invariants landed as
+tests: every caught rune casts and returns cleanly, no flag or save or
+gate moves, and the ring renders at zero, some, and all runes caught
+(plus every cast shape mid-flight, in the render matrix and as
+`snapshot -- ring / cast` scenes).
 
 ## 3. Coins & kitchens — economy & home life
 
