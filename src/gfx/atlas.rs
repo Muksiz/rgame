@@ -476,11 +476,16 @@ pub struct Atlas {
 
 impl Atlas {
     pub fn load() -> Self {
-        let decoder = png::Decoder::new(ATLAS_PNG);
+        let decoder = png::Decoder::new(std::io::Cursor::new(ATLAS_PNG));
         let mut reader = decoder
             .read_info()
             .expect("atlas.png is baked into the binary");
-        let mut buf = vec![0; reader.output_buffer_size()];
+        let mut buf = vec![
+            0;
+            reader
+                .output_buffer_size()
+                .expect("atlas.png fits in memory")
+        ];
         let info = reader.next_frame(&mut buf).expect("atlas.png decodes");
         assert_eq!(info.color_type, png::ColorType::Rgba, "atlas must be RGBA");
         buf.truncate(info.buffer_size());
