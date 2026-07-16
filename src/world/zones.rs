@@ -1445,6 +1445,11 @@ fn mistholm() -> Zone {
     for x in 119..=181 {
         b.set(x, 38, Tile::Pier); // hamlet → shrine isle
     }
+    // The tide-pool jetty, straight off the main boardwalk — so Grandmother
+    // Brine is a turn south, not a march around the whole shrine isle.
+    for y in 39..=51 {
+        b.set(142, y, Tile::Pier);
+    }
     for y in 49..=56 {
         b.set(188, y, Tile::Pier); // shrine isle → tide-pools (south leg)
     }
@@ -1452,12 +1457,32 @@ fn mistholm() -> Zone {
         b.set(x, 56, Tile::Pier); // shrine isle → tide-pools (west leg)
     }
 
+    // Packed-sand tracks worn between each isle's pier-heads and its few
+    // roofs and fires — nobody wades tall grass twice on a cold morning.
+    b.trail(&[(35, 38), (48, 38), (48, 36), (55, 34)]); // the landing walk
+    b.trail(&[(41, 38), (41, 37)]); // ...with a step up to Nerine's lookout
+    b.trail(&[(86, 34), (117, 34), (117, 37)]); // the hamlet's one lane
+    b.trail(&[(96, 34), (96, 29)]); // up between the two houses
+    b.trail(&[(100, 34), (100, 32)]); // to the driftwood fire
+    b.trail(&[(113, 34), (113, 26), (118, 26), (118, 23)]); // to the north pier
+    b.trail(&[(152, 16), (152, 12)]); // the light-keeper's climb
+    b.trail(&[(182, 38), (184, 38), (184, 41), (196, 41)]); // shrine landfall
+    b.trail(&[(191, 41), (191, 48), (188, 48)]); // down to the south pier
+    b.trail(&[(196, 41), (196, 42)]); // the last step to the shrine fire
+    b.trail(&[(142, 52), (142, 55), (141, 55), (141, 56)]); // among the pools
+
     // The ferry, tied up at the landing jetty; stepping aboard sails home.
     b.prefab(26, 38, atlas::BOAT, atlas::BOAT_SIZE, Some((4, 0)));
 
-    // The hamlet: two weathered homes above the boardwalk crossing.
+    // The hamlet: two weathered homes above the boardwalk crossing, gear
+    // stacked where the east pier meets the lane, and a skiff riding at its
+    // mooring off the south shore.
     b.prefab(92, 24, atlas::NA_HOUSE_PLAIN, atlas::NA_HOUSE_SIZE, None);
     b.prefab(106, 25, atlas::NA_HOUSE_THATCH, atlas::NA_HOUSE_SIZE, None);
+    b.set(116, 36, Tile::Crate);
+    b.set(116, 35, Tile::Barrel);
+    b.set(87, 33, Tile::Barrel);
+    b.prefab(97, 42, atlas::SKIFF, atlas::SKIFF_SIZE, None);
 
     // Old growth, what little the wind allows.
     b.prefab(98, 18, atlas::TREE_BIG_GREEN, atlas::TREE_BIG_SIZE, None);
@@ -1469,6 +1494,56 @@ fn mistholm() -> Zone {
         atlas::TREE_DEAD_BIG_SIZE,
         None,
     );
+    b.prefab(204, 44, atlas::TREE_GNARLED, atlas::TREE_GNARLED_SIZE, None);
+
+    // The old shrine itself: a cobbled court under the big tree, a standing
+    // stone at each corner, two lanterns kept lit against the mist, and the
+    // offering bowl at its heart (Murre's whole errand, standing where he
+    // can worry about it).
+    b.rect(193, 36, 7, 3, Tile::Plaza);
+    for &(sx, sy) in &[(193, 36), (199, 36), (193, 38), (199, 38)] {
+        b.set(sx, sy, Tile::Rock);
+    }
+    b.set(194, 39, Tile::Lantern);
+    b.set(198, 39, Tile::Lantern);
+    b.set(196, 37, Tile::Pedestal); // the bowl (a note tied to it talks)
+
+    // The tide pools: brine-warm pockets the sea forgets between tides,
+    // ringed in reeds, one with a rock for sitting and thinking.
+    for &(px, py) in &[(137, 54), (138, 54), (144, 59), (145, 54), (146, 58)] {
+        b.set(px, py, Tile::Water);
+    }
+    b.set(138, 54, Tile::WaterRock);
+    for &(rx, ry) in &[(136, 55), (139, 53), (143, 58), (146, 54), (145, 60)] {
+        b.set(rx, ry, Tile::Reed);
+    }
+
+    // The mist-lights: Fathom's beacons on the skerry, and a lit lantern at
+    // every pier-head so the boardwalks find their isles in any fog.
+    for &(lx, ly) in &[
+        (149, 13),
+        (155, 13), // the skerry pair, flanking the climb
+        (35, 37),  // the landing jetty
+        (55, 33),  // the landing's east pier
+        (86, 33),  // the hamlet's west landfall
+        (118, 37), // the hamlet's east landfall
+        (182, 37), // the shrine isle landfall
+        (143, 52), // the tide-pool jetty
+    ] {
+        b.set(lx, ly, Tile::Lantern);
+    }
+
+    // Sea-worn boulders where the grass gives out.
+    for &(rx, ry) in &[
+        (38, 44),
+        (52, 33),
+        (91, 39),
+        (109, 21),
+        (158, 15),
+        (203, 36),
+    ] {
+        b.set(rx, ry, Tile::Rock);
+    }
 
     // A driftwood fire on the hamlet's south shore, and one by the shrine.
     b.clearing(100, 31, 1);
@@ -1477,6 +1552,7 @@ fn mistholm() -> Zone {
     b.set(196, 44, Tile::Campfire);
 
     b.set(34, 37, Tile::Sign);
+    b.set(43, 36, Tile::Sign); // Nerine's tide board, such as it is
     b.set(97, 29, Tile::Sign);
     b.set(190, 40, Tile::Sign);
 
@@ -1565,11 +1641,20 @@ fn mistholm() -> Zone {
         critters: vec![
             Critter::new(CritterKind::Duck, (50, 42)),
             Critter::new(CritterKind::Duck, (140, 54)),
+            // The hamlet cat, patrolling the lane for dropped shrimp.
+            Critter::new(CritterKind::Cat, (99, 33)),
+            // Tide-pool frogs, who believe the pools were dug for them.
+            Critter::new(CritterKind::Frog, (139, 55)),
+            Critter::new(CritterKind::Frog, (144, 58)),
         ],
         signs: vec![
             Sign {
                 pos: (34, 37),
                 text: "Mistholm. Five green stones in a grey sea. The mist is a neighbor; wave.",
+            },
+            Sign {
+                pos: (43, 36),
+                text: "The tide board. Chalked over and over: COMING IN. GOING OUT. COMING IN. The last hand gave up and drew a wave.",
             },
             Sign {
                 pos: (97, 29),
@@ -1578,6 +1663,10 @@ fn mistholm() -> Zone {
             Sign {
                 pos: (190, 40),
                 text: "The old shrine keeps the mist company. It insists it's the other way around.",
+            },
+            Sign {
+                pos: (196, 37),
+                text: "Tied to the offering bowl, a card in a careful hand: 'Gifts welcome. Gratitude guaranteed, contents or no. — the management (the shrine)'",
             },
         ],
     }

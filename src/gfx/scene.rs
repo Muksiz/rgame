@@ -868,7 +868,9 @@ fn tile_sprites(
                 (_, 2) => atlas::ROCK_MOSSY_GREY,
                 _ => atlas::ROCK_GREY,
             };
-            (ground, Some(id))
+            // Standing stones set in a paved court (Mistholm's shrine) keep
+            // the cobbles under them, like the lantern and campfire do.
+            (paved_base(zone, x, y, ground), Some(id))
         }
         // The Echo Cave's dark arched entrance, sat on the biome ground.
         Tile::CaveMouth => (ground, Some(atlas::CAVE_MOUTH)),
@@ -1053,7 +1055,16 @@ fn tile_sprites(
             };
             (interior_floor(zone_id, h), Some(id))
         }
-        Tile::Pedestal => (interior_floor(zone_id, h), Some(atlas::PEDESTAL)),
+        // A plinth in the Library's gallery — or, out in a paved court, the
+        // shrine's offering bowl on its stand (Mistholm's, so far).
+        Tile::Pedestal => {
+            let base = if interior {
+                interior_floor(zone_id, h)
+            } else {
+                paved_base(zone, x, y, ground)
+            };
+            (base, Some(atlas::PEDESTAL))
+        }
         Tile::Piano => (interior_floor(zone_id, h), Some(atlas::PIANO)),
         Tile::Clock => (interior_floor(zone_id, h), Some(atlas::CLOCK)),
     }
